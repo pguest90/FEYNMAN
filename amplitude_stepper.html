@@ -628,40 +628,76 @@ function getAmplitudeTopology(factors) {
   return {topo:'unknown'};
 }
 
+// ─── Extract fermion chain momenta from propagator label ──────────────────────
+// Key insight: the propagator label "photon prop (pA±pB)" tells us which two
+// momenta are on the same fermion chain (both connected to the same vertex).
+// e.g. "p₁−p₃" → chain1={p1,p3}, chain2={p2,p4}  (t-channel Bhabha)
+//      "p₁+p₂" → chain1={p1,p2}, chain2={p3,p4}  (s-channel)
+function extractChains(text) {
+  const factors = parseIMFactors(text);
+  const subN = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+  const norm = s => s.replace(/[₀-₉]/g, c=>subN[c]||c);
+
+  // Get momenta mentioned in the boson propagator label
+  const bProp = factors.find(f => f.type.includes('photon prop') || f.type.includes('gluon prop'));
+  const propMoms = bProp ? (norm(bProp.arg).match(/p\d+/gi)||[]).map(m=>m.toLowerCase()) : [];
+
+  // Get all unique fermion-ext momenta in order of appearance
+  const seen = new Set();
+  const allMoms = factors
+    .filter(f => f.type.includes('fermion ext'))
+    .map(f => { const m=norm(f.arg).match(/p\d+/i); return m?m[0].toLowerCase():null; })
+    .filter(m => m && !seen.has(m) && seen.add(m));
+
+  if (propMoms.length >= 2 && allMoms.length >= 4) {
+    const chain1 = propMoms.slice(0, 2);                           // same side as photon vertex 1
+    const chain2 = allMoms.filter(m => !chain1.includes(m)).slice(0, 2); // other side
+    return {chain1, chain2};
+  }
+  return {chain1: allMoms.slice(0,2), chain2: allMoms.slice(2,4)};
+}
+
 function stepsSquareTwoCurrent(topo, text) {
   const {coupling, denom, scalarStr, isGluon} = topo;
   const coupHTML = coupling==='e' ? CP('e') : CP('g<sub>s</sub>');
-  const denomLabel = denom==='s' ? `(p₁+p₂)² = ${MV('s')}` : `(p₁−p₃)² = ${MV('t')}`;
   const cType = isGluon ? 'gluon' : 'photon';
   const sc = rScalar(scalarStr);
+
+  // Extract actual chain momenta from the propagator label (the fix)
+  const {chain1, chain2} = extractChains(text);
+  const [pA, pB] = chain1.length>=2 ? chain1 : ['p1','p2'];
+  const [pC, pD] = chain2.length>=2 ? chain2 : ['p3','p4'];
+
+  const denomLabel = `(${M(pA)}${denom==='s'?'+':'−'}${M(pB)})² = ${MV(denom)}`;
 
   const allSteps = [
     {title:'Input amplitude — two-current topology identified',
      rule:'',
      expr:`<div style="font-size:11px;color:#4a5888;white-space:pre;line-height:1.8;max-height:140px;overflow-y:auto;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,10).join('\n'))}</div>`,
-     expl:`Two fermion currents J₁<sup>μ</sup> and J₂<sub>μ</sub> connected by a virtual ${cType} (denominator: ${denomLabel}). Squaring produces a product of two traces contracted on μ.`},
+     expl:`Two fermion currents connected by a virtual ${cType}. Denominator: ${denomLabel}.
+       Chain 1 momenta: {${pA}, ${pB}} &nbsp;|&nbsp; Chain 2 momenta: {${pC}, ${pD}}.
+       (Extracted from propagator label — see next step.)`},
 
     {title:'Write iM in factored form',
-     rule:`iM = ${fr(coupHTML+'²', MV(denom))} × [ū(p₃)${gmu('μ')}u(p₁)] × [ū(p₄)${G('γ')}<sub>μ</sub>u(p₂)]`,
-     expr:`iM = ${fr(coupHTML+'²', MV(denom))} × J₁<sup>μ</sup> × J₂<sub>μ</sub>`,
-     expl:`The ${cType} propagator index μ contracts the two fermion bilinears. Each bilinear is a Lorentz vector.`},
+     rule:`Chain 1: ū(${pB})γ<sup>μ</sup>u(${pA}) &nbsp;|&nbsp; Chain 2: ū(${pD})γ<sub>μ</sub>u(${pC})<br>
+       The propagator label tells us which momenta share a fermion chain.`,
+     expr:`iM = ${fr(coupHTML+'²', MV(denom))} × [ū(${pB})${gmu('μ')}u(${pA})] × [ū(${pD})${G('γ')}<sub>μ</sub>u(${pC})]`,
+     expl:`The virtual ${cType} propagator index μ contracts the two fermion bilinears.`},
 
     {title:'Square: |iM|² = iM × (iM)*',
-     rule:`<strong>Conjugate rule:</strong> (ūΓu)* = ūΓ̄u. For Γ=γ<sup>μ</sup>: Γ̄=γ<sup>μ</sup> (Hermitian).<br>
-       A second free index ν appears from (iM)*.`,
-     expr:`|iM|² = ${fr(coupHTML+'⁴', MV(denom)+'²')} × [ū(p₃)${gmu('μ')}u(p₁)][ū(p₁)${gmu('ν')}u(p₃)] × [ū(p₄)${G('γ')}<sub>μ</sub>u(p₂)][ū(p₂)${G('γ')}<sub>ν</sub>u(p₄)]`,
-     expl:`The μ,ν pair will be contracted between the two traces after applying spin sums.`},
+     rule:`<strong>Conjugate:</strong> (ūΓu)* = ūΓu (γ<sup>μ</sup> Hermitian → Γ̄=γ<sup>μ</sup>). A second free index ν emerges.`,
+     expr:`|iM|² = ${fr(coupHTML+'⁴', MV(denom)+'²')} × [ū(${pB})${gmu('μ')}u(${pA})][ū(${pA})${gmu('ν')}u(${pB})] × [ū(${pD})${G('γ')}<sub>μ</sub>u(${pC})][ū(${pC})${G('γ')}<sub>ν</sub>u(${pD})]`,
+     expl:`The μ,ν pair contracts between the two traces after spin sums.`},
 
-    {title:'Apply spin completeness — close spinor indices into traces',
-     rule:`Σ<sub>s</sub> u(p,s)ū(p,s) = ${slash('p')}+m → ${slash('p')} &nbsp;(massless)<br>
-       Σ<sub>s</sub> v(p,s)v̄(p,s) = ${slash('p')}−m → ${slash('p')} &nbsp;(massless)<br>
-       Summing over spins closes each bilinear pair into a Dirac trace.`,
-     expr:`${sc}${TR('Tr')}[${gmu('μ')}${slash('p1')}${gmu('ν')}${slash('p2')}] × ${TR('Tr')}[${G('γ')}<sub>μ</sub>${slash('p4')}${G('γ')}<sub>ν</sub>${slash('p3')}]`,
-     expl:`Chain 1: momenta p₁,p₂. Chain 2: momenta p₃,p₄. Index μ,ν contracted between traces. Now apply the double-trace contraction formula.`},
+    {title:'Apply spin completeness — close into traces',
+     rule:`Σ<sub>s</sub> u ū = ${slash('p')}+m → ${slash('p')} (massless) &nbsp;&nbsp; Σ<sub>s</sub> v v̄ = ${slash('p')}−m → ${slash('p')} (massless)`,
+     expr:`${sc}${TR('Tr')}[${gmu('μ')}${slash(pA)}${gmu('ν')}${slash(pB)}] × ${TR('Tr')}[${G('γ')}<sub>μ</sub>${slash(pC)}${G('γ')}<sub>ν</sub>${slash(pD)}]`,
+     expl:`Chain 1 trace: momenta ${pA},${pB}. &nbsp; Chain 2 trace: momenta ${pC},${pD}. &nbsp; Index pair μ,ν contracts between traces.
+       &nbsp;<br><strong>Convention note:</strong> result below is spin-SUMMED. Divide by 4 for spin-averaged |M̄|².`},
   ];
 
-  // Feed to existing trace evaluator — skip its "initial expression" step
-  const traceStr = `(${scalarStr}) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]`;
+  // Feed the correctly-assigned trace expression to the evaluator
+  const traceStr = `(${scalarStr}) * Tr[${pA} gm ${pB} gn] * Tr[${pC} gm ${pD} gn]`;
   const traceParsed = parseInput(traceStr);
   const tracePat = identify(traceParsed);
   tracePat.scalar = traceParsed.scalar;
