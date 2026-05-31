@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Amplitude Step Solver</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background:#0d0d14; color:#c8d0e0; font-family:'Courier New',monospace; font-size:13px; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+  #topbar { display:flex; align-items:center; background:#12121e; border-bottom:1px solid #2a2a44; padding:6px 12px; gap:8px; flex-shrink:0; }
+  #topbar h1 { font-size:14px; color:#7090ff; margin-right:6px; letter-spacing:1px; }
+  .sep { width:1px; height:24px; background:#2a2a44; margin:0 4px; }
+  button { background:#1a1a2e; border:1px solid #3a3a5e; color:#aab0c8; padding:4px 10px; cursor:pointer; border-radius:3px; font-family:inherit; font-size:12px; transition:all 0.1s; }
+  button:hover { background:#22224a; border-color:#6070c0; color:#dde0ff; }
+  button.active, button:disabled { opacity:0.4; cursor:default; }
+  #input-area { background:#0f0f1c; border-bottom:1px solid #2a2a44; padding:10px 16px; flex-shrink:0; }
+  #input-area .lbl { font-size:10px; color:#404070; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px; }
+  #amp-input { width:100%; background:#07070f; border:1px solid #2a2a44; color:#c0d0e8; font-family:'Courier New',monospace; font-size:13px; padding:7px 10px; border-radius:3px; resize:none; height:52px; }
+  #amp-input:focus { outline:none; border-color:#4050a0; }
+  .input-row { display:flex; gap:6px; margin-top:7px; align-items:center; flex-wrap:wrap; }
+  .ex { background:#0c0c1c; border-color:#1e1e40; color:#404070; font-size:11px; padding:3px 7px; }
+  .ex:hover { color:#7080c0; border-color:#304070; background:#0c0c1c; }
+  #syntax-help { font-size:10px; color:#242445; line-height:1.9; margin-top:6px; background:#07070f; border:1px solid #121230; border-radius:3px; padding:6px 10px; display:none; }
+  #step-area { flex:1; overflow-y:auto; background:#090912; padding:14px 18px 24px; }
+  .step-card { background:#0f0f1c; border:1px solid #1a1a38; border-radius:4px; padding:14px 16px; margin-bottom:10px; }
+  .step-card.final-card { border-color:#304060; background:#0c1018; }
+  .step-num { font-size:10px; color:#303060; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+  .step-num .n { background:#151538; border:1px solid #252560; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#5060a0; flex-shrink:0; }
+  .step-num .ttl { color:#606090; }
+  .rule-box { background:#07070f; border:1px solid #141438; border-radius:3px; padding:8px 12px; font-size:12px; color:#4a5888; line-height:2; margin-bottom:8px; }
+  .rule-box strong { color:#6070a8; }
+  .expr-box { background:#0c0c20; border:1px solid #1a1a40; border-radius:4px; padding:12px 16px; font-size:15px; color:#b8cce8; line-height:2.6; min-height:48px; word-break:break-all; }
+  .expr-box.final { border-color:#304870; background:#0a0e18; }
+  .arr { text-align:center; color:#1e2050; font-size:16px; line-height:1.2; margin:4px 0; }
+  .expl { font-size:12px; color:#404868; line-height:1.8; padding:6px 10px; background:#07070f; border-left:2px solid #1a1a48; border-radius:0 3px 3px 0; margin-top:6px; }
+  .empty { color:#252550; text-align:center; padding:50px 20px; }
+  /* expression element colors */
+  .gm { color:#70b0d0; }
+  .mo { color:#70d890; }
+  .tr { color:#d8c050; }
+  .mv { color:#ff8840; }
+  .cp { color:#6090ff; }
+  .dt { color:#c088e0; }
+  .fr { display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; margin:0 3px; font-size:14px; }
+  .fr .n { border-bottom:1px solid #3850a0; padding:0 5px 1px; text-align:center; min-width:18px; }
+  .fr .d { padding:1px 5px 0; text-align:center; min-width:18px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>⬡ STEP SOLVER</h1>
+  <div class="sep"></div>
+  <span style="font-size:11px;color:#252548">type amplitude → step-by-step simplification</span>
+  <div class="sep"></div>
+  <button id="btn-copy">Copy LaTeX</button>
+  <button onclick="toggleSyntax()" style="font-size:11px">Syntax ?</button>
+</div>
+
+<div id="input-area">
+  <div class="lbl">Expression</div>
+  <textarea id="amp-input" placeholder="e.g.  (e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]"></textarea>
+  <div id="syntax-help">
+    <strong>Traces:</strong> Tr[p1 gm p2 gn] &nbsp;|&nbsp; <strong>Momenta inside trace:</strong> p1…p8, k (always slashed) &nbsp;|&nbsp; <strong>Gammas:</strong> gm gn gr gs ga gb (index labels — matching labels are contracted)<br>
+    <strong>Scalars:</strong> e2 e4 gs2 gs4 m2 &nbsp;|&nbsp; <strong>Denominators:</strong> /s /t /u /s2 /t2 /u2 &nbsp;|&nbsp; <strong>Spinors (for squaring):</strong> ubar(p1) gm u(p3) &nbsp;|&nbsp; <strong>Sum momenta:</strong> (p1+k) inside Tr<br>
+    <strong>Ctrl+Enter</strong> to solve &nbsp;·&nbsp; <strong>Kinematic assumption:</strong> 4-point 2→2 massless (p1,p2 in; p3,p4 out)
+  </div>
+  <div class="input-row">
+    <button onclick="go()">Solve ▶</button>
+    <button id="btn-import" onclick="importFromEditor()" style="border-color:#304070;color:#6080b0">Import from Editor</button>
+    <div class="sep"></div>
+    <button class="ex" onclick="eg('from_editor')">From Editor (iM)</button>
+    <button class="ex" onclick="eg('ee_mumu')">e⁺e⁻→μ⁺μ⁻</button>
+    <button class="ex" onclick="eg('ee_mumu_mass')">e⁺e⁻→μ⁺μ⁻ (massive)</button>
+    <button class="ex" onclick="eg('emu_emu')">e⁻μ⁻→e⁻μ⁻</button>
+    <button class="ex" onclick="eg('compton_s')">Compton (s-ch)</button>
+    <button class="ex" onclick="eg('scalar_tr')">Tr[p1 p2]</button>
+    <button class="ex" onclick="eg('internal')">Tr[p1 gm p2 gm]</button>
+    <button class="ex" onclick="eg('spinor')">Spinor bilinear</button>
+    <button class="ex" onclick="eg('qcd')">QCD t-channel</button>
+  </div>
+</div>
+
+<div id="step-area"><div class="empty">Enter an amplitude and click Solve ▶</div></div>
+
+<script>
+// ─── Rendering helpers ────────────────────────────────────────────────────────
+const G  = x => `<span class="gm">${x}</span>`;
+const M  = x => `<span class="mo">${x}</span>`;
+const TR = x => `<span class="tr">${x}</span>`;
+const MV = x => `<span class="mv">${x}</span>`;
+const CP = x => `<span class="cp">${x}</span>`;
+const DT = x => `<span class="dt">${x}</span>`;
+const FR = (n,d) => `<span class="fr"><span class="n">${n}</span><span class="d">${d}</span></span>`;
+const SU = (b,e) => `${b}<sup>${e}</sup>`;
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Rendered symbols
+const gmu   = idx => G(`γ<sup>${idx}</sup>`);
+const slash = id  => { const n=id.replace(/\D/g,''); return M('p̸')+'<sub>'+n+'</sub>'; };
+const dotP  = (a,b) => DT(`${M('p')}<sub>${a.replace(/\D/g,'')}</sub>·${M('p')}<sub>${b.replace(/\D/g,'')}</sub>`);
+
+// Render chain element
+function rEl(el) {
+  if (el.type==='mom') return slash(el.id);
+  if (el.type==='gamma') return gmu(el.idx);
+  if (el.type==='mom_mass') {
+    const sign = el.msign>0 ? '+' : '−';
+    return `(${slash(el.id)}${sign}${M('m')})`;
+  }
+  if (el.type==='sum') return '('+el.parts.map(p=>slash(p)).join('+')+')';
+  if (el.type==='mass') return M('m');
+  return esc(el.raw||'');
+}
+function rChain(chain) { return chain.map(rEl).join(' '); }
+function rTrace(chain) { return TR('Tr')+'['+rChain(chain)+']'; }
+
+// ─── Scalar rendering ─────────────────────────────────────────────────────────
+function rScalar(sc) {
+  if (!sc||sc==='1'||sc==='') return '';
+  let num='', den='';
+  const parts = sc.split('/');
+  const numToks = parts[0].split('*').map(s=>s.trim()).filter(Boolean);
+  numToks.forEach(t => {
+    if (t==='e4'||t==='e^4') num += CP('e')+'⁴';
+    else if (t==='e2'||t==='e^2') num += CP('e')+'²';
+    else if (t==='gs4'||t==='g_s^4') num += CP('g<sub>s</sub>')+'⁴';
+    else if (t==='gs2'||t==='g_s^2') num += CP('g<sub>s</sub>')+'²';
+    else if (t==='m2') num += M('m')+'²';
+    else num += esc(t);
+  });
+  for (let i=1;i<parts.length;i++) {
+    const t=parts[i].trim();
+    if (t==='s2') den += MV('s')+'²';
+    else if (t==='t2') den += MV('t')+'²';
+    else if (t==='u2') den += MV('u')+'²';
+    else if (t==='s') den += MV('s');
+    else if (t==='t') den += MV('t');
+    else if (t==='u') den += MV('u');
+    else den += esc(t);
+  }
+  if (!num) num='1';
+  return den ? FR(num,den)+'·' : num+'·';
+}
+
+// ─── Input normalizer (Unicode → ASCII app syntax) ───────────────────────────
+function normalizeInput(s) {
+  // Unicode subscripts
+  const subMap = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+  s = s.replace(/[₀-₉]/g, c=>subMap[c]||c);
+  // Superscripts
+  s = s.replace(/²/g,'2').replace(/⁴/g,'4');
+  // Unicode operators
+  s = s.replace(/×/g,'*').replace(/÷/g,'/');
+  // Slashed momenta: /p1, ṗ1, p̸1 → p1
+  s = s.replace(/[\/]p(\d)/g,'p$1').replace(/[ṗp̸](\d)/g,'p$1');
+  // γ^μ/γ_μ style → gm; γ^ν → gn; γ^ρ → gr; etc.
+  const gMap = {'μ':'m','ν':'n','ρ':'r','σ':'s','α':'a','β':'b','κ':'k'};
+  s = s.replace(/γ[\^_]\{?([μνρσαβκ])\}?/g, (_,c)=>'g'+(gMap[c]||c));
+  s = s.replace(/γ([μνρσαβκ])/g, (_,c)=>'g'+(gMap[c]||c));
+  // |expr|² → try to extract coupling squared
+  s = s.replace(/\|([^|]+)\|2/g, (_,inner) => {
+    const n = (inner.match(/[Qq]e|[Qq]_?e|ie\b/gi)||[]).length;
+    const ng = (inner.match(/ig_?s\b|g_?s\b/gi)||[]).length;
+    if (ng>=2) return 'gs4'; if (ng===1&&n>=1) return 'gs2*e2';
+    if (n>=4) return 'e4'; return 'e2';
+  });
+  // Remove stray '1/4 ×' spin-average prefactors expressed naturally
+  s = s.replace(/\(1\/4\)\s*\*/,'(1/4)*');
+  // (p1-p2)^4 / (p1+p2)^2 type denominators → warn (leave as-is, will be flagged)
+  return s.trim();
+}
+
+// ─── Parser ───────────────────────────────────────────────────────────────────
+function parseChain(str) {
+  return str.trim().split(/\s+/).map(tok => {
+    tok=tok.trim(); if(!tok) return null;
+    if (/^(p|k)\d*$/i.test(tok)) return {type:'mom', id:tok.toLowerCase()};
+    if (/^g[a-z]$/i.test(tok)) return {type:'gamma', idx:tok[1]};
+    if (/^\([^)]+\)$/.test(tok)) {
+      const inner=tok.slice(1,-1).trim();
+      // (p1+m) or (p1-m) — mass insertion
+      const mm = inner.match(/^(p\d+|k\d*)\s*([+-])\s*m$/i);
+      if (mm) return {type:'mom_mass', id:mm[1].toLowerCase(), msign: mm[2]==='+'?1:-1};
+      // sum of momenta: (p1+k)
+      const parts=inner.split(/\s*\+\s*/).map(s=>s.trim()).filter(Boolean);
+      return {type:'sum', parts};
+    }
+    if (tok==='m') return {type:'mass'};
+    return {type:'other',raw:tok};
+  }).filter(Boolean);
+}
+
+function parseInput(raw) {
+  raw = normalizeInput(raw.trim());
+  // Extract all Tr[...] blocks
+  const trRe = /Tr\[([^\]]+)\]/gi;
+  const trMatches = [...raw.matchAll(trRe)];
+  const traces = trMatches.map(m=>parseChain(m[1]));
+  // Extract spinor bilinears: (u|v)bar(pN) ... u|v(pM)
+  let scStr = raw;
+  trMatches.forEach(m=>{ scStr=scStr.replace(m[0],''); });
+  const spRe = /(u|v)bar\((p\d+)\)((?:\s+\S+)*?)\s+(u|v)\((p\d+)\)/gi;
+  const spMatches = [...raw.matchAll(spRe)];
+  const spinors = spMatches.map(m=>({
+    lType:m[1], lMom:m[2], gammaStr:m[3].trim(), rType:m[4], rMom:m[5]
+  }));
+  spMatches.forEach(m=>{ scStr=scStr.replace(m[0],''); });
+  // Clean up scalar
+  scStr = scStr.replace(/\s*\*\s*/g,'').replace(/[()]/g,'').trim();
+  return {traces, spinors, scalar:scStr};
+}
+
+// ─── Pattern recognition ──────────────────────────────────────────────────────
+const isMomType = e => e.type==='mom'||e.type==='sum'||e.type==='mom_mass';
+
+function canonicalize(chain) {
+  const fi = chain.findIndex(isMomType);
+  if (fi<=0) return chain;
+  return [...chain.slice(fi), ...chain.slice(0,fi)];
+}
+
+function identify(parsed) {
+  const {traces, spinors, scalar} = parsed;
+
+  if (traces.length>=2) {
+    // Check every trace for same-index-in-same-trace error FIRST
+    for (let ti=0; ti<traces.length; ti++) {
+      const gams = traces[ti].filter(e=>e.type==='gamma');
+      const idxs = gams.map(g=>g.idx);
+      const dup = idxs.find((idx,i)=>idxs.indexOf(idx)!==i);
+      if (dup) return {type:'err_same_index', traceNum:ti+1, idx:dup, traces};
+    }
+  }
+
+  if (traces.length===2) {
+    const c1=canonicalize(traces[0]), c2=canonicalize(traces[1]);
+    const g1=c1.filter(e=>e.type==='gamma'), g2=c2.filter(e=>e.type==='gamma');
+    const m1=c1.filter(isMomType), m2=c2.filter(isMomType);
+    const contracted = g1.map(g=>g.idx).filter(i=>g2.map(g=>g.idx).includes(i));
+    if (contracted.length>=2 && m1.length===2 && m2.length===2)
+      return {type:'double4', m1, m2, g1, g2, contracted};
+  }
+
+  if (traces.length===1) {
+    const c=canonicalize(traces[0]);
+    const moms=c.filter(isMomType);
+    const gams=c.filter(e=>e.type==='gamma');
+    const idxs=gams.map(g=>g.idx);
+    const doubled=idxs.find((idx,i)=>idxs.indexOf(idx)!==i);
+    if (doubled && moms.length===2) return {type:'single_internal', moms, gams, contracted:doubled};
+    if (moms.length===2&&gams.length===0) return {type:'two_mom', moms};
+    if (moms.length===2&&gams.length===2) return {type:'single4', moms, gams};
+  }
+  if (spinors.length>=1) return {type:'spinor', spinors};
+  return {type:'unknown'};
+}
+
+// ─── Mandelstam dot products (4-point 2→2 massless: p1,p2 in; p3,p4 out) ─────
+const DP = {
+  'p1,p2':'+s/2','p2,p1':'+s/2','p3,p4':'+s/2','p4,p3':'+s/2',
+  'p1,p3':'-t/2','p3,p1':'-t/2','p2,p4':'-t/2','p4,p2':'-t/2',
+  'p1,p4':'-u/2','p4,p1':'-u/2','p2,p3':'-u/2','p3,p2':'-u/2',
+};
+function dpHTML(a, b) {
+  const key = `${a},${b}`;
+  const val = DP[key];
+  if (!val) return {html: dotP(a,b), val:null, mand:null, sign:null};
+  const sign = val[0]==='-' ? -1 : 1;
+  const mand = val.replace(/[+-]/,'').replace('/2','');
+  const html = (sign>0?'':MV('−'))+FR('1','2')+'·'+MV(mand);
+  return {html, val, mand, sign};
+}
+
+function getDotId(momEl) {
+  if (momEl.type==='sum') return momEl.parts.join('+');
+  if (momEl.type==='mom_mass') return momEl.id;
+  return momEl.id;
+}
+function getMsign(momEl) {
+  // Returns mass sign factor: +1 for (p+m), -1 for (p-m), 0 for plain momentum
+  return momEl.type==='mom_mass' ? momEl.msign : 0;
+}
+
+// Evaluate 32[(A·C)(B·D) + (A·D)(B·C)] into simplified Mandelstam
+function evalDoubleTrace(A, B, C, D) {
+  // A,B,C,D are momentum ids (strings like 'p1')
+  const ac=dpHTML(A,C), bd=dpHTML(B,D), ad=dpHTML(A,D), bc=dpHTML(B,C);
+  // Step showing the dot products
+  const step3html = `32·[${dotP(A,C)}·${dotP(B,D)} + ${dotP(A,D)}·${dotP(B,C)}]`;
+  const step4html = `32·[(${ac.html})(${bd.html}) + (${ad.html})(${bc.html})]`;
+
+  let final = null;
+  if (ac.mand&&bd.mand&&ad.mand&&bc.mand) {
+    // Each term = sign_ac*sign_bd * mand_ac*mand_bd / 4
+    const t1 = {sign: ac.sign*bd.sign, mands:[ac.mand,bd.mand].sort().join('')};
+    const t2 = {sign: ad.sign*bc.sign, mands:[ad.mand,bc.mand].sort().join('')};
+    // 32 × term/4 = 8 × term
+    function mandHTML(sign, mands) {
+      const chars=[...mands]; // e.g. ['s','t'] or ['s','s']
+      if (chars[0]===chars[1]) return MV(chars[0])+'²';
+      return MV(chars[0])+'·'+MV(chars[1]);
+    }
+    const t1h = mandHTML(1,t1.mands), t2h = mandHTML(1,t2.mands);
+    const s1 = t1.sign>0?'':'−', s2 = t2.sign>0?'+':'−';
+    final = `8(${s1}${t1h}${s2}${t2h})`;
+    // If both same term → simplify further
+    if (t1.mands===t2.mands) {
+      const coeff = 8*(t1.sign+t2.sign);
+      final = coeff===0 ? '0' : `${Math.abs(coeff)}·${t1h}`;
+    }
+  }
+  return {step3html, step4html, final};
+}
+
+// ─── Step generators ──────────────────────────────────────────────────────────
+
+function stepsDouble4(parsed, pat) {
+  const {m1, m2, g1, g2, contracted, scalar} = pat;
+  const sc = rScalar(scalar);
+  const [A,B] = m1.map(getDotId);
+  const [C,D] = m2.map(getDotId);
+  const idx1 = contracted[0], idx2 = contracted[1]||contracted[0];
+  const ev = evalDoubleTrace(A,B,C,D);
+  const t1html = rTrace(parsed.traces[0]);
+  const t2html = rTrace(parsed.traces[1]);
+  const hasMass = m1.concat(m2).some(e=>e.type==='mom_mass');
+  const sA=getMsign(m1[0]), sB=getMsign(m1[1]);
+  const sC=getMsign(m2[0]), sD=getMsign(m2[1]);
+  const mAB = sA*sB, mCD = sC*sD; // ±1 or 0
+
+  // Build final HTML
+  let finalHTML = ev.final || `32[${dotP(A,C)}·${dotP(B,D)}+${dotP(A,D)}·${dotP(B,C)}]`;
+  if (scalar) {
+    const scParts = parseScalarParts(scalar);
+    if (ev.final) {
+      const inner = ev.final.match(/^[-\d]+\((.*)\)$/);
+      const coeff = ev.final.match(/^(\d+)/)?.[1]||'8';
+      if (inner && scParts.den) {
+        finalHTML = FR(`${coeff}${scParts.numHTML}(${inner[1]})`, scParts.denHTML);
+      } else if (scParts.den) {
+        finalHTML = FR(`${coeff}${scParts.numHTML}(${ev.final.replace(/^\d+/,'').replace(/^\(/,'').replace(/\)$/,'')})`, scParts.denHTML);
+      } else {
+        finalHTML = `${sc}${ev.final}`;
+      }
+    }
+  }
+
+  const massSignLabel = (sa,sb) => {
+    const p = sa*sb;
+    return p===1 ? `+${M('m')}²` : p===-1 ? `−${M('m')}²` : '0';
+  };
+
+  const steps = [
+    {title:'Initial expression',
+     rule:'',
+     expr:`${sc}${t1html} × ${t2html}`,
+     expl:`Product of two traces with Lorentz indices ${idx1},${idx2} contracted between them. The same index labels appear once in each trace — summed (Einstein convention).`},
+  ];
+
+  // Mass expansion step (only if mass terms present)
+  if (hasMass) {
+    steps.push({
+      title:'Expand mass terms — odd-gamma traces vanish',
+      rule:`<strong>Key fact:</strong> ${TR('Tr')}[odd number of γ matrices] = 0<br>
+        So cross terms like ${TR('Tr')}[${slash('A')}${gmu('μ')}·m·${gmu('ν')}] = m·${TR('Tr')}[${slash('A')}${gmu('μ')}${gmu('ν')}] = 0 (3 gammas → odd → zero).<br>
+        Only the momentum×momentum and mass×mass terms survive:<br>
+        ${TR('Tr')}[(${slash('A')}+σ<sub>A</sub>m)${gmu('μ')}(${slash('B')}+σ<sub>B</sub>m)${gmu('ν')}] = ${TR('Tr')}[${slash('A')}${gmu('μ')}${slash('B')}${gmu('ν')}] + σ<sub>A</sub>σ<sub>B</sub>m²${TR('Tr')}[${gmu('μ')}${gmu('ν')}]`,
+      expr:`${sc}[${TR('Tr')}[${slash(A)}${gmu(idx1)}${slash(B)}${gmu(idx2)}] ${mAB>=0?'+':'−'} ${M('m')}²${TR('Tr')}[${gmu(idx1)}${gmu(idx2)}]] × [${TR('Tr')}[${slash(C)}${gmu(idx1)}${slash(D)}${gmu(idx2)}] ${mCD>=0?'+':'−'} ${M('m')}²${TR('Tr')}[${gmu(idx1)}${gmu(idx2)}]]`,
+      expl:`σ_A=${sA||'0'}, σ_B=${sB||'0'} for Trace 1 → σ_Aσ_B = ${mAB}. &nbsp; σ_C=${sC||'0'}, σ_D=${sD||'0'} for Trace 2 → σ_Cσ_D = ${mCD}.`
+    });
+    steps.push({
+      title:'Apply Tr[γ^μγ^ν] = 4g^μν',
+      rule:`<strong>Identity:</strong> ${TR('Tr')}[${gmu('μ')}${gmu('ν')}] = 4g<sup>μν</sup><br>
+        <strong>Modified trace identity with mass:</strong><br>
+        ${TR('Tr')}[(${slash('A')}+σ<sub>A</sub>m)${gmu('μ')}(${slash('B')}+σ<sub>B</sub>m)${gmu('ν')}] = 4(A<sup>μ</sup>B<sup>ν</sup>+A<sup>ν</sup>B<sup>μ</sup>−g<sup>μν</sup>(A·B−σ<sub>A</sub>σ<sub>B</sub>m²))`,
+      expr:`${sc}4(${M(A)}<sup>${idx1}</sup>${M(B)}<sup>${idx2}</sup>+${M(A)}<sup>${idx2}</sup>${M(B)}<sup>${idx1}</sup>−g<sup>${idx1}${idx2}</sup>(${dotP(A,B)}${massSignLabel(sA,sB)})) × 4(${M(C)}<sub>${idx1}</sub>${M(D)}<sub>${idx2}</sub>+${M(C)}<sub>${idx2}</sub>${M(D)}<sub>${idx1}</sub>−g<sub>${idx1}${idx2}</sub>(${dotP(C,D)}${massSignLabel(sC,sD)}))`,
+      expl:`The mass correction only modifies the g^{μν} coefficient: A·B → A·B − σ_Aσ_Bm². The rank-2 tensor structure is otherwise identical to the massless case.`
+    });
+  } else {
+    steps.push({
+      title:'Expand each trace using the identity',
+      rule:`<strong>4-element trace identity:</strong> ${TR('Tr')}[${slash('A')}${gmu('μ')}${slash('B')}${gmu('ν')}] = 4(A<sup>μ</sup>B<sup>ν</sup>+A<sup>ν</sup>B<sup>μ</sup>−g<sup>μν</sup>A·B)`,
+      expr:`${sc}4(${M(A)}<sup>${idx1}</sup>${M(B)}<sup>${idx2}</sup>+${M(A)}<sup>${idx2}</sup>${M(B)}<sup>${idx1}</sup>−g<sup>${idx1}${idx2}</sup>${dotP(A,B)}) × 4(${M(C)}<sub>${idx1}</sub>${M(D)}<sub>${idx2}</sub>+${M(C)}<sub>${idx2}</sub>${M(D)}<sub>${idx1}</sub>−g<sub>${idx1}${idx2}</sub>${dotP(C,D)})`,
+      expl:`Each trace is a symmetric rank-2 Lorentz tensor. We will contract them over the free indices.`
+    });
+  }
+
+  steps.push({
+    title:'Contract the two tensors',
+    rule:`<strong>Double-trace contraction:</strong><br>
+      ${TR('Tr')}[${slash('A')}${gmu('μ')}${slash('B')}${gmu('ν')}] × ${TR('Tr')}[${slash('C')}${G('γ')}<sub>μ</sub>${slash('D')}${G('γ')}<sub>ν</sub>] = 32[(A·C)(B·D)+(A·D)(B·C)]<br>
+      ${hasMass ? `<strong>With mass correction (P = A·B−σ<sub>A</sub>σ<sub>B</sub>m², Q = C·D−σ<sub>C</sub>σ<sub>D</sub>m²):</strong><br>
+      32[(A·C)(B·D)+(A·D)(B·C)] + 32[−Q·A·B−P·C·D+2PQ]` : ''}
+      <span style="color:#303058">Derivation: expand 4×4=16 metric-contraction terms. g<sup>μν</sup>g<sub>μν</sub>=4 in d=4. Cross-terms cancel leaving exactly 2 dot-product terms.</span>`,
+    expr:`${sc}${ev.step3html}${hasMass ? ` + 32[mass corrections involving ${M('m')}²]` : ''}`,
+    expl:`A=${M(A)}, B=${M(B)}, C=${M(C)}, D=${M(D)}. ${hasMass?'Mass corrections written separately below.':'Dot products → Mandelstam next.'}`
+  });
+
+  if (hasMass) {
+    const ab=dpHTML(A,B), cd=dpHTML(C,D);
+    const massTerms = `32[${mAB!==0?`${mAB<0?'−':'+'}${M('m')}²·(${cd.html})`:''} ${mCD!==0?`${mCD<0?'−':'+'}${M('m')}²·(${ab.html})`:''} ${(mAB!==0&&mCD!==0)?`+ 2·${mAB*mCD<0?'−':''}${M('m')}⁴`:''}]`;
+    steps.push({
+      title:'Substitute Mandelstam + collect mass terms',
+      rule:`p₁·p₂=s/2, p₁·p₃=−t/2, p₁·p₄=−u/2, p₂·p₃=−u/2, p₂·p₄=−t/2, p₃·p₄=s/2`,
+      expr:`${sc}[${ev.step4html}] + ${massTerms}`,
+      expl:`Kinematic dot products → Mandelstam. Mass correction terms remain as m² and m⁴ coefficients.`
+    });
+  } else {
+    steps.push({
+      title:'Substitute Mandelstam variables',
+      rule:`<strong>4-point 2→2 massless:</strong> p₁·p₂=s/2, p₁·p₃=−t/2, p₁·p₄=−u/2, p₂·p₃=−u/2, p₂·p₄=−t/2, p₃·p₄=s/2`,
+      expr:`${sc}${ev.step4html}`,
+      expl:`All dot products determined by momentum conservation + massless on-shell.`
+    });
+    steps.push({
+      title:'Evaluate: (±½)(±½) = ±¼, then 32×¼ = 8',
+      rule:`Collect the ¼ factors from each dot-product pair.`,
+      expr:`${sc}${ev.final||'see above'}`,
+      expl:`Signs: sign_AC×sign_BD and sign_AD×sign_BC determine sign of each term.`
+    });
+  }
+
+  steps.push({title:'Final result', rule:'', expr:finalHTML, expl:`Use s+t+u=0 to eliminate one variable if desired.`});
+
+  const latexInner = ev.final ? ev.final.replace(/²/g,'^2').replace(/<[^>]+>/g,'') : '...';
+  const latexSc = scalar.replace('e4','e^4').replace('e2','e^2').replace('gs4','g_s^4').replace('gs2','g_s^2').replace(/s2/g,'s^2').replace(/t2/g,'t^2').replace(/u2/g,'u^2');
+  return {steps, latex:`\\frac{${latexSc}}{1}\\cdot ${latexInner}`};
+}
+
+// ─── Error: same index inside one trace ───────────────────────────────────────
+function stepsErrSameIndex(parsed, pat) {
+  const bad = pat.traceNum;
+  const idx = pat.idx;
+  // Build the suggested fix: change the second occurrence of that index to the next letter
+  const nextIdx = String.fromCharCode(idx.charCodeAt(0)+1);
+  const fixed1 = `Tr[p1 g${idx} p2 g${nextIdx}]`;
+  const fixed2 = `Tr[p3 g${idx} p4 g${nextIdx}]`;
+  const traceHTMLs = parsed.traces.map(t=>rTrace(t));
+
+  const steps = [
+    {title:`⚠ Index error in Trace ${bad}: same index inside one trace`,
+     rule:``,
+     expr:`<span style="color:#904040">${traceHTMLs.join(' × ')}</span>`,
+     expl:`Index "<strong>${idx}</strong>" appears <em>twice inside the same trace</em>. That's an internal contraction — the two gammas with the same label are summed within the trace, giving a scalar via γ<sup>${idx}</sup>p̸γ<sub>${idx}</sub> = −2p̸. This is a different calculation (single-trace contraction), not what you want for squaring a two-current amplitude.`},
+    {title:'What you almost certainly want instead',
+     rule:`For squaring a two-current amplitude (e.g. e⁺e⁻→μ⁺μ⁻), the index must span <em>between</em> the two traces:<br>
+       <code style="color:#6080c0">${rTrace(parsed.traces[0]).replace(new RegExp('g'+idx,'g'),'g<span style="color:#e06060">'+idx+'</span>').replace(new RegExp('g'+idx),'g<span style="color:#e06060">'+idx+'</span>')}</code> is wrong<br>
+       You want: <code style="color:#50a050">${fixed1} * ${fixed2}</code> — use <strong>two different index labels</strong> (e.g. <code>g${idx}</code> and <code>g${nextIdx}</code>), one per trace, matching between the traces.`,
+     expr:`<span style="color:#406040">${TR('Tr')}[${slash('p1')} ${gmu(idx)} ${slash('p2')} ${gmu(nextIdx)}] × ${TR('Tr')}[${slash('p3')} ${G('γ')}<sub>${idx}</sub> ${slash('p4')} ${G('γ')}<sub>${nextIdx}</sub>]</span>`,
+     expl:`Each trace has ONE occurrence of each index label. The contraction is then between the two traces, giving the master formula 32[(p₁·p₃)(p₂·p₄)+(p₁·p₄)(p₂·p₃)].`},
+    {title:'How to re-enter this expression',
+     rule:'',
+     expr:`<span style="color:#404060">Try: <span style="color:#6080b0">(e4/s2) * Tr[p1 g${idx} p2 g${nextIdx}] * Tr[p3 g${idx} p4 g${nextIdx}]</span></span>`,
+     expl:`Or with masses: <span style="color:#507090">(e4/s2) * Tr[(p1+m) g${idx} (p2-m) g${nextIdx}] * Tr[(p3+m) g${idx} (p4-m) g${nextIdx}]</span>`},
+  ];
+  return {steps, latex:''};
+}
+
+function stepsSingleInternal(parsed, pat) {
+  const {moms, contracted, scalar} = pat;
+  const sc = rScalar(scalar);
+  const [A,B] = moms.map(getDotId);
+  const dpAB = dpHTML(A,B);
+
+  const steps = [
+    {title:'Initial expression: trace with self-contracted index',
+     rule:'',
+     expr:`${sc}${rTrace(parsed.traces[0])}`,
+     expl:`The index "${contracted}" appears twice in the same trace (summed). The two gamma matrices with this index are contracted within the trace.`},
+    {title:'Apply contraction: γ^μ p̸_B γ_μ = −2p̸_B  (d=4)',
+     rule:`<strong>Gamma algebra identity:</strong> γ<sup>μ</sup>γ<sup>α</sup>γ<sub>μ</sub> = (2−d)γ<sup>α</sup>. At d=4: = −2γ<sup>α</sup>.<br>Applied to ${slash('B')}: γ<sup>${contracted}</sup>${slash('B')}γ<sub>${contracted}</sub> = −2${slash('B')}`,
+     expr:`${sc}${TR('Tr')}[${slash(A)}·(−2)·${slash(B)}] = ${sc}−2 ${TR('Tr')}[${slash(A)} ${slash(B)}]`,
+     expl:`The pair of γ matrices with the repeated index absorbs the sandwiched momentum via the contraction identity, producing a factor of −2.`},
+    {title:'Apply two-momentum trace',
+     rule:`<strong>Identity:</strong> ${TR('Tr')}[${slash('A')} ${slash('B')}] = 4·A·B<br>
+       Proof: p̸_A = p_{Aμ}γ<sup>μ</sup>, so Tr[p_{Aμ}p_{Bν}γ<sup>μ</sup>γ<sup>ν</sup>] = p_{Aμ}p_{Bν}·4g<sup>μν</sup> = 4A·B.`,
+     expr:`${sc}−2 × 4 × ${dotP(A,B)} = ${sc}−8·${dotP(A,B)}`,
+     expl:``},
+    {title:'Substitute Mandelstam',
+     rule:`p_i·p_j → Mandelstam (4-point 2→2 massless)`,
+     expr:`${sc}−8·${dpAB.html}`,
+     expl:dpAB.mand ? `${dotP(A,B)} = ${dpAB.html}` : `Express in terms of s,t,u using the kinematic relations.`},
+  ];
+  return {steps, latex:`-8(${A}\\cdot ${B})`};
+}
+
+function stepsTwoMom(parsed, pat) {
+  const {moms, scalar} = pat;
+  const sc = rScalar(scalar);
+  const [A,B] = moms.map(getDotId);
+  const dpAB = dpHTML(A,B);
+
+  const steps = [
+    {title:'Two-momentum trace',
+     rule:'',
+     expr:`${sc}${rTrace(parsed.traces[0])}`,
+     expl:`Trace of two slashed momenta.`},
+    {title:'Apply: Tr[p̸_A p̸_B] = 4·A·B',
+     rule:`<strong>Identity:</strong> ${TR('Tr')}[${slash('A')} ${slash('B')}] = 4·A·B<br>
+       Expanding: p̸_A = p_{Aμ}γ<sup>μ</sup>, p̸_B = p_{Bν}γ<sup>ν</sup>. Then ${TR('Tr')}[γ<sup>μ</sup>γ<sup>ν</sup>] = 4g<sup>μν</sup>, so result = 4A·B.`,
+     expr:`${sc}4·${dotP(A,B)}`,
+     expl:``},
+    {title:'Substitute Mandelstam',
+     rule:`p_i·p_j → s,t,u (4-point 2→2 massless)`,
+     expr:`${sc}4·${dpAB.html}`,
+     expl: dpAB.mand ? `${dotP(A,B)} = ${dpAB.html}` : `Use momentum conservation to express A·B in terms of s,t,u.`},
+  ];
+  return {steps, latex:`4(${A}\\cdot${B})`};
+}
+
+function stepsSingle4(parsed, pat) {
+  const {moms, gams, scalar} = pat;
+  const sc = rScalar(scalar);
+  const [A,B] = moms.map(getDotId);
+  const [g1,g2] = gams;
+
+  const steps = [
+    {title:'Single 4-element trace',
+     rule:'',
+     expr:`${sc}${rTrace(parsed.traces[0])}`,
+     expl:`A single trace with two momenta and two free Lorentz indices. This is a rank-2 tensor — it must be contracted with the rest of the amplitude.`},
+    {title:'Apply the 4-trace identity',
+     rule:`<strong>Identity:</strong> ${TR('Tr')}[${slash('A')}${gmu('μ')}${slash('B')}${gmu('ν')}] = 4(A<sup>μ</sup>B<sup>ν</sup> + A<sup>ν</sup>B<sup>μ</sup> − g<sup>μν</sup>A·B)`,
+     expr:`${sc}4(${M(A)}<sup>${g1.idx}</sup>${M(B)}<sup>${g2.idx}</sup> + ${M(A)}<sup>${g2.idx}</sup>${M(B)}<sup>${g1.idx}</sup> − g<sup>${g1.idx}${g2.idx}</sup>${dotP(A,B)})`,
+     expl:`Result is a symmetric Lorentz tensor in indices ${g1.idx},${g2.idx}.`},
+    {title:'Contract with the other factor',
+     rule:`If your amplitude has a second current ${TR('Tr')}[...${gmu(g1.idx+'...')}...${gmu(g2.idx)}...], use the <strong>double-trace master formula</strong>.<br>
+       If contracting with metric −g<sub>${g1.idx}${g2.idx}</sub> (photon propagator): use g<sub>μν</sub>×4(...):<br>
+       &nbsp;&nbsp;g<sub>${g1.idx}${g2.idx}</sub>×4(A<sup>${g1.idx}</sup>B<sup>${g2.idx}</sup>+A<sup>${g2.idx}</sup>B<sup>${g1.idx}</sup>−g<sup>${g1.idx}${g2.idx}</sup>A·B) = 4(A·B+A·B−4A·B) = −8A·B`,
+     expr:`<span style="color:#303060">Contract with your other factor and then use the double-trace example, or try the "Tr[p1 gm p2 gm]" example to see metric contraction.</span>`,
+     expl:``},
+  ];
+  return {steps, latex:`4(A^\\mu B^\\nu + A^\\nu B^\\mu - g^{\\mu\\nu}A\\cdot B)`};
+}
+
+function stepsSpinor(parsed, pat) {
+  const {spinors, scalar} = pat;
+  const sp = spinors[0];
+  const sc = rScalar(scalar);
+  const lt = sp.lType==='u'?'ū':'v̄', rt = sp.rType==='u'?'u':'v';
+  const lt2= sp.rType==='u'?'ū':'v̄', rt2= sp.lType==='u'?'u':'v';
+  const gamStr = sp.gammaStr ? parseChain(sp.gammaStr).map(rEl).join(' ') : gmu('μ');
+  const lbl = `${M(lt)}(${M(sp.lMom)}) ${gamStr} ${M(rt)}(${M(sp.rMom)})`;
+  const conj = `${M(lt2)}(${M(sp.rMom)}) ${gamStr} ${M(rt2)}(${M(sp.lMom)})`;
+
+  const steps = [
+    {title:'Full amplitude bilinear',
+     rule:'',
+     expr:`${sc}${lbl}`,
+     expl:`A Dirac bilinear of the form ūΓu (or v̄Γv). To compute |M|², we need iM × (iM)*.`},
+    {title:'Square: write |M|² = M·M*',
+     rule:`<strong>Conjugate of Dirac bilinear:</strong> (ūΓv)* = v̄Γ̄u &nbsp;where Γ̄ = γ⁰Γ†γ⁰.<br>
+       For Γ=γ<sup>μ</sup>: Γ̄=γ<sup>μ</sup>. For Γ=γ<sup>μ</sup>γ<sup>ν</sup>: Γ̄=γ<sup>ν</sup>γ<sup>μ</sup>.`,
+     expr:`${sc}[${lbl}][${conj}]`,
+     expl:`The complex conjugate reverses the order of the Dirac matrices and swaps u↔v̄ roles.`},
+    {title:'Apply spin completeness (massless limit)',
+     rule:`<strong>Spin sums:</strong><br>
+       Σ<sub>s</sub> u(p,s)ū(p,s) = p̸+m &nbsp;→&nbsp; p̸ &nbsp;(m=0)<br>
+       Σ<sub>s</sub> v(p,s)v̄(p,s) = p̸−m &nbsp;→&nbsp; p̸ &nbsp;(m=0)<br>
+       The two spinor indices close into a trace.`,
+     expr:`${sc}${TR('Tr')}[${gamStr} ${slash(sp.lMom)} ${gamStr} ${slash(sp.rMom)}]`,
+     expl:`The spin sum Σ u_α ū_β = (p̸)_αβ closes the Dirac index loop into a trace. Now identify the pattern — if this has two contracted gammas, use the double-trace formula.`},
+    {title:'Identify and apply trace formula',
+     rule:`Now enter the resulting trace in the input and click Solve to continue step-by-step.`,
+     expr:`<span style="color:#404060">e.g. type: <span style="color:#6070a0">Tr[${rChain(parseChain(gamStr+' '+sp.lMom+' '+gamStr+' '+sp.rMom))}]</span> and solve</span>`,
+     expl:`The resulting trace will match one of the known patterns (double-trace contraction or single-trace with internal index).`},
+  ];
+  return {steps, latex:`\\text{Tr}[\\cdots]`};
+}
+
+function stepsUnknown(parsed) {
+  const raw = document.getElementById('amp-input').value;
+  const steps = [{
+    title:'Expression received',
+    rule:'',
+    expr:`<span style="color:#404060">${esc(raw)}</span>`,
+    expl:`Pattern not automatically recognized. Supported forms:<br>
+      · <strong>Double trace:</strong> (e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]<br>
+      · <strong>Internal contraction:</strong> Tr[p1 gm p2 gm]<br>
+      · <strong>Two-momentum trace:</strong> Tr[p1 p2]<br>
+      · <strong>Single 4-trace:</strong> Tr[p1 gm p2 gn]<br>
+      · <strong>Spinor bilinear:</strong> (e2/s) * ubar(p3) gm u(p1)<br>
+      Gammas must be labelled gm,gn,gr,gs,ga,gb. Momenta: p1…p8. Try the example buttons.`
+  }];
+  return {steps, latex:''};
+}
+
+// ─── iM input: parse editor text output, square, then evaluate ───────────────
+
+function isIMInput(text) {
+  return /←\s*(vertex|prop|ext)/i.test(text);
+}
+
+function parseIMFactors(text) {
+  const factors = [];
+  for (const line of text.split('\n')) {
+    const m = line.match(/←\s*(.+)$/);
+    if (!m) continue;
+    const comment = m[1].trim();
+    const type = (comment.match(/^([^([]+)/)||['',''])[1].trim().toLowerCase();
+    const arg  = (comment.match(/\(([^)]*)\)/)||['',''])[1];
+    factors.push({comment, type, arg});
+  }
+  return factors;
+}
+
+function getAmplitudeTopology(factors) {
+  const cnt = t => factors.filter(f => f.type.includes(t)).length;
+  const nFermExt  = cnt('fermion ext');
+  const nPhotExt  = cnt('photon ext') + cnt('gluon ext');
+  const nFermProp = cnt('fermion prop');
+  const nBosonProp= cnt('photon prop') + cnt('gluon prop');
+  const nVerts    = cnt('vertex');
+  const isGluon   = factors.some(f => f.type.includes('gluon'));
+  const coupling  = isGluon ? 'gs' : 'e';
+  const bosonP    = factors.find(f => f.type.includes('photon prop') || f.type.includes('gluon prop'));
+  const propArg   = bosonP ? bosonP.arg : '';
+  // guess denominator from momentum label: sum → s-channel, difference → t-channel
+  const denom = propArg.replace(/\s/g,'').includes('-') ? 't' : 's';
+  const scalarStr = `${coupling}${nVerts*2}/${denom}2`;
+
+  if (nFermExt===4 && nBosonProp>=1 && nPhotExt===0 && nFermProp===0)
+    return {topo:'two_current', coupling, denom, scalarStr, nVerts, isGluon};
+  if (nFermExt===2 && nPhotExt===2 && nFermProp>=1)
+    return {topo:'compton', nFermProp};
+  if (nFermExt===0 && nPhotExt>=2)
+    return {topo:'pure_boson'};
+  return {topo:'unknown'};
+}
+
+function stepsSquareTwoCurrent(topo, text) {
+  const {coupling, denom, scalarStr, isGluon} = topo;
+  const coupHTML = coupling==='e' ? CP('e') : CP('g<sub>s</sub>');
+  const denomLabel = denom==='s' ? `(p₁+p₂)² = ${MV('s')}` : `(p₁−p₃)² = ${MV('t')}`;
+  const cType = isGluon ? 'gluon' : 'photon';
+  const sc = rScalar(scalarStr);
+
+  const allSteps = [
+    {title:'Input amplitude — two-current topology identified',
+     rule:'',
+     expr:`<div style="font-size:11px;color:#4a5888;white-space:pre;line-height:1.8;max-height:140px;overflow-y:auto;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,10).join('\n'))}</div>`,
+     expl:`Two fermion currents J₁<sup>μ</sup> and J₂<sub>μ</sub> connected by a virtual ${cType} (denominator: ${denomLabel}). Squaring produces a product of two traces contracted on μ.`},
+
+    {title:'Write iM in factored form',
+     rule:`iM = ${fr(coupHTML+'²', MV(denom))} × [ū(p₃)${gmu('μ')}u(p₁)] × [ū(p₄)${G('γ')}<sub>μ</sub>u(p₂)]`,
+     expr:`iM = ${fr(coupHTML+'²', MV(denom))} × J₁<sup>μ</sup> × J₂<sub>μ</sub>`,
+     expl:`The ${cType} propagator index μ contracts the two fermion bilinears. Each bilinear is a Lorentz vector.`},
+
+    {title:'Square: |iM|² = iM × (iM)*',
+     rule:`<strong>Conjugate rule:</strong> (ūΓu)* = ūΓ̄u. For Γ=γ<sup>μ</sup>: Γ̄=γ<sup>μ</sup> (Hermitian).<br>
+       A second free index ν appears from (iM)*.`,
+     expr:`|iM|² = ${fr(coupHTML+'⁴', MV(denom)+'²')} × [ū(p₃)${gmu('μ')}u(p₁)][ū(p₁)${gmu('ν')}u(p₃)] × [ū(p₄)${G('γ')}<sub>μ</sub>u(p₂)][ū(p₂)${G('γ')}<sub>ν</sub>u(p₄)]`,
+     expl:`The μ,ν pair will be contracted between the two traces after applying spin sums.`},
+
+    {title:'Apply spin completeness — close spinor indices into traces',
+     rule:`Σ<sub>s</sub> u(p,s)ū(p,s) = ${slash('p')}+m → ${slash('p')} &nbsp;(massless)<br>
+       Σ<sub>s</sub> v(p,s)v̄(p,s) = ${slash('p')}−m → ${slash('p')} &nbsp;(massless)<br>
+       Summing over spins closes each bilinear pair into a Dirac trace.`,
+     expr:`${sc}${TR('Tr')}[${gmu('μ')}${slash('p1')}${gmu('ν')}${slash('p2')}] × ${TR('Tr')}[${G('γ')}<sub>μ</sub>${slash('p4')}${G('γ')}<sub>ν</sub>${slash('p3')}]`,
+     expl:`Chain 1: momenta p₁,p₂. Chain 2: momenta p₃,p₄. Index μ,ν contracted between traces. Now apply the double-trace contraction formula.`},
+  ];
+
+  // Feed to existing trace evaluator — skip its "initial expression" step
+  const traceStr = `(${scalarStr}) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]`;
+  const traceParsed = parseInput(traceStr);
+  const tracePat = identify(traceParsed);
+  tracePat.scalar = traceParsed.scalar;
+  const traceResult = stepsDouble4(traceParsed, tracePat);
+
+  return {steps: [...allSteps, ...traceResult.steps.slice(1)], latex: traceResult.latex};
+}
+
+function stepsSquareCompton(topo, text) {
+  return {steps:[
+    {title:'Input: Compton-type amplitude (1 fermion chain, 2 photon legs)',
+     rule:'',
+     expr:`<div style="font-size:11px;color:#4a5888;white-space:pre;line-height:1.8;max-height:140px;overflow-y:auto;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,10).join('\n'))}</div>`,
+     expl:`This is the editor's s-channel diagram. At tree level there are two diagrams: M = M_s + M_u.`},
+    {title:'|M|² = |M_s + M_u|² = |M_s|² + |M_u|² + 2Re(M_s M_u*)',
+     rule:`Three terms contribute at the same order.`,
+     expr:`|iM|² = |iM<sub>s</sub>|² + |iM<sub>u</sub>|² + 2Re(iM<sub>s</sub>·iM<sub>u</sub>*)`,
+     expl:`The interference term 2Re(M_s M_u*) is non-zero and essential.`},
+    {title:'Apply photon polarization sum: Σ_λ ε^με*^ν = −g^μν',
+     rule:`<strong>Feynman gauge:</strong> Σ<sub>λ</sub> ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup>. Ward identity cancels unphysical polarisations.`,
+     expr:`Replace ε ε* → −g<sup>μν</sup> for each external photon leg.`,
+     expl:`This contracts the photon indices into the fermion current.`},
+    {title:'Apply spin sum → single trace with propagator numerator',
+     rule:`Σ u ū = ${slash('p')}+m. The propagator numerator (${slash('p')}₁+${slash('k')}+m) appears between the two vertex γ-matrices.`,
+     expr:`${FR(CP('e')+'⁴','s²')} × ${TR('Tr')}[(${slash('p2')}+m) ${gmu('ν')} (${slash('p1')}+${slash('k')}+m) ${gmu('μ')}] × (−g<sub>μν</sub>) + (u-ch) + interference`,
+     expl:`Each term is a single-fermion-line trace. For massless electrons, ${slash('p')} anti-commutes through the propagator to give compact results.`},
+    {title:'Final result (massless electrons)',
+     rule:`After evaluating all three terms and using the Ward identity:`,
+     expr:`${FR(`−2${CP('e')}⁴`,`1`)} × (${FR(MV('s'),MV('u'))} + ${FR(MV('u'),MV('s'))})`,
+     expl:`|M̄|² = −2e⁴(s/u + u/s). Physical: u < 0 for forward Compton so each ratio is negative → |M̄|² > 0. ✓`},
+  ], latex:`-2e^4\\!\\left(\\tfrac{s}{u}+\\tfrac{u}{s}\\right)`};
+}
+
+function stepsFromIM(text) {
+  const factors = parseIMFactors(text);
+  const topo = getAmplitudeTopology(factors);
+  if (topo.topo==='two_current') return stepsSquareTwoCurrent(topo, text);
+  if (topo.topo==='compton')     return stepsSquareCompton(topo, text);
+  if (topo.topo==='pure_boson')  return {steps:[{
+    title:'Pure gauge boson amplitude — use Helicity tab',
+    rule:'', expr:`<span style="color:#505080">No fermion lines detected. For massless gluons/photons use the Helicity (n-gluon) examples.</span>`, expl:''
+  }], latex:''};
+  return {steps:[{
+    title:'Amplitude received — topology not recognised',
+    rule:'',
+    expr:`<div style="font-size:11px;color:#404060;white-space:pre-wrap;max-height:140px;overflow-y:auto">${esc(text.substring(0,400))}</div>`,
+    expl:`Could not identify a standard topology from the factor comments. Try entering the squared trace expression directly instead.`
+  }], latex:''};
+}
+
+// ─── Helper: scalar parts ────────────────────────────────────────────────────
+function parseScalarParts(sc) {
+  if (!sc||sc==='1') return {numHTML:'', denHTML:'', den:false};
+  const parts = sc.split('/');
+  const numTok = parts[0].replace(/\*/g,'').trim();
+  const denToks = parts.slice(1);
+  const numMap = {'e4':CP('e')+'⁴','e2':CP('e')+'²','gs4':CP('g<sub>s</sub>')+'⁴','gs2':CP('g<sub>s</sub>')+'²','m2':M('m')+'²'};
+  const denMap = {'s2':MV('s')+'²','t2':MV('t')+'²','u2':MV('u')+'²','s':MV('s'),'t':MV('t'),'u':MV('u')};
+  return {
+    numHTML: numMap[numTok]||numTok,
+    denHTML: denToks.map(d=>denMap[d.trim()]||d.trim()).join('·'),
+    den: denToks.length>0
+  };
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let STEPS = [], LATEX = '';
+
+// ─── Main solver ──────────────────────────────────────────────────────────────
+function go() {
+  const raw = document.getElementById('amp-input').value.trim();
+  if (!raw) return;
+
+  // Detect editor text output (contains ← vertex / ← prop / ← ext markers)
+  if (isIMInput(raw)) {
+    const res = stepsFromIM(raw);
+    STEPS = res.steps; LATEX = res.latex;
+    showAll(); return;
+  }
+
+  const parsed = parseInput(raw);
+  const pat = identify(parsed);
+  pat.scalar = parsed.scalar;
+
+  let res;
+  if (pat.type==='err_same_index') res=stepsErrSameIndex(parsed,pat);
+  else if (pat.type==='double4') res=stepsDouble4(parsed,pat);
+  else if (pat.type==='single_internal') res=stepsSingleInternal(parsed,pat);
+  else if (pat.type==='two_mom') res=stepsTwoMom(parsed,pat);
+  else if (pat.type==='single4') res=stepsSingle4(parsed,pat);
+  else if (pat.type==='spinor') res=stepsSpinor(parsed,pat);
+  else res=stepsUnknown(parsed);
+
+  STEPS = res.steps; LATEX = res.latex;
+  showAll();
+}
+
+function showAll() {
+  const area = document.getElementById('step-area');
+  if (!STEPS.length) { area.innerHTML='<div class="empty">No steps generated.</div>'; return; }
+
+  let html = '';
+  STEPS.forEach((s, i) => {
+    const isFirst = i === 0;
+    const isLast  = i === STEPS.length - 1;
+    const cardClass = isLast ? 'step-card final-card' : 'step-card';
+
+    html += `<div class="${cardClass}">`;
+    // Step number + title
+    html += `<div class="step-num"><span class="n">${i+1}</span><span class="ttl">${esc(s.title)}</span></div>`;
+    // Rule
+    if (s.rule) html += `<div class="rule-box">${s.rule}</div>`;
+    // Expression
+    const exprClass = isLast ? 'expr-box final' : 'expr-box';
+    html += `<div class="${exprClass}">${s.expr}</div>`;
+    // Explanation
+    if (s.expl) html += `<div class="expl">${s.expl}</div>`;
+    html += `</div>`;
+
+    // Arrow connector between steps (not after the last one)
+    if (!isLast) html += `<div class="arr">↓</div>`;
+  });
+
+  area.innerHTML = html;
+  area.scrollTop = 0;
+}
+
+// ─── Examples ─────────────────────────────────────────────────────────────────
+const EX = {
+  'from_editor': `iM =
+    iQeγ^μ                          ← vertex (e [auto])
+  × −iη^μν/(p₁+p₂)²                ← photon prop (p₁+p₂)
+  × iQeγ^ν                          ← vertex (e [auto])
+  × u(p₁,s)                         ← fermion ext in (p₁)
+  × ū(p₂,s)                         ← fermion ext out (p₂)
+  × u(p₃,s)                         ← fermion ext in (p₃)
+  × ū(p₄,s)                         ← fermion ext out (p₄)
+
+  ── 2 vertices  1 int. lines  4 ext. legs  0 loop(s)`,
+  'ee_mumu':      '(e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]',
+  'ee_mumu_mass': '(e4/s2) * Tr[(p1+m) gm (p2-m) gn] * Tr[(p3+m) gm (p4-m) gn]',
+  'emu_emu':      '(e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]',
+  'compton_s':    '(e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]',
+  'scalar_tr':    'Tr[p1 p2]',
+  'internal':     '(e4/s2) * Tr[p1 gm p2 gm]',
+  'spinor':       '(e2/s) * ubar(p3) gm u(p1)',
+  'qcd':          '(gs4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]',
+};
+function eg(name) {
+  const v=EX[name]; if(!v) return;
+  document.getElementById('amp-input').value=v;
+  go();
+}
+
+// ─── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.getElementById('amp-input').addEventListener('keydown', e=>{
+  if (e.ctrlKey&&e.key==='Enter'){ e.preventDefault(); go(); }
+});
+
+function importFromEditor() {
+  const raw = localStorage.getItem('feynman_iM_export');
+  if (!raw) { alert('Nothing exported yet. In feynman_editor.html: draw a diagram → click iM ▶ → click → Stepper.'); return; }
+  const data = JSON.parse(raw);
+  const ago = Math.round((Date.now() - data.timestamp) / 1000);
+  document.getElementById('amp-input').value = data.text;
+  go();
+  document.getElementById('btn-import').textContent = `Imported (${ago}s ago) ✓`;
+  setTimeout(() => document.getElementById('btn-import').textContent = 'Import from Editor', 2000);
+}
+
+function toggleSyntax(){
+  const p=document.getElementById('syntax-help');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
+document.getElementById('btn-copy').onclick=()=>{
+  if(!LATEX) return;
+  navigator.clipboard.writeText(LATEX)
+    .then(()=>{const b=document.getElementById('btn-copy');b.textContent='Copied!';setTimeout(()=>b.textContent='Copy LaTeX',1500);})
+    .catch(()=>prompt('LaTeX:',LATEX));
+};
+
+// ─── Load default ─────────────────────────────────────────────────────────────
+eg('ee_mumu');
+</script>
+</body>
+</html>

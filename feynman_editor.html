@@ -1,0 +1,2558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Feynman Diagram Editor</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0d14;
+    color: #c8d0e0;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #topbar {
+    display: flex;
+    align-items: center;
+    background: #12121e;
+    border-bottom: 1px solid #2a2a44;
+    padding: 6px 12px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  #topbar h1 { font-size: 14px; color: #7090ff; margin-right: 8px; letter-spacing: 1px; }
+  .sep { width: 1px; height: 24px; background: #2a2a44; margin: 0 4px; }
+  button {
+    background: #1a1a2e;
+    border: 1px solid #3a3a5e;
+    color: #aab0c8;
+    padding: 4px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 12px;
+    transition: all 0.1s;
+  }
+  button:hover { background: #22224a; border-color: #6070c0; color: #dde0ff; }
+  button.active { background: #2a3a7a; border-color: #7090ff; color: #b0c0ff; }
+  .tool-btn { min-width: 80px; }
+  #status {
+    margin-left: auto;
+    font-size: 11px;
+    color: #5060a0;
+    min-width: 200px;
+    text-align: right;
+  }
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  #sidebar {
+    width: 190px;
+    background: #0f0f1c;
+    border-right: 1px solid #2a2a44;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .section-label {
+    font-size: 10px;
+    color: #404070;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 6px;
+    margin-bottom: 2px;
+  }
+  .tool-row { display: flex; gap: 5px; }
+  .tool-row button { flex: 1; }
+  #canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #090912;
+  }
+  canvas {
+    display: block;
+    cursor: crosshair;
+  }
+  #props {
+    width: 180px;
+    background: #0f0f1c;
+    border-left: 1px solid #2a2a44;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  label { font-size: 11px; color: #7080b0; display: block; margin-bottom: 2px; }
+  input[type=text], input[type=number], select {
+    width: 100%;
+    background: #12122a;
+    border: 1px solid #2a2a44;
+    color: #b0c0e0;
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 12px;
+    border-radius: 2px;
+  }
+  input[type=checkbox] { margin-right: 5px; }
+  .check-row { display: flex; align-items: center; font-size: 12px; color: #a0b0d0; }
+  .tmpl-row { display: flex; gap: 3px; margin-bottom: 3px; }
+  .tmpl-row .tmpl-place { flex: 1; font-size: 11px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tmpl-row .tmpl-place.active { background: #1a3a1a; border-color: #40a040; color: #80e080; }
+  .tmpl-del { flex: 0 0 20px !important; padding: 0 !important; font-size: 13px; color: #ff6060; min-width: 0; }
+  #tmpl-empty { font-size: 10px; color: #303050; }
+  .kbd {
+    display: inline-block;
+    background: #1a1a30;
+    border: 1px solid #3a3a60;
+    border-radius: 2px;
+    padding: 0 4px;
+    font-size: 10px;
+    color: #7080b0;
+    margin-left: 3px;
+  }
+  #shortcut-list { font-size: 10px; color: #404060; line-height: 1.9; }
+  .prop-section { border-top: 1px solid #1c1c34; padding-top: 8px; margin-top: 2px; }
+  /* ── Feynman Rules panel ── */
+  #rules-panel {
+    border-top: 1px solid #2a2a44;
+    background: #0b0b17;
+    display: flex;
+    height: 280px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  #rules-left {
+    width: 480px;
+    flex-shrink: 0;
+    border-right: 1px solid #2a2a44;
+    padding: 8px 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  #rules-right {
+    flex: 1;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  #amp-display {
+    flex: 1;
+    background: #070710;
+    border: 1px solid #1c1c34;
+    border-radius: 3px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #a0b4d4;
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    overflow-y: auto;
+    line-height: 1.7;
+    min-height: 0;
+  }
+  .fr-row { display: flex; align-items: center; gap: 4px; }
+  .fr-lbl { width: 68px; font-size: 10px; color: #5060a0; flex-shrink: 0; text-align: right; padding-right: 4px; }
+  .fr-inp  { flex: 1; font-size: 11px !important; padding: 2px 5px !important; min-width: 0; }
+  .fr-inp-latex { flex: 1; font-size: 10px !important; padding: 2px 4px !important; min-width: 0; color: #607090 !important; font-family: 'Courier New', monospace; }
+  .fr-sub-hdr { font-size: 9px; color: #303050; text-transform: uppercase; letter-spacing: 1px; padding: 4px 0 1px; margin-top: 3px; border-top: 1px solid #16162a; }
+  .fr-sub-hdr:first-child { margin-top: 0; border-top: none; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>⬡ FEYNMAN EDITOR</h1>
+  <div class="sep"></div>
+  <button id="btn-export">Export PNG</button>
+  <button id="btn-clear">Clear</button>
+  <button id="btn-undo">Undo <span class="kbd">^Z</span></button>
+  <div class="sep"></div>
+  <label class="check-row"><input type="checkbox" id="chk-grid" checked> Grid</label>
+  <label class="check-row"><input type="checkbox" id="chk-labels" checked> Labels</label>
+  <label class="check-row"><input type="checkbox" id="chk-snap" checked> Snap</label>
+  <div class="sep"></div>
+  <button id="btn-toggle-rules">Feynman Rules ▾</button>
+  <div id="status">Select tool and click to place vertices</div>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div class="section-label">Tools</div>
+    <button class="tool-btn active" id="tool-select" data-tool="select">Select <span class="kbd">Q</span></button>
+    <button class="tool-btn" id="tool-move"   data-tool="move">Move <span class="kbd">M</span></button>
+    <button class="tool-btn" id="tool-vertex" data-tool="vertex">Vertex <span class="kbd">V</span></button>
+
+    <div class="section-label">Lines</div>
+    <div class="tool-row">
+      <button class="tool-btn" id="tool-fermion"  data-tool="fermion">Fermion <span class="kbd">F</span></button>
+    </div>
+    <div class="tool-row">
+      <button class="tool-btn" id="tool-photon"   data-tool="photon">Photon <span class="kbd">P</span></button>
+    </div>
+    <div class="tool-row">
+      <button class="tool-btn" id="tool-gluon"    data-tool="gluon">Gluon <span class="kbd">G</span></button>
+    </div>
+    <div class="tool-row">
+      <button class="tool-btn" id="tool-scalar"   data-tool="scalar">Scalar <span class="kbd">S</span></button>
+    </div>
+    <div class="tool-row">
+      <button class="tool-btn" id="tool-ghost"    data-tool="ghost">Ghost <span class="kbd">H</span></button>
+    </div>
+    <div class="tool-row">
+      <button class="tool-btn" id="tool-delete"   data-tool="delete">Delete <span class="kbd">X</span></button>
+    </div>
+
+    <div class="section-label">Theory Vertices</div>
+    <div id="tmpl-list">
+      <div id="tmpl-empty">Save a vertex to build your library.</div>
+    </div>
+
+    <div class="section-label">Shortcuts</div>
+    <div id="shortcut-list">
+      Q — Select / Move<br>
+      V — Vertex<br>
+      F — Fermion<br>
+      P — Photon<br>
+      G — Gluon<br>
+      S — Scalar<br>
+      H — Ghost<br>
+      X — Delete<br>
+      Del — Remove sel.<br>
+      Ctrl+Z — Undo<br>
+      Esc — Cancel<br>
+      Drag canvas — Box select<br>
+      Dbl-click — Label / New vertex<br>
+      Space — Rotate stamp 90°
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+    <div id="zoom-btns" style="position:absolute;top:8px;right:8px;display:flex;flex-direction:column;gap:3px;z-index:10">
+      <button id="btn-zoom-in"    style="width:28px;height:28px;font-size:16px;line-height:1;padding:0;background:#1a1a2e;border:1px solid #2a2a44;color:#a0a0c0;cursor:pointer;border-radius:4px">+</button>
+      <button id="btn-zoom-reset" style="width:28px;height:28px;font-size:9px;line-height:1;padding:0;background:#1a1a2e;border:1px solid #2a2a44;color:#a0a0c0;cursor:pointer;border-radius:4px">1:1</button>
+      <button id="btn-zoom-out"   style="width:28px;height:28px;font-size:16px;line-height:1;padding:0;background:#1a1a2e;border:1px solid #2a2a44;color:#a0a0c0;cursor:pointer;border-radius:4px">−</button>
+    </div>
+  </div>
+
+  <div id="props">
+    <div class="section-label">Selection</div>
+    <div id="no-sel" style="color:#40405a;font-size:11px;">Nothing selected</div>
+
+    <div id="vert-props" style="display:none">
+      <div class="prop-section">
+        <label>Label</label>
+        <input type="text" id="vp-label" placeholder="e.g. p, e⁻, γ">
+        <div style="margin-top:6px;">
+          <label>Style</label>
+          <select id="vp-style">
+            <option value="dot">Dot</option>
+            <option value="cross">Cross</option>
+            <option value="circle">Circle</option>
+            <option value="blob">Blob</option>
+            <option value="none">Invisible</option>
+          </select>
+        </div>
+        <div style="margin-top:8px;">
+          <button id="btn-save-tmpl" style="width:100%;font-size:11px;">Save as Template</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="edge-props" style="display:none">
+      <div class="prop-section">
+        <label>Label</label>
+        <input type="text" id="ep-label" placeholder="e.g. k, q, m">
+        <div style="margin-top:6px;">
+          <label>Type</label>
+          <select id="ep-type">
+            <option value="fermion">Fermion</option>
+            <option value="photon">Photon</option>
+            <option value="gluon">Gluon</option>
+            <option value="scalar">Scalar</option>
+            <option value="ghost">Ghost</option>
+          </select>
+        </div>
+        <div style="margin-top:6px;" class="check-row">
+          <input type="checkbox" id="ep-rev"> Reverse arrow
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Feynman Rules / Amplitude panel ── -->
+<div id="rules-panel" style="display:none">
+  <div id="rules-left">
+
+    <div class="fr-sub-hdr">Propagators — use {p} as momentum placeholder</div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#80c8ff">Fermion</span>
+      <input type="text" class="fr-inp" id="fr-prop-fermion-text" placeholder="display text">
+      <input type="text" class="fr-inp-latex" id="fr-prop-fermion-latex" placeholder="LaTeX">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#ffd060">Photon</span>
+      <input type="text" class="fr-inp" id="fr-prop-photon-text" placeholder="display text">
+      <input type="text" class="fr-inp-latex" id="fr-prop-photon-latex" placeholder="LaTeX">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#80ff90">Gluon</span>
+      <input type="text" class="fr-inp" id="fr-prop-gluon-text" placeholder="display text">
+      <input type="text" class="fr-inp-latex" id="fr-prop-gluon-latex" placeholder="LaTeX">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#c080ff">Scalar</span>
+      <input type="text" class="fr-inp" id="fr-prop-scalar-text" placeholder="display text">
+      <input type="text" class="fr-inp-latex" id="fr-prop-scalar-latex" placeholder="LaTeX">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#ff9060">Ghost</span>
+      <input type="text" class="fr-inp" id="fr-prop-ghost-text" placeholder="display text">
+      <input type="text" class="fr-inp-latex" id="fr-prop-ghost-latex" placeholder="LaTeX">
+    </div>
+
+    <div class="fr-sub-hdr">External legs — {p} = momentum  |  fermion in/out from arrow direction</div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#80c8ff">f⁻ in</span>
+      <input type="text" class="fr-inp" id="fr-ext-fermion_in-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-fermion_in-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#80c8ff">f⁻ out</span>
+      <input type="text" class="fr-inp" id="fr-ext-fermion_out-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-fermion_out-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#ffd060">γ in</span>
+      <input type="text" class="fr-inp" id="fr-ext-photon_in-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-photon_in-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#ffd060">γ out</span>
+      <input type="text" class="fr-inp" id="fr-ext-photon_out-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-photon_out-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#80ff90">g in</span>
+      <input type="text" class="fr-inp" id="fr-ext-gluon_in-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-gluon_in-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#80ff90">g out</span>
+      <input type="text" class="fr-inp" id="fr-ext-gluon_out-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-gluon_out-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#c080ff">φ in/out</span>
+      <input type="text" class="fr-inp" id="fr-ext-scalar_in-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-scalar_in-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#ff9060">η in</span>
+      <input type="text" class="fr-inp" id="fr-ext-ghost_in-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-ghost_in-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#ff9060">η out</span>
+      <input type="text" class="fr-inp" id="fr-ext-ghost_out-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-ghost_out-latex">
+    </div>
+
+    <div class="fr-sub-hdr">Vertex rules — matched by vertex label (double-click a vertex to set its label)</div>
+    <div id="vr-list"></div>
+    <button id="btn-add-vr" style="width:100%;margin-top:3px;font-size:10px">+ Add vertex rule</button>
+
+    <div class="fr-sub-hdr">Loop measure — {l} = loop momentum label</div>
+    <div class="fr-row">
+      <input type="text" class="fr-inp" id="fr-measure-text" placeholder="display text">
+      <input type="text" class="fr-inp-latex" id="fr-measure-latex" placeholder="LaTeX">
+    </div>
+
+    <div style="display:flex;gap:4px;margin-top:6px">
+      <button id="btn-save-fr" style="flex:1;font-size:11px">Save rules</button>
+      <button id="btn-reset-fr" style="flex:0 0 auto;font-size:10px;color:#806060">Reset defaults</button>
+    </div>
+  </div>
+
+  <div id="rules-right">
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+      <span style="font-size:10px;color:#404060;text-transform:uppercase;letter-spacing:1px">Amplitude</span>
+      <button id="btn-build-amp" style="font-size:11px">iM ▶</button>
+      <button id="btn-copy-latex" style="font-size:11px">Copy LaTeX</button>
+      <button id="btn-to-stepper" style="font-size:11px;margin-left:auto;border-color:#304070;color:#6080b0">→ Stepper</button>
+    </div>
+    <div id="amp-display">Draw a diagram, set your Feynman rules, then click Build ▶</div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+const GRID = 25;
+let verts = [];       // {id, x, y, label, style}
+let edges = [];       // {id, from, to, type, label, reversed, cx, cy}  cx/cy = control point offset from midpoint
+let nextId = 1;
+let selVert = null;   // vertex id (primary selection for props panel)
+let selEdge = null;   // edge id
+let selVerts = new Set();  // all selected vertex ids (multi-select)
+let marquee = null;        // {x1,y1,x2,y2} rubber-band rectangle
+let tool = 'select';
+let edgeSrc = null;   // first vertex for edge tool
+let history = [];     // undo stack: deep copies of {verts, edges}
+let clipboard  = null;   // {cx, cy, verts:[...], edges:[...]}
+let pasteCount = 0;      // offset multiplier for repeated pastes
+let zoom = 1, panX = 0, panY = 0;  // view transform
+const lw = w => w / zoom;          // counter-scale lineWidth so strokes stay pixel-thin
+
+// template library
+let templates = [];
+let stampTemplate = null;
+let stampFlip = 0;  // 0=0°, 1=90°, 2=180°, 3=270°
+
+// drag state
+let dragging = null;  // {type:'vert'|'ctrl', id, ox, oy, mx, my}
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+const COLORS = {
+  fermion: '#80c8ff',
+  photon:  '#ffd060',
+  gluon:   '#80ff90',
+  scalar:  '#c080ff',
+  ghost:   '#ff9060',
+  vert:    '#e8e0ff',
+  vertSel: '#7090ff',
+  edgeSel: '#ffffff',
+  grid:    '#141428',
+  ctrl:    '#405090',
+};
+
+// ─── Resize ──────────────────────────────────────────────────────────────────
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  W = canvas.width  = wrap.clientWidth;
+  H = canvas.height = wrap.clientHeight;
+  draw();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Undo ─────────────────────────────────────────────────────────────────────
+function saveHistory() {
+  history.push(JSON.parse(JSON.stringify({verts, edges})));
+  if (history.length > 80) history.shift();
+}
+function undo() {
+  if (!history.length) return;
+  const s = history.pop();
+  verts = s.verts; edges = s.edges;
+  selVert = null; selEdge = null;
+  updateProps();
+  draw();
+}
+
+// ─── Template library ────────────────────────────────────────────────────────
+function saveTemplates() {
+  try { localStorage.setItem('feynman_templates', JSON.stringify(templates)); } catch(e) {}
+}
+function builtinTemplates() {
+  return [
+    {
+      name: 'QED vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'e',  style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'',   style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'',   style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'γ',  style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'photon',  label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'QCD q-g vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'q',  style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'',   style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'',   style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'g',  style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'gluon',  label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'QCD 3g vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'3g', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'g',  style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'g',  style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'g',  style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:0, toIdx:1, type:'gluon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'gluon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'gluon', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'φ⁴ vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'λ',  style:'dot',  isCenter:true},
+        {idx:1, x:  0, y:-75, label:'',   style:'none', isCenter:false},
+        {idx:2, x: 75, y:  0, label:'',   style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',   style:'none', isCenter:false},
+        {idx:4, x:-75, y:  0, label:'',   style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:0, toIdx:1, type:'scalar', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'scalar', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:3, type:'scalar', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:4, type:'scalar', label:'', reversed:false, cx:0, cy:0},
+      ]
+    }
+  ];
+}
+function loadTemplates() {
+  try {
+    const s = localStorage.getItem('feynman_templates');
+    if (s) templates = JSON.parse(s);
+  } catch(e) {}
+  // Always refresh named built-ins so code changes (labels, edges) take effect
+  builtinTemplates().forEach(bt => {
+    const idx = templates.findIndex(t => t.name === bt.name);
+    if (idx >= 0) templates[idx] = bt;
+    else templates.unshift(bt);
+  });
+  if (!templates.length) templates = builtinTemplates();
+  saveTemplates();
+}
+function renderTemplates() {
+  const list = document.getElementById('tmpl-list');
+  const empty = document.getElementById('tmpl-empty');
+  if (empty) empty.style.display = templates.length ? 'none' : 'block';
+  // Remove old template rows
+  list.querySelectorAll('.tmpl-row').forEach(r => r.remove());
+  templates.forEach((tmpl, i) => {
+    const row = document.createElement('div');
+    row.className = 'tmpl-row';
+    const btn = document.createElement('button');
+    btn.className = 'tmpl-place';
+    btn.textContent = tmpl.name;
+    btn.title = `${tmpl.verts.length} vertices · ${tmpl.edges.length} lines\nClick to stamp`;
+    btn.addEventListener('click', () => {
+      stampTemplate = tmpl;
+      setTool('stamp');
+      // Highlight active template
+      document.querySelectorAll('.tmpl-place').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    const del = document.createElement('button');
+    del.className = 'tmpl-del';
+    del.textContent = '×';
+    del.title = 'Delete template';
+    del.addEventListener('click', () => { templates.splice(i, 1); saveTemplates(); renderTemplates(); });
+    row.appendChild(btn);
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+function connectedComponent(startId) {
+  const visitedVerts = new Set([startId]);
+  const visitedEdges = new Set();
+  const queue = [startId];
+  while (queue.length) {
+    const vid = queue.shift();
+    edges.forEach(e => {
+      if (isLoop(e) && e.from === vid) { visitedEdges.add(e.id); return; }
+      if (e.from === vid || e.to === vid) {
+        visitedEdges.add(e.id);
+        const other = e.from === vid ? e.to : e.from;
+        if (!visitedVerts.has(other)) { visitedVerts.add(other); queue.push(other); }
+      }
+    });
+  }
+  return {
+    verts: verts.filter(v => visitedVerts.has(v.id)),
+    edges: edges.filter(e => visitedEdges.has(e.id))
+  };
+}
+function saveAsTemplate() {
+  if (selVert === null) return;
+  const name = prompt('Template name (e.g. "QED vertex", "3g"):');
+  if (!name) return;
+  const center = vertById(selVert);
+  const {verts: compVerts, edges: compEdges} = connectedComponent(selVert);
+  const idToIdx = {};
+  const tVerts = compVerts.map((v, idx) => {
+    idToIdx[v.id] = idx;
+    return { idx, x: v.x - center.x, y: v.y - center.y,
+             label: v.label, style: v.style, isCenter: v.id === selVert };
+  });
+  const tEdges = compEdges.map(e => ({
+    fromIdx: idToIdx[e.from], toIdx: idToIdx[e.to],
+    type: e.type, label: e.label, reversed: e.reversed, cx: e.cx, cy: e.cy
+  }));
+  templates.push({name, verts: tVerts, edges: tEdges});
+  saveTemplates();
+  renderTemplates();
+}
+function flipCoord(x, y) {
+  switch (stampFlip) {
+    case 1: return { x: -y,  y:  x  };  // 90°
+    case 2: return { x: -x,  y: -y  };  // 180°
+    case 3: return { x:  y,  y: -x  };  // 270°
+    default:return { x,       y      };  // 0°
+  }
+}
+function placeTemplate(tmpl, mx, my) {
+  saveHistory();
+  const ox = snap(mx), oy = snap(my);
+  const newIds = tmpl.verts.map(() => nextId++);
+  tmpl.verts.forEach((v, i) => {
+    const {x, y} = flipCoord(v.x, v.y);
+    verts.push({id: newIds[i], x: ox + x, y: oy + y, label: v.label, style: v.style});
+  });
+  tmpl.edges.forEach(e => {
+    const {x: fcx, y: fcy} = flipCoord(e.cx, e.cy);
+    edges.push({
+      id: nextId++, from: newIds[e.fromIdx], to: newIds[e.toIdx],
+      type: e.type, label: e.label, reversed: e.reversed, cx: fcx, cy: fcy
+    });
+  });
+  draw();
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const snap = v => document.getElementById('chk-snap').checked ? Math.round(v/GRID)*GRID : v;
+const vertById = id => verts.find(v => v.id === id);
+
+function selectionBounds() {
+  if (selVerts.size < 2) return null;
+  const PAD = 18;
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  selVerts.forEach(id => {
+    const v = vertById(id);
+    if (!v) return;
+    x1 = Math.min(x1, v.x); y1 = Math.min(y1, v.y);
+    x2 = Math.max(x2, v.x); y2 = Math.max(y2, v.y);
+  });
+  return {x: x1-PAD, y: y1-PAD, w: x2-x1+2*PAD, h: y2-y1+2*PAD};
+}
+function hitSelBounds(mx, my) {
+  const b = selectionBounds();
+  return b && mx >= b.x && mx <= b.x+b.w && my >= b.y && my <= b.y+b.h;
+}
+const edgeById = id => edges.find(e => e.id === id);
+const isLoop = e => e.from === e.to;
+
+// When adding a parallel edge, bow it (and existing straight edges) apart
+function parallelOffset(fromId, toId) {
+  const parallel = edges.filter(e =>
+    !isLoop(e) &&
+    ((e.from===fromId && e.to===toId) || (e.from===toId && e.to===fromId))
+  );
+  if (!parallel.length) return {cx:0, cy:0};
+  const v1 = vertById(fromId), v2 = vertById(toId);
+  const dx = v2.x-v1.x, dy = v2.y-v1.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const px = -dy/len, py = dx/len;   // perpendicular unit vector
+  const SPREAD = 45;
+  // If there's exactly one straight existing edge, bow it and return opposite offset
+  if (parallel.length === 1 && parallel[0].cx === 0 && parallel[0].cy === 0) {
+    parallel[0].cx = px * SPREAD;
+    parallel[0].cy = py * SPREAD;
+    return {cx: -px * SPREAD, cy: -py * SPREAD};
+  }
+  // Otherwise just add another layer outward
+  return {cx: px * SPREAD * parallel.length, cy: py * SPREAD * parallel.length};
+}
+
+// When two same-type stubs are joined, collapse them into a single through-edge
+function tryMergeArms(fromId, toId, type, newEdgeId) {
+  const allFrom = edges.filter(e => !isLoop(e) && (e.from===fromId || e.to===fromId));
+  const allTo   = edges.filter(e => !isLoop(e) && (e.from===toId   || e.to===toId));
+  // Each leg vertex must now have exactly 2 edges (the old stub + the new one)
+  if (allFrom.length !== 2 || allTo.length !== 2) return;
+  const stubFrom = allFrom.find(e => e.id !== newEdgeId);
+  const stubTo   = allTo.find(e => e.id !== newEdgeId);
+  if (!stubFrom || !stubTo) return;
+  // Both stubs must be the same particle type
+  if (stubFrom.type !== type || stubTo.type !== type) return;
+  // Find the "real" interaction vertices behind each stub
+  const realFrom = stubFrom.from === fromId ? stubFrom.to : stubFrom.from;
+  const realTo   = stubTo.from === toId     ? stubTo.to   : stubTo.from;
+  if (realFrom === realTo) return; // would make a self-loop
+  // Remove the two stub vertices and three edges
+  verts = verts.filter(v => v.id !== fromId && v.id !== toId);
+  edges = edges.filter(e => e.id !== stubFrom.id && e.id !== stubTo.id && e.id !== newEdgeId);
+  // Create direct propagator, bowing it if a parallel edge already exists
+  const {cx:mcx, cy:mcy} = parallelOffset(realFrom, realTo);
+  edges.push({id:nextId++, from:realFrom, to:realTo, type, label:'', reversed:false, cx:mcx, cy:mcy});
+  selVert = null; selEdge = null;
+}
+
+function hitVert(mx, my, skip) {
+  for (let i = verts.length-1; i >= 0; i--) {
+    const v = verts[i];
+    if (skip !== undefined && v.id === skip) continue;
+    if (Math.hypot(v.x-mx, v.y-my) < 14) return v;
+  }
+  return null;
+}
+function hitEdge(mx, my) {
+  for (let i = edges.length-1; i >= 0; i--) {
+    const e = edges[i];
+    if (edgeHitTest(e, mx, my)) return e;
+  }
+  return null;
+}
+function hitCtrl(mx, my) {
+  for (const e of edges) {
+    const cp = ctrlPoint(e);
+    if (Math.hypot(cp.x-mx, cp.y-my) < 10) return e;
+  }
+  return null;
+}
+
+// Midpoint + control point
+function midpoint(e) {
+  if (isLoop(e)) {
+    const v = vertById(e.from);
+    const lx = v.x + e.cx, ly = v.y + e.cy;
+    const r = Math.hypot(e.cx, e.cy);
+    if (r < 1) return { x: v.x, y: v.y - 50 };
+    const a = Math.atan2(v.y - ly, v.x - lx);
+    return { x: lx + r*Math.cos(a+Math.PI), y: ly + r*Math.sin(a+Math.PI) };
+  }
+  const a = vertById(e.from), b = vertById(e.to);
+  return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 };
+}
+function ctrlPoint(e) {
+  if (isLoop(e)) {
+    const v = vertById(e.from);
+    return { x: v.x + e.cx, y: v.y + e.cy };
+  }
+  const m = midpoint(e);
+  return { x: m.x + (e.cx||0), y: m.y + (e.cy||0) };
+}
+// Bezier helpers
+function bezPt(t, ax,ay,cx,cy,bx,by) {
+  const u=1-t;
+  return { x: u*u*ax + 2*u*t*cx + t*t*bx,
+           y: u*u*ay + 2*u*t*cy + t*t*by };
+}
+function bezTan(t, ax,ay,cx,cy,bx,by) {
+  const u=1-t;
+  return { x: 2*(u*(cx-ax)+t*(bx-cx)),
+           y: 2*(u*(cy-ay)+t*(by-cy)) };
+}
+function edgeHitTest(e, mx, my) {
+  if (isLoop(e)) {
+    const v = vertById(e.from);
+    const lx = v.x + e.cx, ly = v.y + e.cy;
+    const r = Math.hypot(e.cx, e.cy);
+    return Math.abs(Math.hypot(mx-lx, my-ly) - r) < 8;
+  }
+  const a = vertById(e.from), b = vertById(e.to);
+  const cp = ctrlPoint(e);
+  for (let t=0; t<=1; t+=0.04) {
+    const p = bezPt(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+    if (Math.hypot(p.x-mx, p.y-my) < 8) return true;
+  }
+  return false;
+}
+
+// ─── Drawing ─────────────────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0,0,W,H);
+
+  // Background (identity transform)
+  ctx.fillStyle = '#090912';
+  ctx.fillRect(0,0,W,H);
+
+  // Apply view transform for all diagram elements
+  ctx.save();
+  ctx.setTransform(zoom, 0, 0, zoom, panX, panY);
+
+  // Grid (in world space, clipped to visible area)
+  if (document.getElementById('chk-grid').checked) {
+    const wx0 = -panX/zoom, wy0 = -panY/zoom;
+    const wx1 = (W-panX)/zoom, wy1 = (H-panY)/zoom;
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = lw(1);
+    for (let x = Math.floor(wx0/GRID)*GRID; x <= wx1; x += GRID) {
+      ctx.beginPath(); ctx.moveTo(x, wy0); ctx.lineTo(x, wy1); ctx.stroke();
+    }
+    for (let y = Math.floor(wy0/GRID)*GRID; y <= wy1; y += GRID) {
+      ctx.beginPath(); ctx.moveTo(wx0, y); ctx.lineTo(wx1, y); ctx.stroke();
+    }
+  }
+
+  // Edges
+  edges.forEach(e => drawEdge(e, e.id === selEdge));
+
+  // Control point handles (select mode, edge selected)
+  if (tool === 'select' && selEdge !== null) {
+    const e = edgeById(selEdge);
+    if (e) {
+      const cp = ctrlPoint(e);
+      ctx.strokeStyle = COLORS.ctrl; ctx.lineWidth = lw(1); ctx.setLineDash([3,3]);
+      if (isLoop(e)) {
+        const v = vertById(e.from);
+        ctx.beginPath(); ctx.moveTo(v.x,v.y); ctx.lineTo(cp.x,cp.y); ctx.stroke();
+      } else {
+        const m = midpoint(e);
+        ctx.beginPath(); ctx.moveTo(m.x,m.y); ctx.lineTo(cp.x,cp.y); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#304090';
+      ctx.strokeStyle = '#7090ff'; ctx.lineWidth = lw(1.5);
+      ctx.beginPath(); ctx.arc(cp.x,cp.y,6,0,2*Math.PI); ctx.fill(); ctx.stroke();
+    }
+  }
+
+  // Vertices
+  verts.forEach(v => drawVert(v, selVerts.has(v.id)));
+
+  // Edge-in-progress ghost line
+  if (edgeSrc !== null) {
+    const sv = vertById(edgeSrc);
+    if (sv && ghostMx !== undefined) {
+      ctx.strokeStyle = '#404070'; ctx.lineWidth = lw(1.5); ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(sv.x, sv.y); ctx.lineTo(ghostMx, ghostMy); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // Labels layer
+  if (document.getElementById('chk-labels').checked) {
+    edges.forEach(drawEdgeLabel);
+    verts.forEach(v => drawVertLabel(v, selVerts.has(v.id)));
+  }
+
+  // Stamp ghost preview
+  if (tool === 'stamp' && stampTemplate && ghostMx !== undefined) {
+    const ox = snap(ghostMx), oy = snap(ghostMy);
+    ctx.globalAlpha = 0.4;
+    const fv = tv => { const {x,y} = flipCoord(tv.x, tv.y); return {x: ox+x, y: oy+y}; };
+    stampTemplate.edges.forEach(te => {
+      const p1 = fv(stampTemplate.verts[te.fromIdx]);
+      const p2 = fv(stampTemplate.verts[te.toIdx]);
+      ctx.beginPath();
+      ctx.strokeStyle = COLORS[te.type] || '#aaa';
+      ctx.lineWidth = lw(1.5); ctx.setLineDash([]);
+      ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    });
+    stampTemplate.verts.forEach(tv => {
+      if (tv.style === 'none') return;
+      const p = fv(tv);
+      ctx.beginPath();
+      ctx.strokeStyle = COLORS.vert; ctx.fillStyle = '#09091a'; ctx.lineWidth = lw(1.5);
+      ctx.arc(p.x, p.y, tv.isCenter ? 5 : 4, 0, 2*Math.PI);
+      ctx.fill(); ctx.stroke();
+    });
+    // Flip state indicator
+    if (stampFlip) {
+      const labels = ['', '↻ 90°', '↻ 180°', '↻ 270°'];
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#7090ff';
+      ctx.font = '11px Courier New';
+      ctx.fillText(labels[stampFlip], ox + 8, oy - 8);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  // Multi-selection bounding box (Word-style)
+  if (selVerts.size > 1) {
+    const b = selectionBounds();
+    if (b) {
+      ctx.fillStyle = 'rgba(70,100,220,0.04)';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = '#5070d8';
+      ctx.lineWidth = lw(1.5);
+      ctx.setLineDash([6, 3]);
+      ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w, b.h);
+      ctx.setLineDash([]);
+      const hs = 5;
+      ctx.fillStyle = '#7090ff';
+      [[b.x, b.y], [b.x+b.w, b.y], [b.x, b.y+b.h], [b.x+b.w, b.y+b.h],
+       [b.x+b.w/2, b.y], [b.x+b.w/2, b.y+b.h],
+       [b.x, b.y+b.h/2], [b.x+b.w, b.y+b.h/2]
+      ].forEach(([hx, hy]) => ctx.fillRect(hx-hs/2, hy-hs/2, hs, hs));
+      ctx.font = '10px Courier New';
+      ctx.fillStyle = '#5070b0';
+      ctx.fillText(`${selVerts.size} vertices`, b.x+4, b.y-5);
+    }
+  }
+
+  // Marquee selection rectangle
+  if (marquee) {
+    const x = Math.min(marquee.x1, marquee.x2), y = Math.min(marquee.y1, marquee.y2);
+    const w = Math.abs(marquee.x2 - marquee.x1), h = Math.abs(marquee.y2 - marquee.y1);
+    ctx.fillStyle = 'rgba(70,100,220,0.07)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#7090ff';
+    ctx.lineWidth = lw(1);
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(x + 0.5, y + 0.5, w, h);
+    ctx.setLineDash([]);
+  }
+
+  ctx.restore(); // end view transform
+}
+
+function drawVert(v, selected) {
+  const style = v.style || 'dot';
+  if (style === 'none') return;
+  const color = selected ? COLORS.vertSel : COLORS.vert;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = selected ? '#1a2a6a' : '#09091a';
+  ctx.lineWidth = lw(selected ? 2 : 1.5);
+
+  if (style === 'dot') {
+    ctx.beginPath(); ctx.arc(v.x,v.y,5,0,2*Math.PI);
+    ctx.fill(); ctx.stroke();
+  } else if (style === 'cross') {
+    const s = 8;
+    ctx.beginPath();
+    ctx.moveTo(v.x-s,v.y); ctx.lineTo(v.x+s,v.y);
+    ctx.moveTo(v.x,v.y-s); ctx.lineTo(v.x,v.y+s);
+    ctx.stroke();
+  } else if (style === 'circle') {
+    ctx.beginPath(); ctx.arc(v.x,v.y,9,0,2*Math.PI);
+    ctx.fill(); ctx.stroke();
+  } else if (style === 'blob') {
+    ctx.beginPath(); ctx.arc(v.x,v.y,11,0,2*Math.PI);
+    ctx.fillStyle = selected ? '#2a3a8a' : '#1e1e40';
+    ctx.fill(); ctx.stroke();
+  }
+}
+
+function drawVertLabel(v, selected) {
+  if (!v.label) return;
+  ctx.font = 'italic 13px serif';
+  ctx.fillStyle = selected ? '#b0c0ff' : '#8090c0';
+  ctx.fillText(v.label, v.x+12, v.y-8);
+}
+
+function drawEdge(e, selected) {
+  if (isLoop(e)) { drawSelfLoop(e, selected); return; }
+  const a = vertById(e.from), b = vertById(e.to);
+  if (!a || !b) return;
+  const cp = ctrlPoint(e);
+  const color = selected ? COLORS.edgeSel : COLORS[e.type] || '#aaa';
+  ctx.strokeStyle = color;
+
+  switch (e.type) {
+    case 'fermion': drawFermion(a, b, cp, color, e.reversed, selected); break;
+    case 'photon':  drawPhoton(a, b, cp, color); break;
+    case 'gluon':   drawGluon(a, b, cp, color); break;
+    case 'scalar':  drawScalar(a, b, cp, color); break;
+    case 'ghost':   drawGhost(a, b, cp, color, e.reversed, selected); break;
+  }
+}
+
+// ── Fermion: bezier + arrowhead at midpoint ──────────────────────────────────
+function drawFermion(a, b, cp, color, rev, sel) {
+  ctx.beginPath();
+  ctx.strokeStyle = color; ctx.lineWidth = lw(sel ? 2.5 : 1.8); ctx.setLineDash([]);
+  ctx.moveTo(a.x, a.y);
+  ctx.quadraticCurveTo(cp.x, cp.y, b.x, b.y);
+  ctx.stroke();
+
+  // Arrow at t=0.5 (or reversed at 0.5 going backward)
+  const t = rev ? 0.5 : 0.5;
+  const p = bezPt(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+  let tan = bezTan(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+  if (rev) { tan.x=-tan.x; tan.y=-tan.y; }
+  const ang = Math.atan2(tan.y, tan.x);
+  const as = 10, aw = 4;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(p.x + as*Math.cos(ang), p.y + as*Math.sin(ang));
+  ctx.lineTo(p.x + aw*Math.cos(ang+2.4), p.y + aw*Math.sin(ang+2.4));
+  ctx.lineTo(p.x + aw*Math.cos(ang-2.4), p.y + aw*Math.sin(ang-2.4));
+  ctx.closePath(); ctx.fill();
+}
+
+// ── Photon: sinusoidal along bezier ─────────────────────────────────────────
+function drawPhoton(a, b, cp, color) {
+  const N = 120, AMP = 7, FREQ = 12; // waves along path
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = lw(1.8); ctx.setLineDash([]);
+  for (let i=0; i<=N; i++) {
+    const t = i/N;
+    const p = bezPt(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+    const tan = bezTan(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+    const len = Math.hypot(tan.x, tan.y) || 1;
+    const nx = -tan.y/len, ny = tan.x/len;
+    const wave = AMP * Math.sin(FREQ * Math.PI * t);
+    const px = p.x + nx*wave, py = p.y + ny*wave;
+    if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+}
+
+// ── Gluon: cycloid loops along bezier ───────────────────────────────────────
+function drawGluon(a, b, cp, color) {
+  const N = 240, LOOPS = 6, r = 8;
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = lw(1.8); ctx.setLineDash([]);
+  for (let i=0; i<=N; i++) {
+    const t = i/N;
+    const p  = bezPt(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+    const tan = bezTan(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+    const len = Math.hypot(tan.x, tan.y) || 1;
+    const tx=tan.x/len, ty=tan.y/len;
+    const nx=-ty, ny=tx;
+    const theta = LOOPS * 2 * Math.PI * t;
+    const offT = r * Math.sin(theta);
+    const offN = r * (1 - Math.cos(theta));
+    const px = p.x + tx*offT + nx*offN;
+    const py = p.y + ty*offT + ny*offN;
+    if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+}
+
+// ── Scalar: dashed bezier ────────────────────────────────────────────────────
+function drawScalar(a, b, cp, color) {
+  ctx.beginPath();
+  ctx.strokeStyle = color; ctx.lineWidth = lw(1.8); ctx.setLineDash([8,5]);
+  ctx.moveTo(a.x, a.y);
+  ctx.quadraticCurveTo(cp.x, cp.y, b.x, b.y);
+  ctx.stroke(); ctx.setLineDash([]);
+}
+
+// ── Ghost: dotted bezier + arrowhead ─────────────────────────────────────────
+function drawGhost(a, b, cp, color, rev, sel) {
+  ctx.beginPath();
+  ctx.strokeStyle = color; ctx.lineWidth = lw(sel ? 2.2 : 1.5); ctx.setLineDash([2,5]);
+  ctx.moveTo(a.x, a.y);
+  ctx.quadraticCurveTo(cp.x, cp.y, b.x, b.y);
+  ctx.stroke(); ctx.setLineDash([]);
+
+  const t = 0.5;
+  const p = bezPt(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+  let tan = bezTan(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+  if (rev) { tan.x=-tan.x; tan.y=-tan.y; }
+  const ang = Math.atan2(tan.y, tan.x);
+  const as=8, aw=3.5;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(p.x + as*Math.cos(ang), p.y + as*Math.sin(ang));
+  ctx.lineTo(p.x + aw*Math.cos(ang+2.4), p.y + aw*Math.sin(ang+2.4));
+  ctx.lineTo(p.x + aw*Math.cos(ang-2.4), p.y + aw*Math.sin(ang-2.4));
+  ctx.closePath(); ctx.fill();
+}
+
+// ── Self-loop drawing ─────────────────────────────────────────────────────────
+function drawSelfLoop(e, selected) {
+  const v = vertById(e.from);
+  const lx = v.x + e.cx, ly = v.y + e.cy;
+  const r = Math.hypot(e.cx, e.cy);
+  if (r < 5) return;
+  const color = selected ? COLORS.edgeSel : COLORS[e.type] || '#aaa';
+  const attachAngle = Math.atan2(v.y - ly, v.x - lx);
+  switch (e.type) {
+    case 'fermion': drawLoopFermion(lx, ly, r, color, e.reversed, selected, attachAngle); break;
+    case 'photon':  drawLoopPhoton(lx, ly, r, color, attachAngle); break;
+    case 'gluon':   drawLoopGluon(lx, ly, r, color, attachAngle); break;
+    case 'scalar':  drawLoopScalar(lx, ly, r, color, selected); break;
+    case 'ghost':   drawLoopGhost(lx, ly, r, color, e.reversed, selected, attachAngle); break;
+  }
+}
+function loopArrowhead(lx, ly, r, color, rev, attachAngle, as, aw) {
+  const topAngle = attachAngle + Math.PI;
+  const px = lx + r*Math.cos(topAngle), py = ly + r*Math.sin(topAngle);
+  const tang = topAngle + (rev ? -Math.PI/2 : Math.PI/2);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(px + as*Math.cos(tang),     py + as*Math.sin(tang));
+  ctx.lineTo(px + aw*Math.cos(tang+2.4), py + aw*Math.sin(tang+2.4));
+  ctx.lineTo(px + aw*Math.cos(tang-2.4), py + aw*Math.sin(tang-2.4));
+  ctx.closePath(); ctx.fill();
+}
+function drawLoopFermion(lx, ly, r, color, rev, sel, attachAngle) {
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = lw(sel ? 2.5 : 1.8); ctx.setLineDash([]);
+  ctx.arc(lx, ly, r, 0, 2*Math.PI); ctx.stroke();
+  loopArrowhead(lx, ly, r, color, rev, attachAngle, 10, 4);
+}
+function drawLoopGhost(lx, ly, r, color, rev, sel, attachAngle) {
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = lw(sel ? 2.2 : 1.5); ctx.setLineDash([2,5]);
+  ctx.arc(lx, ly, r, 0, 2*Math.PI); ctx.stroke(); ctx.setLineDash([]);
+  loopArrowhead(lx, ly, r, color, rev, attachAngle, 8, 3.5);
+}
+function drawLoopScalar(lx, ly, r, color, sel) {
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = lw(sel ? 2.2 : 1.8); ctx.setLineDash([8,5]);
+  ctx.arc(lx, ly, r, 0, 2*Math.PI); ctx.stroke(); ctx.setLineDash([]);
+}
+function drawLoopPhoton(lx, ly, r, color, attachAngle) {
+  const N = 180, AMP = 6, FREQ = 10;
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = lw(1.8); ctx.setLineDash([]);
+  for (let i = 0; i <= N; i++) {
+    const t = i/N;
+    const angle = attachAngle + t*2*Math.PI;
+    const rw = r + AMP * Math.sin(FREQ * 2*Math.PI * t);
+    if (i===0) ctx.moveTo(lx + rw*Math.cos(angle), ly + rw*Math.sin(angle));
+    else        ctx.lineTo(lx + rw*Math.cos(angle), ly + rw*Math.sin(angle));
+  }
+  ctx.stroke();
+}
+function drawLoopGluon(lx, ly, r, color, attachAngle) {
+  const N = 300, LOOPS = 8, lr = 7;
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = lw(1.8); ctx.setLineDash([]);
+  for (let i = 0; i <= N; i++) {
+    const t = i/N;
+    const angle = attachAngle + t*2*Math.PI;
+    const theta = LOOPS * 2*Math.PI * t;
+    const rg = r + lr*(1 - Math.cos(theta));
+    if (i===0) ctx.moveTo(lx + rg*Math.cos(angle), ly + rg*Math.sin(angle));
+    else        ctx.lineTo(lx + rg*Math.cos(angle), ly + rg*Math.sin(angle));
+  }
+  ctx.stroke();
+}
+
+// ── Edge label ───────────────────────────────────────────────────────────────
+function drawEdgeLabel(e) {
+  if (!e.label) return;
+  if (isLoop(e)) {
+    const v = vertById(e.from);
+    const lx = v.x + e.cx, ly = v.y + e.cy;
+    const r = Math.hypot(e.cx, e.cy);
+    if (r < 5) return;
+    const a = Math.atan2(v.y - ly, v.x - lx);
+    const topAngle = a + Math.PI;
+    ctx.font = 'italic 12px serif';
+    ctx.fillStyle = COLORS[e.type] || '#aaa';
+    ctx.fillText(e.label, lx + (r+16)*Math.cos(topAngle) - 4, ly + (r+16)*Math.sin(topAngle) + 4);
+    return;
+  }
+  const a = vertById(e.from), b = vertById(e.to);
+  if (!a || !b) return;
+  const cp = ctrlPoint(e);
+  const p = bezPt(0.5, a.x,a.y, cp.x,cp.y, b.x,b.y);
+  const tan = bezTan(0.5, a.x,a.y, cp.x,cp.y, b.x,b.y);
+  const len = Math.hypot(tan.x,tan.y)||1;
+  const nx=-tan.y/len, ny=tan.x/len;
+  ctx.font = 'italic 12px serif';
+  ctx.fillStyle = COLORS[e.type] || '#aaa';
+  ctx.fillText(e.label, p.x + nx*18 - 4, p.y + ny*18 + 4);
+}
+
+// ─── Tool activation ─────────────────────────────────────────────────────────
+function setTool(t) {
+  tool = t;
+  edgeSrc = null;
+  if (t !== 'stamp') {
+    stampTemplate = null;
+    stampFlip = 0;
+    document.querySelectorAll('.tmpl-place').forEach(b => b.classList.remove('active'));
+  }
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('tool-'+t);
+  if (btn) btn.classList.add('active');
+  setStatus(toolHint(t));
+}
+function toolHint(t) {
+  return {
+    select:  'Click to select. Drag empty canvas to box-select. Drag selection to move group. Dbl-click to label.',
+    move:    'Click and drag to pan the canvas.',
+    vertex:  'Click canvas to place vertex.',
+    fermion: 'Click two vertices to connect. Click same vertex twice for a loop.',
+    photon:  'Click two vertices to connect. Click same vertex twice for a loop.',
+    gluon:   'Click two vertices to connect. Click same vertex twice for a loop.',
+    scalar:  'Click two vertices to connect. Click same vertex twice for a loop.',
+    ghost:   'Click two vertices to connect. Click same vertex twice for a loop.',
+    delete:  'Click vertex or line to delete.',
+    stamp:   'Click to place. Space = rotate 90°. Esc to cancel.',
+  }[t] || '';
+}
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+// ─── Mouse ────────────────────────────────────────────────────────────────────
+let ghostMx, ghostMy;
+let dragPending = null;  // queued drag, activated only after threshold
+let dragStartX = 0, dragStartY = 0;
+const DRAG_THRESHOLD = 4;
+
+canvas.addEventListener('mousemove', e => {
+  if (isPanning) return;  // right-click pan handled separately
+  const {mx, my} = pos(e);
+  ghostMx = mx; ghostMy = my;
+  if (tool === 'move') {
+    canvas.style.cursor = dragging ? 'grabbing' : 'grab';
+  } else {
+    canvas.style.cursor = (tool === 'select' && !dragging && !marquee && selVerts.size > 1 && hitSelBounds(mx, my))
+      ? 'move' : 'crosshair';
+  }
+
+  // Move-tool pan
+  if (tool === 'move' && dragging && dragging.type === 'pan') {
+    panX = dragging.startPanX + (e.clientX - dragging.startClientX);
+    panY = dragging.startPanY + (e.clientY - dragging.startClientY);
+    draw(); return;
+  }
+
+  if (marquee) {
+    marquee.x2 = mx; marquee.y2 = my;
+    draw(); return;
+  }
+
+  if (dragPending && !dragging) {
+    if (Math.hypot(mx - dragStartX, my - dragStartY) > DRAG_THRESHOLD) {
+      if (dragPending.type === 'group') {
+        saveHistory();
+        dragging = {
+          type: 'group',
+          ox: dragStartX, oy: dragStartY,
+          startPositions: [...selVerts].map(id => {
+            const v = vertById(id);
+            return v ? {id, ox: v.x, oy: v.y} : null;
+          }).filter(Boolean),
+        };
+        dragPending = null;
+      } else {
+        dragging = dragPending;
+        dragPending = null;
+      }
+    }
+  }
+
+  if (dragging) {
+    if (dragging.type === 'vert') {
+      const v = vertById(dragging.id);
+      if (v) { v.x = snap(mx + dragging.ox); v.y = snap(my + dragging.oy); }
+    } else if (dragging.type === 'group') {
+      const rawDx = mx - dragging.ox, rawDy = my - dragging.oy;
+      const ref = dragging.startPositions[0];
+      if (ref) {
+        const dx = snap(ref.ox + rawDx) - ref.ox;
+        const dy = snap(ref.oy + rawDy) - ref.oy;
+        dragging.startPositions.forEach(({id, ox, oy}) => {
+          const v = vertById(id);
+          if (v) { v.x = ox + dx; v.y = oy + dy; }
+        });
+      }
+    } else if (dragging.type === 'ctrl') {
+      const ed = edgeById(dragging.id);
+      if (ed) {
+        if (isLoop(ed)) {
+          const v = vertById(ed.from);
+          ed.cx = (mx + dragging.ox) - v.x;
+          ed.cy = (my + dragging.oy) - v.y;
+        } else {
+          const m = midpoint(ed);
+          ed.cx = (mx + dragging.ox) - m.x;
+          ed.cy = (my + dragging.oy) - m.y;
+        }
+      }
+    }
+  }
+  draw();
+});
+
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (e.detail > 1) return;  // let dblclick handler own the second click
+  const {mx, my} = pos(e);
+  dragStartX = mx; dragStartY = my;
+  dragPending = null;
+
+  if (tool === 'move') {
+    dragging = { type: 'pan', startClientX: e.clientX, startClientY: e.clientY, startPanX: panX, startPanY: panY };
+    return;
+  }
+
+  if (tool === 'select') {
+    // Ctrl-point drag (only when that edge is already selected)
+    const ctrlE = hitCtrl(mx, my);
+    if (ctrlE && ctrlE.id === selEdge) {
+      const cp = ctrlPoint(ctrlE);
+      dragPending = {type:'ctrl', id:ctrlE.id, ox:cp.x-mx, oy:cp.y-my};
+      return;
+    }
+    const v = hitVert(mx, my);
+    if (v) {
+      if (selVerts.has(v.id) && selVerts.size > 1) {
+        // Clicked inside an existing multi-selection → group drag
+        dragPending = {type:'group'};
+      } else {
+        // Single-select this vertex
+        selVerts = new Set([v.id]);
+        selVert = v.id; selEdge = null;
+        dragPending = {type:'vert', id:v.id, ox:v.x-mx, oy:v.y-my};
+      }
+      updateProps(); draw(); return;
+    }
+    const ed = hitEdge(mx, my);
+    if (ed) {
+      selEdge = ed.id; selVert = null; selVerts = new Set();
+      const cp = ctrlPoint(ed);
+      dragPending = {type:'ctrl', id:ed.id, ox:cp.x-mx, oy:cp.y-my};
+      updateProps(); draw(); return;
+    }
+    // Clicking inside selection bounding box (empty space between selected verts) → move group
+    if (selVerts.size > 1 && hitSelBounds(mx, my)) {
+      dragPending = {type:'group'};
+      draw(); return;
+    }
+    // Empty canvas → start marquee
+    selVert = null; selEdge = null; selVerts = new Set();
+    marquee = {x1:mx, y1:my, x2:mx, y2:my};
+    updateProps(); draw();
+    return;
+  }
+
+  if (tool === 'stamp') {
+    if (stampTemplate) placeTemplate(stampTemplate, mx, my);
+    return;
+  }
+
+  if (tool === 'vertex') {
+    saveHistory();
+    verts.push({id:nextId++, x:snap(mx), y:snap(my), label:'', style:'dot'});
+    draw(); return;
+  }
+
+  if (tool === 'delete') {
+    const v = hitVert(mx, my);
+    if (v) {
+      saveHistory();
+      edges = edges.filter(e => e.from!==v.id && e.to!==v.id);
+      verts = verts.filter(vt => vt.id!==v.id);
+      selVert=null; selEdge=null; updateProps(); draw(); return;
+    }
+    const ed = hitEdge(mx, my);
+    if (ed) {
+      saveHistory();
+      edges = edges.filter(e => e.id!==ed.id);
+      selEdge=null; updateProps(); draw(); return;
+    }
+    return;
+  }
+
+  // Edge tools
+  if (['fermion','photon','gluon','scalar','ghost'].includes(tool)) {
+    // On second click, skip edgeSrc so overlapping vertices (coincident leg endpoints) are reachable
+    const v = edgeSrc !== null
+      ? (hitVert(mx, my, edgeSrc) || hitVert(mx, my))
+      : hitVert(mx, my);
+    if (!v) return;
+    if (edgeSrc === null) {
+      edgeSrc = v.id;
+      setStatus('Now click the destination vertex.');
+    } else {
+      if (edgeSrc === v.id) {
+        saveHistory();
+        edges.push({id:nextId++, from:edgeSrc, to:v.id, type:tool, label:'', reversed:false, cx:0, cy:-50});
+        edgeSrc = null; setStatus(toolHint(tool)); draw(); return;
+      }
+      saveHistory();
+      const {cx:pcx, cy:pcy} = parallelOffset(edgeSrc, v.id);
+      const newEid = nextId;
+      edges.push({id:nextId++, from:edgeSrc, to:v.id, type:tool, label:'', reversed:false, cx:pcx, cy:pcy});
+      tryMergeArms(edgeSrc, v.id, tool, newEid);
+      edgeSrc = null;
+      setStatus(toolHint(tool));
+      draw();
+    }
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  if (marquee) {
+    const minX = Math.min(marquee.x1, marquee.x2), maxX = Math.max(marquee.x1, marquee.x2);
+    const minY = Math.min(marquee.y1, marquee.y2), maxY = Math.max(marquee.y1, marquee.y2);
+    if (maxX - minX > 4 || maxY - minY > 4) {
+      selVerts = new Set(
+        verts.filter(v => v.x >= minX && v.x <= maxX && v.y >= minY && v.y <= maxY).map(v => v.id)
+      );
+      selVert = selVerts.size === 1 ? [...selVerts][0] : null;
+      selEdge = null;
+      updateProps();
+    }
+    marquee = null;
+    draw();
+  }
+  if (dragging && dragging.type === 'pan') { /* move-tool pan ended */ }
+  dragging = null;
+  dragPending = null;
+});
+
+canvas.addEventListener('dblclick', e => {
+  marquee = null;  // clear any stale marquee state
+  const {mx, my} = pos(e);
+  const v = hitVert(mx, my);
+  if (v) {
+    const lbl = prompt('Vertex label:', v.label || '');
+    if (lbl !== null) { v.label = lbl; draw(); }
+    return;
+  }
+  const ed = hitEdge(mx, my);
+  if (ed) {
+    const lbl = prompt('Edge label:', ed.label || '');
+    if (lbl !== null) { ed.label = lbl; draw(); }
+    return;
+  }
+  // Double-click inside selection box → do nothing (user is moving the group)
+  if (selVerts.size > 1 && hitSelBounds(mx, my)) return;
+  // Double-click on empty canvas → new vertex
+  saveHistory();
+  verts.push({id:nextId++, x:snap(mx), y:snap(my), label:'', style:'dot'});
+  selVerts = new Set(); selVert = null;
+  draw();
+});
+
+function pos(e) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    mx: (e.clientX - r.left - panX) / zoom,
+    my: (e.clientY - r.top  - panY) / zoom,
+  };
+}
+
+// ─── Zoom buttons ────────────────────────────────────────────────────────────
+const zoomBy = factor => {
+  // Zoom centred on canvas centre
+  const cx = W / 2, cy = H / 2;
+  const nz = Math.max(0.1, Math.min(12, zoom * factor));
+  panX = cx - (cx - panX) * (nz / zoom);
+  panY = cy - (cy - panY) * (nz / zoom);
+  zoom = nz;
+  draw();
+};
+document.getElementById('btn-zoom-in').addEventListener('click',    () => zoomBy(1.3));
+document.getElementById('btn-zoom-out').addEventListener('click',   () => zoomBy(1/1.3));
+document.getElementById('btn-zoom-reset').addEventListener('click', () => { zoom=1; panX=0; panY=0; draw(); });
+
+// Right-click drag to pan (works in all tool modes)
+let isPanning = false, panSX = 0, panSY = 0, panSPX = 0, panSPY = 0;
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 2) { e.preventDefault(); isPanning = true; panSX = e.clientX; panSY = e.clientY; panSPX = panX; panSPY = panY; }
+});
+canvas.addEventListener('mousemove', e => {
+  if (isPanning) { panX = panSPX + (e.clientX - panSX); panY = panSPY + (e.clientY - panSY); draw(); }
+});
+canvas.addEventListener('mouseup',        e => { if (e.button === 2) isPanning = false; });
+canvas.addEventListener('contextmenu',    e => { if (isPanning) e.preventDefault(); });
+
+// ─── Keyboard ────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.ctrlKey && e.key === 'z') { undo(); return; }
+  if (e.key === '0') { zoom = 1; panX = 0; panY = 0; draw(); return; }  // reset view
+  if (e.ctrlKey && e.key === 'c') {
+    // Determine which verts to copy
+    let copyVertIds;
+    if (selVerts.size >= 1) {
+      copyVertIds = new Set(selVerts);
+    } else if (selVert !== null) {
+      const { verts: cv } = connectedComponent(selVert);
+      copyVertIds = new Set(cv.map(v => v.id));
+    } else if (selEdge !== null) {
+      const ed = edgeById(selEdge);
+      if (ed) copyVertIds = new Set([ed.from, ed.to]);
+    }
+    if (!copyVertIds || !copyVertIds.size) return;
+    const copyVerts = verts.filter(v => copyVertIds.has(v.id));
+    const copyEdges = edges.filter(ed => copyVertIds.has(ed.from) && copyVertIds.has(ed.to));
+    const cx = copyVerts.reduce((s, v) => s + v.x, 0) / copyVerts.length;
+    const cy = copyVerts.reduce((s, v) => s + v.y, 0) / copyVerts.length;
+    clipboard = {
+      cx, cy,
+      verts: copyVerts.map(v => ({ x: v.x - cx, y: v.y - cy, label: v.label, style: v.style })),
+      edges: copyEdges.map(ed => ({
+        fromIdx: copyVerts.findIndex(v => v.id === ed.from),
+        toIdx:   copyVerts.findIndex(v => v.id === ed.to),
+        type: ed.type, label: ed.label, reversed: ed.reversed, cx: ed.cx, cy: ed.cy
+      }))
+    };
+    pasteCount = 0;
+    return;
+  }
+  if (e.ctrlKey && e.key === 'v') {
+    if (!clipboard) return;
+    e.preventDefault();
+    saveHistory();
+    pasteCount++;
+    const off = pasteCount * 30;
+    const newIds = clipboard.verts.map(() => nextId++);
+    clipboard.verts.forEach((v, i) => {
+      verts.push({ id: newIds[i], x: clipboard.cx + v.x + off, y: clipboard.cy + v.y + off, label: v.label, style: v.style });
+    });
+    clipboard.edges.forEach(ed => {
+      edges.push({ id: nextId++, from: newIds[ed.fromIdx], to: newIds[ed.toIdx],
+        type: ed.type, label: ed.label, reversed: ed.reversed, cx: ed.cx, cy: ed.cy });
+    });
+    selVerts = new Set(newIds); selVert = newIds[0] ?? null; selEdge = null;
+    updateProps(); draw();
+    return;
+  }
+  if (e.key === 'Escape') { edgeSrc=null; setStatus(toolHint(tool)); draw(); return; }
+  if (e.key === ' ') {
+    e.preventDefault();
+    if (tool === 'stamp') { stampFlip = (stampFlip + 1) % 4; draw(); }
+    return;
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selVerts.size > 1) {
+      saveHistory();
+      edges = edges.filter(ed => !selVerts.has(ed.from) && !selVerts.has(ed.to));
+      verts = verts.filter(v => !selVerts.has(v.id));
+      selVerts = new Set(); selVert = null; selEdge = null; updateProps(); draw();
+    } else if (selVert !== null) {
+      saveHistory();
+      edges = edges.filter(ed => ed.from!==selVert && ed.to!==selVert);
+      verts = verts.filter(v => v.id!==selVert);
+      selVerts = new Set(); selVert = null; updateProps(); draw();
+    } else if (selEdge !== null) {
+      saveHistory();
+      edges = edges.filter(ed => ed.id!==selEdge);
+      selEdge = null; updateProps(); draw();
+    }
+    return;
+  }
+  const map = {q:'select',m:'move',v:'vertex',f:'fermion',p:'photon',g:'gluon',s:'scalar',h:'ghost',x:'delete'};
+  const t = map[e.key.toLowerCase()];
+  if (t) setTool(t);
+});
+
+// ─── Property Panel ──────────────────────────────────────────────────────────
+function updateProps() {
+  const noSel  = document.getElementById('no-sel');
+  const vProps = document.getElementById('vert-props');
+  const eProps = document.getElementById('edge-props');
+
+  if (selVert !== null) {
+    const v = vertById(selVert);
+    noSel.style.display='none'; vProps.style.display='block'; eProps.style.display='none';
+    document.getElementById('vp-label').value = v.label||'';
+    document.getElementById('vp-style').value = v.style||'dot';
+  } else if (selEdge !== null) {
+    const ed = edgeById(selEdge);
+    noSel.style.display='none'; vProps.style.display='none'; eProps.style.display='block';
+    document.getElementById('ep-label').value = ed.label||'';
+    document.getElementById('ep-type').value  = ed.type;
+    document.getElementById('ep-rev').checked = !!ed.reversed;
+  } else {
+    noSel.style.display='block'; vProps.style.display='none'; eProps.style.display='none';
+  }
+}
+
+document.getElementById('vp-label').addEventListener('input', e => {
+  if (selVert===null) return;
+  const v = vertById(selVert);
+  if (v) { v.label = e.target.value; draw(); }
+});
+document.getElementById('vp-style').addEventListener('change', e => {
+  if (selVert===null) return;
+  const v = vertById(selVert);
+  if (v) { v.style = e.target.value; draw(); }
+});
+document.getElementById('ep-label').addEventListener('input', e => {
+  if (selEdge===null) return;
+  const ed = edgeById(selEdge);
+  if (ed) { ed.label = e.target.value; draw(); }
+});
+document.getElementById('ep-type').addEventListener('change', e => {
+  if (selEdge===null) return;
+  const ed = edgeById(selEdge);
+  if (ed) { ed.type = e.target.value; draw(); }
+});
+document.getElementById('ep-rev').addEventListener('change', e => {
+  if (selEdge===null) return;
+  const ed = edgeById(selEdge);
+  if (ed) { ed.reversed = e.target.checked; draw(); }
+});
+
+// ─── Toolbar buttons ─────────────────────────────────────────────────────────
+document.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => setTool(btn.dataset.tool));
+});
+document.getElementById('btn-undo').addEventListener('click', undo);
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!verts.length && !edges.length) return;
+  if (!confirm('Clear diagram?')) return;
+  saveHistory();
+  verts=[]; edges=[]; selVert=null; selEdge=null;
+  updateProps(); draw();
+});
+document.getElementById('btn-export').addEventListener('click', () => {
+  // Render to clean canvas (no grid, no handles)
+  const oc = document.createElement('canvas');
+  oc.width=W; oc.height=H;
+  const oc2 = ctx; // swap
+  const octx = oc.getContext('2d');
+  // Temporarily draw to off-screen
+  const old = canvas.getContext('2d');
+
+  // Save context state and draw clean version
+  const gridCk = document.getElementById('chk-grid');
+  const savedGrid = gridCk.checked;
+  gridCk.checked = false;
+  const savedSel = selEdge;
+  selEdge = null;
+  draw(); // draw clean
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='feynman_diagram.png'; a.click();
+    URL.revokeObjectURL(url);
+    gridCk.checked = savedGrid;
+    selEdge = savedSel;
+    draw();
+  });
+});
+
+document.getElementById('chk-grid').addEventListener('change', draw);
+document.getElementById('chk-labels').addEventListener('change', draw);
+document.getElementById('chk-snap').addEventListener('change', draw);
+document.getElementById('btn-save-tmpl').addEventListener('click', saveAsTemplate);
+
+// ─── Feynman Rules & Amplitude ────────────────────────────────────────────────
+const FR_DEFAULTS = {
+  propagators: {
+    fermion: { text: 'i(/{p}+m)/({p2}−m²)',     latex: '\\frac{i(\\not{{p}}+m)}{{p2}-m^2}' },
+    photon:  { text: '−iη^μν/{p2}',              latex: '\\frac{-i\\eta^{\\mu\\nu}}{{p2}}' },
+    scalar:  { text: 'i/({p2}−m²)',               latex: '\\frac{i}{{p2}-m^2}' },
+    gluon:   { text: '−iδ^ab η^μν/{p2}',         latex: '\\frac{-i\\delta^{ab}\\eta^{\\mu\\nu}}{{p2}}' },
+    ghost:   { text: '−iδ^ab/{p2}',               latex: '\\frac{-i\\delta^{ab}}{{p2}}' },
+  },
+  external: {
+    fermion_in:  { text: 'u({p},s)',              latex: 'u({p},s)' },
+    fermion_out: { text: 'ū({p},s)',              latex: '\\bar{u}({p},s)' },
+    photon_in:   { text: 'ε^μ({p},λ)',            latex: '\\varepsilon^{\\mu}({p},\\lambda)' },
+    photon_out:  { text: 'ε^μ*({p},λ)',           latex: '\\varepsilon^{*\\mu}({p},\\lambda)' },
+    scalar_in:   { text: '1',                     latex: '1' },
+    scalar_out:  { text: '1',                     latex: '1' },
+    gluon_in:    { text: 'ε^μa({p},λ)',           latex: '\\varepsilon^{\\mu,a}({p},\\lambda)' },
+    gluon_out:   { text: 'ε^μa*({p},λ)',          latex: '\\varepsilon^{*\\mu,a}({p},\\lambda)' },
+    ghost_in:    { text: 'η^a({p})',              latex: '\\eta^a({p})' },
+    ghost_out:   { text: 'η̄^a({p})',             latex: '\\bar{\\eta}^a({p})' },
+  },
+  vertices: [
+    { label: 'e',  sig: {fermion:2, photon:1}, text: 'iQeγ^μ',                                           latex: 'iQe\\gamma^{\\mu}' },
+    { label: 'q',  sig: {fermion:2, gluon:1}, text: 'ig_sT^aγ^μ',                                        latex: 'ig_s T^a\\gamma^{\\mu}' },
+    { label: '3g', sig: {gluon:3},            text: 'g_sf^{abc}[η^{μν}(p₁-p₂)^ρ+η^{νρ}(p₂-p₃)^μ+η^{ρμ}(p₃-p₁)^ν]',  latex: 'g_s f^{abc}[\\eta^{\\mu\\nu}(p_1{-}p_2)^{\\rho}+\\eta^{\\nu\\rho}(p_2{-}p_3)^{\\mu}+\\eta^{\\rho\\mu}(p_3{-}p_1)^{\\nu}]' },
+    { label: '4g', sig: {gluon:4},            text: '-ig_s²[f^{ace}f^{bde}(η^{μρ}η^{νσ}-η^{μσ}η^{νρ})+f^{ade}f^{bce}(η^{μσ}η^{νρ}-η^{μν}η^{ρσ})+f^{abe}f^{cde}(η^{μν}η^{ρσ}-η^{μρ}η^{νσ})]',  latex: '-ig_s^2[f^{ace}f^{bde}(\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma}-\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho})+f^{ade}f^{bce}(\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho}-\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma})+f^{abe}f^{cde}(\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma}-\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma})]' },
+    { label: 'λ',  sig: {scalar:4},           text: '−iλ',                                               latex: '-i\\lambda' },
+  ],
+  measure: { text: '∫d⁴{l}/(2π)⁴', latex: '\\int\\!\\frac{d^4{l}}{(2\\pi)^4}' },
+};
+
+let feynmanRules = JSON.parse(JSON.stringify(FR_DEFAULTS));
+let latexAmplitude = '';
+
+function saveFRules() {
+  try { localStorage.setItem('feynman_rules', JSON.stringify(feynmanRules)); } catch(e) {}
+}
+function loadFRules() {
+  try {
+    const s = localStorage.getItem('feynman_rules');
+    if (s) feynmanRules = JSON.parse(s);
+  } catch(e) {}
+  if (!Array.isArray(feynmanRules.vertices)) feynmanRules.vertices = [];
+  // Always overwrite propagator templates from defaults (ensures {p2} placeholder is current).
+  Object.keys(FR_DEFAULTS.propagators).forEach(t => {
+    feynmanRules.propagators[t] = Object.assign({}, FR_DEFAULTS.propagators[t]);
+  });
+  // Always sync built-in vertex rules: add missing ones, and update text/latex
+  // for any default label so stale cached versions get refreshed.
+  FR_DEFAULTS.vertices.forEach(def => {
+    const existing = feynmanRules.vertices.find(vr => vr.label === def.label);
+    if (existing) {
+      existing.text  = def.text;
+      existing.latex = def.latex;
+      existing.sig   = def.sig;
+    } else {
+      feynmanRules.vertices.push(Object.assign({}, def));
+    }
+  });
+}
+function readRulesFromPanel() {
+  ['fermion','photon','scalar','gluon','ghost'].forEach(t => {
+    const tEl = document.getElementById(`fr-prop-${t}-text`);
+    const lEl = document.getElementById(`fr-prop-${t}-latex`);
+    if (tEl) feynmanRules.propagators[t].text  = tEl.value;
+    if (lEl) feynmanRules.propagators[t].latex = lEl.value;
+  });
+  Object.keys(feynmanRules.external).forEach(k => {
+    const tEl = document.getElementById(`fr-ext-${k}-text`);
+    const lEl = document.getElementById(`fr-ext-${k}-latex`);
+    if (tEl) feynmanRules.external[k].text  = tEl.value;
+    if (lEl) feynmanRules.external[k].latex = lEl.value;
+  });
+  const mt = document.getElementById('fr-measure-text');
+  const ml = document.getElementById('fr-measure-latex');
+  if (mt) feynmanRules.measure.text  = mt.value;
+  if (ml) feynmanRules.measure.latex = ml.value;
+}
+function populateRulesPanel() {
+  ['fermion','photon','scalar','gluon','ghost'].forEach(t => {
+    const r = feynmanRules.propagators[t];
+    const tEl = document.getElementById(`fr-prop-${t}-text`);
+    const lEl = document.getElementById(`fr-prop-${t}-latex`);
+    if (tEl) tEl.value = r.text;
+    if (lEl) lEl.value = r.latex;
+  });
+  Object.keys(feynmanRules.external).forEach(k => {
+    const tEl = document.getElementById(`fr-ext-${k}-text`);
+    const lEl = document.getElementById(`fr-ext-${k}-latex`);
+    if (tEl) tEl.value = feynmanRules.external[k].text;
+    if (lEl) lEl.value = feynmanRules.external[k].latex;
+  });
+  const mt = document.getElementById('fr-measure-text');
+  const ml = document.getElementById('fr-measure-latex');
+  if (mt) mt.value = feynmanRules.measure.text;
+  if (ml) ml.value = feynmanRules.measure.latex;
+  renderVertexRulesList();
+}
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function renderVertexRulesList() {
+  const list = document.getElementById('vr-list');
+  if (!list) return;
+  list.innerHTML = '';
+  feynmanRules.vertices.forEach((vr, i) => {
+    const row = document.createElement('div');
+    row.className = 'fr-row';
+    row.style.marginBottom = '2px';
+    row.innerHTML = `
+      <input type="text" class="fr-inp" style="flex:0 0 50px;text-align:center" placeholder="label" value="${escHtml(vr.label)}">
+      <input type="text" class="fr-inp" placeholder="display text" value="${escHtml(vr.text)}">
+      <input type="text" class="fr-inp-latex" placeholder="LaTeX" value="${escHtml(vr.latex)}">
+      <button class="tmpl-del" title="Remove">×</button>
+    `;
+    const inputs = row.querySelectorAll('input');
+    const autoRebuild = () => { if (latexAmplitude) buildAmplitude(); };
+    inputs[0].addEventListener('input', e => { feynmanRules.vertices[i].label = e.target.value; autoRebuild(); });
+    inputs[1].addEventListener('input', e => { feynmanRules.vertices[i].text  = e.target.value; autoRebuild(); });
+    inputs[2].addEventListener('input', e => { feynmanRules.vertices[i].latex = e.target.value; autoRebuild(); });
+    row.querySelector('.tmpl-del').addEventListener('click', () => {
+      feynmanRules.vertices.splice(i, 1);
+      renderVertexRulesList();
+      autoRebuild();
+    });
+    list.appendChild(row);
+  });
+}
+
+function buildAmplitude() {
+  readRulesFromPanel();
+  const display = document.getElementById('amp-display');
+  if (!verts.length) { display.textContent = 'No diagram drawn yet.'; latexAmplitude=''; return; }
+
+  const uSub = n => String(n).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]||c).join('');
+
+  // ── Find connected components ────────────────────────────────────────────────
+  const compSeen = new Set();
+  const components = [];
+  verts.forEach(v => {
+    if (compSeen.has(v.id)) return;
+    const comp = connectedComponent(v.id);
+    comp.verts.forEach(cv => compSeen.add(cv.id));
+    if (comp.edges.length || comp.verts.length) components.push(comp);
+  });
+
+  // ── Per-component amplitude ──────────────────────────────────────────────────
+  function buildOneAmplitude(cVerts, cEdges) {
+    const vbl = id => cVerts.find(v => v.id === id);
+
+    const deg = {};
+    cVerts.forEach(v => { deg[v.id] = 0; });
+    cEdges.forEach(e => {
+      if (isLoop(e)) { deg[e.from] += 2; }
+      else { deg[e.from]++; deg[e.to]++; }
+    });
+
+    const isExtV = v => deg[v.id] <= 1;
+    const intVerts = cVerts.filter(v => !isExtV(v));
+
+    const extEdges = cEdges.filter(e =>
+      !isLoop(e) && (isExtV(vbl(e.from)) || isExtV(vbl(e.to)))
+    );
+    const extEdgeIds = new Set(extEdges.map(e => e.id));
+    const intEdges = cEdges.filter(e => !extEdgeIds.has(e.id));
+
+    // Loop count: L = E_int - V_int + C_int
+    const intCompVis = new Set();
+    let numIntComp = 0;
+    intVerts.forEach(v => {
+      if (intCompVis.has(v.id)) return;
+      numIntComp++;
+      const cq = [v.id]; intCompVis.add(v.id);
+      while (cq.length) {
+        const vid = cq.shift();
+        intEdges.forEach(e => {
+          if (isLoop(e)) return;
+          const oth = e.from === vid ? e.to : (e.to === vid ? e.from : null);
+          if (oth && !intCompVis.has(oth)) { intCompVis.add(oth); cq.push(oth); }
+        });
+      }
+    });
+    const numLoops = Math.max(0, intEdges.length - intVerts.length + numIntComp);
+
+    // Momentum labels
+    const extMom = {};
+    extEdges.forEach((e, i) => { extMom[e.id] = { text: 'p'+uSub(i+1), latex: `p_{${i+1}}` }; });
+    const loopMoms = Array.from({length: numLoops}, (_, i) =>
+      ({ text: 'ℓ'+uSub(i+1), latex: `\\ell_{${i+1}}` })
+    );
+
+    // Momentum coefficient vectors
+    const nExt = extEdges.length, nBasis = nExt + numLoops;
+    const zV = () => new Array(nBasis).fill(0);
+    const addV = (a, b) => a.map((x, i) => x + b[i]);
+    const scaleV = (a, s) => a.map(x => x * s);
+
+    const edgeCoeff = {};
+    extEdges.forEach((e, i) => { const v = zV(); v[i] = 1; edgeCoeff[e.id] = v; });
+
+    const inSpanTree = new Set(), spanVisited = new Set();
+    cVerts.forEach(startV => {
+      if (spanVisited.has(startV.id)) return;
+      spanVisited.add(startV.id);
+      const spanQ = [startV.id];
+      while (spanQ.length) {
+        const vid = spanQ.shift();
+        cEdges.forEach(e => {
+          if (isLoop(e) || (e.from !== vid && e.to !== vid)) return;
+          const other = e.from === vid ? e.to : e.from;
+          if (!spanVisited.has(other)) { spanVisited.add(other); inSpanTree.add(e.id); spanQ.push(other); }
+        });
+      }
+    });
+
+    let loopUsed = 0;
+    intEdges.forEach(e => {
+      if (isLoop(e) || !inSpanTree.has(e.id)) { const v = zV(); v[nExt + loopUsed++] = 1; edgeCoeff[e.id] = v; }
+    });
+
+    const propVisited = new Set(), propQ = [];
+    const seed = vid => { if (!propVisited.has(vid)) { propVisited.add(vid); propQ.push(vid); } };
+    cVerts.forEach(v => seed(v.id));
+    while (propQ.length) {
+      const vid = propQ.shift();
+      const inc = cEdges.filter(e => !isLoop(e) && (e.from === vid || e.to === vid));
+      inc.forEach(e => {
+        if (edgeCoeff[e.id] !== undefined || !inSpanTree.has(e.id)) return;
+        const others = inc.filter(f => f.id !== e.id);
+        if (others.some(f => edgeCoeff[f.id] === undefined)) return;
+        let sum = zV();
+        others.forEach(f => { sum = addV(sum, scaleV(edgeCoeff[f.id], f.to === vid ? 1 : -1)); });
+        edgeCoeff[e.id] = scaleV(sum, e.to === vid ? -1 : 1);
+        seed(e.from === vid ? e.to : e.from);
+      });
+    }
+
+    const vecToMom = coeff => {
+      if (!coeff) return { text: '?', latex: '?' };
+      const terms = [];
+      extEdges.forEach((e, i) => { const c = coeff[i]; if (c !== 0) terms.push({ c, t: extMom[e.id].text, l: extMom[e.id].latex }); });
+      for (let j = 0; j < numLoops; j++) { const c = coeff[nExt+j]; if (c !== 0) terms.push({ c, t: loopMoms[j].text, l: loopMoms[j].latex }); }
+      if (!terms.length) return { text: '0', latex: '0' };
+      const fmt = useL => terms.map(({c,t,l}, i) => {
+        const nm = useL ? l : t;
+        return c === 1 ? (i > 0 ? '+' : '') + nm : c === -1 ? '-' + nm : (i > 0 && c > 0 ? '+' : '') + c + nm;
+      }).join('');
+      const ts = fmt(false), ls = fmt(true);
+      const wrap = terms.length > 1 || ts.startsWith('-');
+      return { text: wrap ? `(${ts})` : ts, latex: wrap ? `(${ls})` : ls };
+    };
+
+    const compMom = {};
+    intEdges.forEach(e => { compMom[e.id] = vecToMom(edgeCoeff[e.id]); });
+
+    const subL = (tpl, mom, useLatex) => tpl.replace(/{l}/g, useLatex ? mom.latex : mom.text);
+
+    // Mandelstam detection — for tree-level 2→2 (exactly 4 ext legs, 0 loops)
+    // Returns 's', 't', 'u', or null.
+    const detectMandelstam = coeff => {
+      if (nExt !== 4 || numLoops > 0) return null;
+      if (coeff.slice(nExt).some(c => c !== 0)) return null;
+      const e4 = coeff.slice(0, 4);
+      const nz = e4.filter(c => c !== 0);
+      if (nz.length !== 2) return null;
+      const first = e4.findIndex(c => c !== 0);
+      const norm = e4[first] < 0 ? e4.map(c => -c) : [...e4];
+      const key = norm.join(',');
+      return { '1,1,0,0':'s','0,0,1,1':'s','1,0,-1,0':'t','0,1,0,-1':'t','1,0,0,-1':'u','0,1,-1,0':'u' }[key] || null;
+    };
+
+    // Returns {text,latex} for the SQUARED propagator momentum (uses Mandelstam when possible)
+    const vecToMomSq = coeff => {
+      const mand = detectMandelstam(coeff);
+      if (mand) return { text: mand, latex: mand };
+      const mom = vecToMom(coeff);
+      // Wrap in parens if multi-term, then append ²
+      const needsParen = mom.text !== mom.text.replace(/[+\-]/, '') || mom.text.startsWith('-');
+      const ts = needsParen ? `(${mom.text})²` : `${mom.text}²`;
+      const ls = `{${mom.latex}}^2`;
+      return { text: ts, latex: ls };
+    };
+
+    // Template substitution: {p} → momentum, {p2} → squared momentum
+    const sub = (tpl, mom, momSq, useLatex) =>
+      tpl.replace(/{p2}/g, useLatex ? momSq.latex : momSq.text)
+         .replace(/{p}/g,  useLatex ? mom.latex    : mom.text);
+    // For external-state templates which only use {p}:
+    const subExt = (tpl, mom, useLatex) => tpl.replace(/{p}/g, useLatex ? mom.latex : mom.text);
+
+    // Lorentz indices (reset per component so indices stay small)
+    const GRKT = ['μ','ν','ρ','σ','κ','τ','ω','α','β','δ'];
+    const GRKL = ['\\mu','\\nu','\\rho','\\sigma','\\kappa','\\tau','\\omega','\\alpha','\\beta','\\delta'];
+    let lIdxCtr = 0;
+    const nli = () => lIdxCtr++;
+
+    const intEdgeLrtz = {};
+    intEdges.forEach(e => {
+      if (e.type === 'photon' || e.type === 'gluon') intEdgeLrtz[e.id] = { a: nli(), b: nli() };
+    });
+    const extEdgeLrtz = {};
+    extEdges.forEach(e => {
+      if (e.type === 'photon' || e.type === 'gluon') extEdgeLrtz[e.id] = nli();
+    });
+
+    const vertLrtz = {};
+    const pushVL = (vid, idx) => { if (!vertLrtz[vid]) vertLrtz[vid] = []; vertLrtz[vid].push(idx); };
+    [...intEdges].sort((a,b) => a.id-b.id).forEach(e => {
+      if (e.type === 'photon' || e.type === 'gluon') { pushVL(e.from, intEdgeLrtz[e.id].a); pushVL(e.to, intEdgeLrtz[e.id].b); }
+    });
+    [...extEdges].sort((a,b) => a.id-b.id).forEach(e => {
+      if (e.type === 'photon' || e.type === 'gluon') {
+        const ivid = isExtV(vbl(e.from)) ? e.to : e.from;
+        pushVL(ivid, extEdgeLrtz[e.id]);
+      }
+    });
+
+    const replLrtz = (tpl, idxArr, useLatex) => {
+      const gen = useLatex ? GRKL : GRKT;
+      let s = tpl;
+      idxArr.forEach((idx, i) => {
+        if (i < gen.length) {
+          const rep = useLatex ? (idx < GRKL.length ? GRKL[idx] : `\\mu_{${idx}}`) : (idx < GRKT.length ? GRKT[idx] : `μ_{${idx}}`);
+          s = s.split(gen[i]).join(rep);
+        }
+      });
+      return s;
+    };
+
+    // Vertex signatures
+    const vertSig = {};
+    intVerts.forEach(v => {
+      const sig = {};
+      cEdges.forEach(e => {
+        if (isLoop(e) && e.from === v.id)          { sig[e.type] = (sig[e.type]||0) + 2; }
+        else if (e.from === v.id || e.to === v.id) { sig[e.type] = (sig[e.type]||0) + 1; }
+      });
+      vertSig[v.id] = sig;
+    });
+    const sigMatch = (ruleSig, vSig) => {
+      if (!ruleSig) return false;
+      const rk = Object.keys(ruleSig), vk = Object.keys(vSig);
+      return rk.length === vk.length && rk.every(k => ruleSig[k] === vSig[k]);
+    };
+
+    // Build factor list
+    const factors = [];
+
+    loopMoms.forEach(lm => {
+      factors.push({ text: subL(feynmanRules.measure.text, lm, false), latex: subL(feynmanRules.measure.latex, lm, true), comment: 'loop integral' });
+    });
+
+    intVerts.forEach(v => {
+      if (v.style === 'none' || deg[v.id] === 0) return;
+      const vrByLabel = feynmanRules.vertices.find(r => r.label && r.label === v.label);
+      const vrBySig   = !vrByLabel && feynmanRules.vertices.find(r => sigMatch(r.sig, vertSig[v.id]));
+      const vr = vrByLabel || vrBySig;
+      const vli = vertLrtz[v.id] || [];
+      if (vr) {
+        factors.push({ text: replLrtz(vr.text, vli, false), latex: replLrtz(vr.latex, vli, true), comment: `vertex (${vrBySig ? vr.label+' [auto]' : v.label})` });
+      } else {
+        const lbl = v.label || '?';
+        factors.push({ text: `[V_{${lbl}}]`, latex: `V_{\\text{${lbl}}}`, comment: `vertex (${lbl}) — add rule in panel` });
+      }
+    });
+
+    intEdges.forEach(e => {
+      const mom    = compMom[e.id]         || { text: '?', latex: '?' };
+      const momSq  = edgeCoeff[e.id] ? vecToMomSq(edgeCoeff[e.id]) : { text: `${mom.text}²`, latex: `{${mom.latex}}^2` };
+      const mand   = edgeCoeff[e.id] ? detectMandelstam(edgeCoeff[e.id]) : null;
+      const pr = feynmanRules.propagators[e.type];
+      if (pr) {
+        const eli = intEdgeLrtz[e.id], idxPair = eli ? [eli.a, eli.b] : [];
+        const commentMom = mand ? `${mom.text} [${mand}]` : mom.text;
+        factors.push({ text: replLrtz(sub(pr.text, mom, momSq, false), idxPair, false), latex: replLrtz(sub(pr.latex, mom, momSq, true), idxPair, true), comment: `${e.type} prop (${commentMom}${e.label ? ', '+e.label : ''})` });
+      } else {
+        factors.push({ text: `Δ_${e.type}(${mom.text})`, latex: `\\Delta_{${e.type}}(${mom.latex})`, comment: e.type+' propagator' });
+      }
+    });
+
+    extEdges.forEach(e => {
+      const mom = extMom[e.id];
+      const fromIsExt = isExtV(vbl(e.from));
+      let dirKey;
+      if (e.type === 'fermion' || e.type === 'ghost') {
+        dirKey = e.type + ((e.reversed ? !fromIsExt : fromIsExt) ? '_in' : '_out');
+      } else {
+        dirKey = e.type + '_in';
+      }
+      const er = feynmanRules.external[dirKey] || feynmanRules.external[e.type+'_in'];
+      const inout = dirKey.endsWith('_out') ? 'out' : 'in';
+      const eli = extEdgeLrtz[e.id], idxSingle = eli !== undefined ? [eli] : [];
+      if (er) {
+        factors.push({ text: replLrtz(subExt(er.text, mom, false), idxSingle, false), latex: replLrtz(subExt(er.latex, mom, true), idxSingle, true), comment: `${e.type} ext ${inout} (${mom.text}${e.label ? ', '+e.label : ''})` });
+      } else {
+        factors.push({ text: mom.text, latex: mom.latex, comment: 'ext '+e.type });
+      }
+    });
+
+    return { factors, intEdges, extEdges, intVerts, numLoops, compMom };
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  const COL = 36;
+  const results = components.map(c => buildOneAmplitude(c.verts, c.edges));
+  const multi = results.length > 1;
+  const allLines = [];
+
+  results.forEach((res, ci) => {
+    const { factors, intEdges, intVerts, extEdges, numLoops, compMom } = res;
+    const lbl = multi ? `iM${uSub(ci+1)}` : 'iM';
+    if (multi) allLines.push(`┌── Diagram ${ci+1} ${'─'.repeat(30)}`);
+    allLines.push(`${lbl} =`);
+    if (!factors.length) {
+      allLines.push('  (no internal structure)');
+    } else {
+      factors.forEach((f, i) => {
+        const pfx = i === 0 ? '    ' : '  × ';
+        const pad = f.text.length < COL ? f.text + ' '.repeat(COL - f.text.length) : f.text;
+        allLines.push(`${pfx}${pad}  ← ${f.comment}`);
+      });
+    }
+    if (intEdges.length) {
+      allLines.push('');
+      allLines.push('  Internal momenta:');
+      intEdges.forEach(e => {
+        const mom = compMom[e.id];
+        allLines.push(`    ${e.type}${e.label ? ' ('+e.label+')' : ''}: ${mom ? mom.text : '?'}`);
+      });
+    }
+    allLines.push('');
+    allLines.push(`  ── ${intVerts.length} vertices  ${intEdges.length} int. lines  ${extEdges.length} ext. legs  ${numLoops} loop(s)`);
+    allLines.push('');
+  });
+
+  // Full amplitude line
+  allLines.push('Full amplitude:');
+  if (multi) {
+    allLines.push('  iM = ' + results.map((r, i) =>
+      r.factors.length ? `(${r.factors.map(f => f.text).join(' × ')})` : '1'
+    ).join(' + '));
+    latexAmplitude = 'i\\mathcal{M} = ' + results.map(r =>
+      r.factors.length ? r.factors.map(f => f.latex).join(' \\cdot ') : '1'
+    ).join(' + ');
+  } else {
+    const { factors } = results[0];
+    allLines.push('  iM = ' + (factors.length ? factors.map(f => f.text).join(' × ') : '1'));
+    latexAmplitude = factors.length
+      ? 'i\\mathcal{M} = ' + factors.map(f => f.latex).join(' \\cdot ')
+      : 'i\\mathcal{M} = 1';
+  }
+
+  display.textContent = allLines.join('\n');
+}
+
+// ─── |M|² calculator ─────────────────────────────────────────────────────────
+function buildAmpSquared() {
+  readRulesFromPanel();
+  const display = document.getElementById('amp-display');
+  if (!verts.length) { display.textContent = 'No diagram drawn yet.'; latexAmplitude=''; return; }
+
+  const uSub = n => String(n).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]||c).join('');
+
+  // Find connected components
+  const compSeen = new Set();
+  const components = [];
+  verts.forEach(v => {
+    if (compSeen.has(v.id)) return;
+    const comp = connectedComponent(v.id);
+    comp.verts.forEach(cv => compSeen.add(cv.id));
+    if (comp.edges.length || comp.verts.length) components.push(comp);
+  });
+
+  // ── Per-component |M|² ───────────────────────────────────────────────────────
+  function oneAmpSq(cVerts, cEdges) {
+    const vbl = id => cVerts.find(v => v.id === id);
+
+    // Degrees
+    const deg = {};
+    cVerts.forEach(v => { deg[v.id] = 0; });
+    cEdges.forEach(e => { if (isLoop(e)) deg[e.from] += 2; else { deg[e.from]++; deg[e.to]++; } });
+    const isExtV = v => deg[v.id] <= 1;
+
+    const extEdges = cEdges.filter(e => !isLoop(e) && (isExtV(vbl(e.from)) || isExtV(vbl(e.to))));
+    const extEdgeIds = new Set(extEdges.map(e => e.id));
+    const intEdges = cEdges.filter(e => !extEdgeIds.has(e.id));
+    const intVerts = cVerts.filter(v => !isExtV(v) && v.style !== 'none' && deg[v.id] > 0);
+
+    // Momentum labels (reuse same scheme as iM)
+    const nExt = extEdges.length;
+    const extMom = {};
+    extEdges.forEach((e, i) => { extMom[e.id] = { text: 'p'+uSub(i+1), latex: `p_{${i+1}}` }; });
+
+    // Internal-line loop count
+    const intCompVis = new Set();
+    let numIntComp = 0;
+    intVerts.forEach(v => {
+      if (intCompVis.has(v.id)) return; numIntComp++;
+      const q = [v.id]; intCompVis.add(v.id);
+      while (q.length) { const vid = q.shift(); intEdges.forEach(e => { if (isLoop(e)) return; const o = e.from===vid?e.to:(e.to===vid?e.from:null); if (o&&!intCompVis.has(o)){intCompVis.add(o);q.push(o);} }); }
+    });
+    const numLoops = Math.max(0, intEdges.length - intVerts.length + numIntComp);
+    const loopMoms = Array.from({length: numLoops}, (_, i) => ({ text: 'ℓ'+uSub(i+1), latex: `\\ell_{${i+1}}` }));
+
+    // ── Momentum routing (same as buildOneAmplitude) for Mandelstam detection ──
+    const nBasis = nExt + numLoops;
+    const zV2 = () => new Array(nBasis).fill(0);
+    const addV2 = (a, b) => a.map((x, i) => x + b[i]);
+    const scaleV2 = (a, s) => a.map(x => x * s);
+    const edgeCoeff2 = {};
+    extEdges.forEach((e, i) => { const v = zV2(); v[i] = 1; edgeCoeff2[e.id] = v; });
+    const inSpan2 = new Set(), spanVis2 = new Set();
+    cVerts.forEach(sv => {
+      if (spanVis2.has(sv.id)) return; spanVis2.add(sv.id);
+      const sq = [sv.id];
+      while (sq.length) { const vid = sq.shift(); cEdges.forEach(e => { if (isLoop(e)||(e.from!==vid&&e.to!==vid)) return; const o=e.from===vid?e.to:e.from; if (!spanVis2.has(o)){spanVis2.add(o);inSpan2.add(e.id);sq.push(o);} }); }
+    });
+    let lu2 = 0;
+    intEdges.forEach(e => { if (isLoop(e)||!inSpan2.has(e.id)){const v=zV2();v[nExt+lu2++]=1;edgeCoeff2[e.id]=v;} });
+    const pv2 = new Set(), pq2 = [];
+    cVerts.forEach(v => { if (!pv2.has(v.id)){pv2.add(v.id);pq2.push(v.id);} });
+    while (pq2.length) {
+      const vid = pq2.shift();
+      const inc = cEdges.filter(e => !isLoop(e)&&(e.from===vid||e.to===vid));
+      inc.forEach(e => {
+        if (edgeCoeff2[e.id]!==undefined||!inSpan2.has(e.id)) return;
+        const others = inc.filter(f=>f.id!==e.id);
+        if (others.some(f=>edgeCoeff2[f.id]===undefined)) return;
+        let sum=zV2(); others.forEach(f=>{sum=addV2(sum,scaleV2(edgeCoeff2[f.id],f.to===vid?1:-1));});
+        edgeCoeff2[e.id]=scaleV2(sum,e.to===vid?-1:1);
+        const o=e.from===vid?e.to:e.from; if(!pv2.has(o)){pv2.add(o);pq2.push(o);}
+      });
+    }
+
+    // Mandelstam detection (same logic as in buildOneAmplitude)
+    const detectMand2 = coeff => {
+      if (nExt !== 4 || numLoops > 0) return null;
+      if (coeff.slice(nExt).some(c => c !== 0)) return null;
+      const e4 = coeff.slice(0, 4), nz = e4.filter(c => c !== 0);
+      if (nz.length !== 2) return null;
+      const fi = e4.findIndex(c => c !== 0);
+      const norm = e4[fi] < 0 ? e4.map(c => -c) : [...e4];
+      return { '1,1,0,0':'s','0,0,1,1':'s','1,0,-1,0':'t','0,1,0,-1':'t','1,0,0,-1':'u','0,1,-1,0':'u' }[norm.join(',')] || null;
+    };
+
+    // ── Fermion chain extraction ──────────────────────────────────────────────
+    const fermEdgesAll = cEdges.filter(e => e.type === 'fermion');
+    const fermOpen = fermEdgesAll.filter(e => !isLoop(e));
+
+    // Build fermion adjacency (internal vert → list of {edge, neighbor})
+    const fadj = {};
+    cVerts.forEach(v => { fadj[v.id] = []; });
+    fermOpen.forEach(e => { fadj[e.from].push({e, nbr: e.to}); fadj[e.to].push({e, nbr: e.from}); });
+
+    const fVisited = new Set();
+    const chains = []; // [{verts, fermEdges, closed}]
+
+    // Open chains: start from external verts that have a fermion edge
+    cVerts.filter(v => isExtV(v) && fadj[v.id].length).forEach(startV => {
+      if (fVisited.has(startV.id)) return;
+      fVisited.add(startV.id);
+      const chain = { verts: [startV], fermEdges: [], closed: false };
+      let curr = startV, prevE = null;
+      while (true) {
+        const nxt = fadj[curr.id].find(x => x.e !== prevE);
+        if (!nxt) break;
+        chain.fermEdges.push(nxt.e);
+        const nv = vbl(nxt.nbr);
+        chain.verts.push(nv);
+        if (fVisited.has(nv.id) || isExtV(nv)) break;
+        fVisited.add(nv.id); curr = nv; prevE = nxt.e;
+      }
+      chains.push(chain);
+    });
+
+    // Closed loops: unvisited verts still connected by fermion edges
+    cVerts.filter(v => !isExtV(v) && fadj[v.id].length && !fVisited.has(v.id)).forEach(startV => {
+      if (fVisited.has(startV.id)) return;
+      fVisited.add(startV.id);
+      const chain = { verts: [startV], fermEdges: [], closed: true };
+      let curr = startV, prevE = null;
+      while (true) {
+        const nxt = fadj[curr.id].find(x => x.e !== prevE && !chain.fermEdges.includes(x.e));
+        if (!nxt) break;
+        chain.fermEdges.push(nxt.e);
+        const nv = vbl(nxt.nbr);
+        if (nv.id === startV.id) break;
+        if (fVisited.has(nv.id)) break;
+        fVisited.add(nv.id); chain.verts.push(nv); curr = nv; prevE = nxt.e;
+      }
+      chains.push(chain);
+    });
+
+    // Self-loop fermion edges
+    fermEdgesAll.filter(e => isLoop(e)).forEach(e => {
+      chains.push({ verts: [vbl(e.from)], fermEdges: [e], closed: true, selfLoop: true });
+    });
+
+    // ── Format chains as traces ───────────────────────────────────────────────
+    // Each internal boson edge gets two Greek letters: a for the from-chain, b for the to-chain.
+    // Both are written raised (γ^μ, γ^ν). The Lorentz metric η_{μν} in the propagator
+    // contracts them between the two traces: Tr[...γ^μ...] × (η_{μν}/q⁴) × Tr[...γ^ν...].
+    const GRKT = ['μ','ν','ρ','σ','κ','τ','ω','α','β','δ'];
+    let lIdx = 0;
+    const nextIdx = () => lIdx < GRKT.length ? GRKT[lIdx++] : `μ${lIdx++ - GRKT.length}`;
+
+    // bosonIdx: edge.id → {a, b}  (a = from-chain index, b = to-chain index)
+    const bosonIdx = {};
+    intEdges.filter(e => e.type==='photon'||e.type==='gluon').forEach(e => {
+      bosonIdx[e.id] = { a: nextIdx(), b: nextIdx() };
+    });
+    extEdges.filter(e => e.type==='photon'||e.type==='gluon').forEach(e => {
+      bosonIdx[e.id] = { a: nextIdx(), b: null };
+    });
+
+    // vertBosonIdx: vid → [Greek letter, ...]
+    const vertBosonIdx = {};
+    [...intEdges, ...extEdges].filter(e => e.type==='photon'||e.type==='gluon').forEach(e => {
+      const bi = bosonIdx[e.id];
+      if (!bi) return;
+      if (extEdgeIds.has(e.id)) {
+        const ivid = isExtV(vbl(e.from)) ? e.to : e.from;
+        if (!vertBosonIdx[ivid]) vertBosonIdx[ivid] = [];
+        vertBosonIdx[ivid].push(bi.a);
+      } else {
+        if (!vertBosonIdx[e.from]) vertBosonIdx[e.from] = [];
+        if (!vertBosonIdx[e.to])   vertBosonIdx[e.to]   = [];
+        vertBosonIdx[e.from].push(bi.a);
+        vertBosonIdx[e.to].push(bi.b);
+      }
+    });
+
+    const vertGamma = v => {
+      const idxs = vertBosonIdx[v.id] || [];
+      return idxs.length ? idxs.map(i => `γ^${i}`).join('') : 'Γ';
+    };
+
+    const fermMom = (e, fromVid) => {
+      // Propagator momentum label — use the external mom label if we know it, else generic k
+      const eMom = extMom[e.id];
+      return eMom ? eMom.text : `k`;
+    };
+
+    // External spinor label at a stub vertex connected via fermion edge
+    const spinorLabel = (stubV, fermE) => {
+      const fromIsStub = stubV.id === fermE.from;
+      const extE = extEdges.find(ee => ee.from === stubV.id || ee.to === stubV.id);
+      const pLabel = extE ? extMom[extE.id].text : '?';
+      // Arrow direction determines particle vs antiparticle
+      const arrowIn = fermE.reversed ? !fromIsStub : fromIsStub;
+      // stub is at the arrow SOURCE → u(p) spinor (incoming fermion / outgoing antifermion)
+      return arrowIn ? `(/${pLabel}+m)` : `(/${pLabel}−m)`;
+    };
+
+    // Format one chain as a trace
+    const traceStr = (chain, useLatex) => {
+      const parts = ['Tr['];
+      chain.verts.forEach((v, i) => {
+        if (i > 0) {
+          // Fermion propagator between verts[i-1] and verts[i]
+          const fe = chain.fermEdges[i-1];
+          const isFermExt = extEdgeIds.has(fe.id);
+          if (!isFermExt) {
+            const eMom = extMom[fe.id];
+            const pLbl = eMom ? eMom.text : `k${uSub(i)}`;
+            parts.push(` (/${pLbl}+m)/(${pLbl}²−m²)`);
+          }
+        }
+        const isStub = isExtV(v);
+        if (isStub) {
+          // External spinor completeness relation
+          const fe = chain.fermEdges[i === 0 ? 0 : chain.fermEdges.length - 1];
+          parts.push(spinorLabel(v, fe));
+        } else {
+          parts.push(vertGamma(v));
+        }
+      });
+      if (chain.closed) parts.push(']');
+      // Conjugate side (for open chains only – closed traces already include both M and M†)
+      if (!chain.closed && chain.verts.length >= 2) {
+        // Reversed copy of internal verts (the M† part)
+        const innerVerts = chain.verts.slice(1, chain.verts.length - 1);
+        [...innerVerts].reverse().forEach((v, i) => {
+          const fe = chain.fermEdges[chain.fermEdges.length - 2 - i];
+          const isFermExt = extEdgeIds.has(fe.id);
+          if (!isFermExt) {
+            const eMom = extMom[fe.id];
+            const pLbl = eMom ? eMom.text : `k${uSub(i)}`;
+            parts.push(` (/${pLbl}+m)/(${pLbl}²−m²)`);
+          }
+          parts.push(vertGamma(v));
+        });
+        parts.push(']');
+      }
+      return parts.join('');
+    };
+
+    // ── Assemble output ───────────────────────────────────────────────────────
+    const lines = [];
+
+    // Spin-averaging factor
+    let nAvg = 1;
+    const initFermExtEdges = extEdges.filter(e => e.type==='fermion');
+    const initPhotExtEdges = extEdges.filter(e => e.type==='photon'||e.type==='gluon');
+    // Heuristic: half of external legs are "initial state" — user can adjust
+    const nInitFerm = Math.ceil(initFermExtEdges.length / 2);
+    const nInitPhot = Math.ceil(initPhotExtEdges.length / 2);
+    nAvg = Math.pow(2, nInitFerm) * Math.pow(2, nInitPhot);
+    if (nAvg > 1) lines.push(`Spin/pol. average:  1/${nAvg}   (${nInitFerm} initial fermion leg${nInitFerm!==1?'s':''}, ${nInitPhot} initial boson leg${nInitPhot!==1?'s':''})`);
+
+    // Fermion loop sign
+    const nFermLoops = chains.filter(c => c.closed).length;
+    if (nFermLoops) lines.push(`Fermion loop sign:  (−1)^${nFermLoops} = ${Math.pow(-1,nFermLoops)}`);
+
+    // Loop integrals
+    if (numLoops) {
+      lines.push(`Loop integrals:     ` + loopMoms.map(lm => `∫d⁴${lm.text}/(2π)⁴`).join(' × ') + ' (twice — once for M, once for M†)');
+    }
+
+    lines.push('');
+
+    // Fermion traces
+    if (chains.length) {
+      lines.push('Fermion traces:');
+      chains.forEach((chain, ci) => {
+        const ts = traceStr(chain, false);
+        const lbl = chain.closed ? `  Loop ${ci+1}:  ` : `  Chain ${ci+1}: `;
+        lines.push(lbl + ts);
+      });
+      lines.push('');
+    }
+
+    // Boson propagators (squared denominators)
+    const bosonPropEdges = intEdges.filter(e => e.type==='photon'||e.type==='gluon');
+    const scalarPropEdges = intEdges.filter(e => e.type!=='fermion'&&e.type!=='photon'&&e.type!=='gluon');
+    const fermPropEdges   = intEdges.filter(e => e.type==='fermion');
+
+    // Helper: squared denominator label, using Mandelstam when available
+    const sqDenomLbl = (e, fallbackIdx) => {
+      const coeff = edgeCoeff2[e.id];
+      if (coeff) {
+        const mand = detectMand2(coeff);
+        if (mand) return mand;
+        // Build raw momentum string
+        const terms = [];
+        extEdges.forEach((ee, i) => { const c = coeff[i]; if (c !== 0) terms.push(c===1?`p${uSub(i+1)}`:c===-1?`-p${uSub(i+1)}`:`${c}p${uSub(i+1)}`); });
+        for (let j = 0; j < numLoops; j++) { const c = coeff[nExt+j]; if (c !== 0) terms.push(c===1?`ℓ${uSub(j+1)}`:c===-1?`-ℓ${uSub(j+1)}`:`${c}ℓ${uSub(j+1)}`); }
+        const p = terms.join('+').replace(/\+-/g,'-') || '?';
+        return terms.length > 1 ? `(${p})²` : `${p}²`;
+      }
+      return `k${uSub(fallbackIdx+1)}²`;
+    };
+
+    if (bosonPropEdges.length || scalarPropEdges.length) {
+      lines.push('Propagator factors:');
+      bosonPropEdges.forEach((e, i) => {
+        const idx = bosonIdx[e.id] || {a:'μ', b:'ν'};
+        const dLbl = sqDenomLbl(e, i);
+        const dLbl4 = dLbl.endsWith('²') ? dLbl.slice(0,-1)+'⁴' : `${dLbl}²`;
+        lines.push(`  ${e.type}: −iη^{${idx.a}${idx.b}}/${dLbl}   [|M|²: η_{${idx.a}${idx.b}} contracts Tr[...γ^${idx.a}...] with Tr[...γ^${idx.b}...], denom 1/${dLbl4}]`);
+      });
+      scalarPropEdges.forEach((e, i) => {
+        const dLbl = sqDenomLbl(e, i);
+        lines.push(`  ${e.type}: i/(${dLbl}−m²)   [squared: 1/(${dLbl}−m²)²]`);
+      });
+      lines.push('');
+    }
+
+    // External boson completeness relations
+    if (initPhotExtEdges.length) {
+      lines.push('Boson completeness:');
+      initPhotExtEdges.forEach((e, i) => {
+        const pm = extMom[e.id] || { text: `k${uSub(i+1)}` };
+        const bi = bosonIdx[e.id];
+        const idx = bi ? bi.a : 'μ';
+        lines.push(`  Σ_λ ε^${idx}(${pm.text}) ε*^${idx}(${pm.text}) → −η^{${idx}${idx}'}   (Feynman gauge, Lorentz metric η not δ)`);
+      });
+      lines.push('');
+    }
+
+    // Vertex coupling prefactors
+    const vCouplings = intVerts.map(v => {
+      const vr = feynmanRules.vertices.find(r => r.label && r.label === v.label);
+      if (!vr) return null;
+      // Strip gamma matrices from the text to get the coupling part
+      const coupling = vr.text.replace(/γ\^[^ ]+/g,'').replace(/\s+/g,' ').trim();
+      return coupling || vr.text;
+    }).filter(Boolean);
+
+    if (vCouplings.length) {
+      lines.push('Vertex couplings²:  |' + vCouplings.join(' × ') + '|²');
+      lines.push('');
+    }
+
+    // Summary line
+    const nChains = chains.filter(c=>!c.closed).length;
+    const nLoopCh = chains.filter(c=>c.closed).length;
+    lines.push('─'.repeat(50));
+    const avgStr = nAvg > 1 ? `(1/${nAvg}) × ` : '';
+    const loopStr = numLoops ? loopMoms.map(lm=>`|∫d⁴${lm.text}|²`).join('×') + ' × ' : '';
+    const traceStrs = chains.map((c,i) => traceStr(c, false));
+    const bosonDenoms = bosonPropEdges.map((e,i) => { const d=sqDenomLbl(e,i); return d.endsWith('²') ? d.slice(0,-1)+'⁴' : `${d}²`; });
+    const scDenoms    = scalarPropEdges.map((e,i) => { const d=sqDenomLbl(e,i); return `(${d}−m²)²`; });
+    const denoms = [...bosonDenoms, ...scDenoms];
+    const coupStr = vCouplings.length ? `|${vCouplings.join('×')}|² × ` : '';
+    const fermLoopSign = nFermLoops ? `(−1)^${nFermLoops} × ` : '';
+    const numerStr = traceStrs.length ? traceStrs.join(' × ') : '1';
+    const denomStr = denoms.length ? ' / (' + denoms.join(' × ') + ')' : '';
+    lines.push(`|iM|² = ${avgStr}${fermLoopSign}${loopStr}${coupStr}${numerStr}${denomStr}`);
+
+    return { lines };
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  const allLines = ['|iM|² — spin/polarization summed', ''];
+  const results = components.map(c => oneAmpSq(c.verts, c.edges));
+  const multi = results.length > 1;
+
+  results.forEach((res, ci) => {
+    if (multi) allLines.push(`┌── Diagram ${ci+1} ${'─'.repeat(30)}`);
+    allLines.push(...res.lines);
+    if (multi) allLines.push('');
+  });
+
+  if (multi) {
+    allLines.push('');
+    allLines.push('Combined (disconnected diagrams are independent processes):');
+    allLines.push('  |iM|² = |iM₁|² + |iM₂|² + 2·Re(iM₁(iM₂)*)');
+    allLines.push('  (interference term vanishes for truly disconnected topologies)');
+  }
+
+  allLines.push('');
+  allLines.push('─── Trace identities for evaluation ───────────────────────────────');
+  allLines.push('  Tr[γ^μ γ^ν]           = 4η^{μν}');
+  allLines.push('  Tr[γ^μ γ^ν γ^ρ γ^σ]  = 4(η^{μν}η^{ρσ} − η^{μρ}η^{νσ} + η^{μσ}η^{νρ})');
+  allLines.push('  Tr[odd # of γ]         = 0');
+  allLines.push('  Tr[γ^5 γ^μ γ^ν γ^ρ γ^σ] = 4iε^{μνρσ}');
+  allLines.push('  η^{μν}η_{μν}           = 4   (Minkowski: signature +−−−)');
+
+  display.textContent = allLines.join('\n');
+  latexAmplitude = '';  // clear so Copy LaTeX doesn't give stale M value
+}
+
+// ─── Feynman Rules event listeners ───────────────────────────────────────────
+document.getElementById('btn-toggle-rules').addEventListener('click', () => {
+  const panel = document.getElementById('rules-panel');
+  const btn   = document.getElementById('btn-toggle-rules');
+  const open  = panel.style.display === 'none';
+  panel.style.display = open ? 'flex' : 'none';
+  btn.textContent = open ? 'Feynman Rules ▴' : 'Feynman Rules ▾';
+  btn.classList.toggle('active', open);
+  if (open) populateRulesPanel();
+  resize();
+});
+document.getElementById('btn-build-amp').addEventListener('click', buildAmplitude);
+document.getElementById('btn-to-stepper').addEventListener('click', () => {
+  buildAmplitude();
+  const ampText = document.getElementById('amp-display').textContent;
+  if (!ampText || ampText.startsWith('Draw a diagram')) { alert('Build the amplitude first (iM ▶).'); return; }
+  localStorage.setItem('feynman_iM_export', JSON.stringify({
+    text: ampText, latex: latexAmplitude, timestamp: Date.now()
+  }));
+  const btn = document.getElementById('btn-to-stepper');
+  const orig = btn.textContent;
+  btn.textContent = 'Exported ✓';
+  setTimeout(() => btn.textContent = orig, 2000);
+});
+document.getElementById('btn-copy-latex').addEventListener('click', () => {
+  if (!latexAmplitude) buildAmplitude();
+  if (!latexAmplitude) return;
+  navigator.clipboard.writeText(latexAmplitude).then(() => {
+    const btn = document.getElementById('btn-copy-latex');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  }).catch(() => { prompt('LaTeX amplitude:', latexAmplitude); });
+});
+document.getElementById('btn-add-vr').addEventListener('click', () => {
+  feynmanRules.vertices.push({ label: '', text: '', latex: '' });
+  renderVertexRulesList();
+});
+document.getElementById('btn-save-fr').addEventListener('click', () => {
+  readRulesFromPanel();
+  saveFRules();
+  const btn = document.getElementById('btn-save-fr');
+  const orig = btn.textContent;
+  btn.textContent = 'Saved ✓';
+  setTimeout(() => { btn.textContent = orig; }, 1500);
+});
+document.getElementById('btn-reset-fr').addEventListener('click', () => {
+  if (!confirm('Reset all Feynman rules to defaults?')) return;
+  feynmanRules = JSON.parse(JSON.stringify(FR_DEFAULTS));
+  populateRulesPanel();
+});
+
+// ─── Initial state: a sample QED vertex diagram ──────────────────────────────
+function loadSample() {
+  const cx = Math.round(W/2 / GRID) * GRID;
+  const cy = Math.round(H/2 / GRID) * GRID;
+
+  verts = [
+    {id:1, x:cx-125, y:cy-75,  label:'e⁻', style:'none'},
+    {id:2, x:cx,     y:cy,     label:'e',   style:'dot'},
+    {id:3, x:cx+125, y:cy-75,  label:'e⁻', style:'none'},
+    {id:4, x:cx,     y:cy+100, label:'γ',   style:'none'},
+  ];
+  edges = [
+    {id:5, from:1, to:2, type:'fermion', label:'p₁', reversed:false, cx:0, cy:0},
+    {id:6, from:2, to:3, type:'fermion', label:'p₂', reversed:false, cx:0, cy:0},
+    {id:7, from:4, to:2, type:'photon',  label:'k',  reversed:false, cx:0, cy:0},
+  ];
+  nextId = 10;
+}
+
+loadSample();
+loadTemplates();
+renderTemplates();
+loadFRules();
+setTool('select');
+draw();
+</script>
+</body>
+</html>
