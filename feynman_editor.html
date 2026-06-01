@@ -516,6 +516,119 @@ function builtinTemplates() {
         {fromIdx:3, toIdx:0, type:'gluon', label:'', reversed:false, cx:0, cy:0},
       ]
     },
+    // ── Weak interaction templates ────────────────────────────────────────────
+    {
+      name: 'W lepton vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'lW', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'ℓ',  style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'ν',  style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'W',  style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'fermion', label:'', reversed:true,  cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'photon',  label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'W quark vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'qW', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'u',  style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'d',  style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'W',  style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'photon',  label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'Z vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'Zf', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'f',  style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'f',  style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'Z',  style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'photon',  label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'H–fermion vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'Hf', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'f',  style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'f',  style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'H',  style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'scalar',  label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'WWγ triple gauge',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'WWγ', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'W',   style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'W',   style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'γ',   style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:0, toIdx:1, type:'photon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'photon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'photon', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'WWZ triple gauge',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'WWZ', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'W',   style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'W',   style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'Z',   style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:0, toIdx:1, type:'photon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'photon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'photon', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'HWW vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'HWW', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'W',   style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'W',   style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'H',   style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:0, toIdx:1, type:'photon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'photon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'scalar', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'HZZ vertex',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'HZZ', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'Z',   style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'Z',   style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'H',   style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:0, toIdx:1, type:'photon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'photon', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'scalar', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
     {
       name: 'φ⁴ vertex',
       verts: [
@@ -1637,14 +1750,16 @@ document.getElementById('btn-save-tmpl').addEventListener('click', saveAsTemplat
 const FR_DEFAULTS = {
   propagators: {
     fermion: { text: 'i(/{p}+m)/({p2}−m²)',     latex: '\\frac{i(\\not{{p}}+m)}{{p2}-m^2}' },
-    photon:  { text: '−iη^μν/{p2}',              latex: '\\frac{-i\\eta^{\\mu\\nu}}{{p2}}' },
+    photon:  { text: '−ig_μν/{p2}',               latex: '\\frac{-ig_{\\mu\\nu}}{{p2}}' },
     scalar:  { text: 'i/({p2}−m²)',               latex: '\\frac{i}{{p2}-m^2}' },
-    gluon:   { text: '−iδ^ab η^μν/{p2}',         latex: '\\frac{-i\\delta^{ab}\\eta^{\\mu\\nu}}{{p2}}' },
+    gluon:   { text: '−iδ^ab g_μν/{p2}',          latex: '\\frac{-i\\delta^{ab}g_{\\mu\\nu}}{{p2}}' },
     ghost:   { text: '−iδ^ab/{p2}',               latex: '\\frac{-i\\delta^{ab}}{{p2}}' },
   },
   external: {
-    fermion_in:  { text: 'u({p},s)',              latex: 'u({p},s)' },
-    fermion_out: { text: 'ū({p},s)',              latex: '\\bar{u}({p},s)' },
+    fermion_in:       { text: 'u({p},s)',   latex: 'u({p},s)' },
+    fermion_out:      { text: 'ū({p},s)',  latex: '\\bar{u}({p},s)' },
+    fermion_anti_out: { text: 'v̄({p},s)',  latex: '\\bar{v}({p},s)' },  // incoming antiparticle (arrow out)
+    fermion_anti_in:  { text: 'v({p},s)',  latex: 'v({p},s)' },          // outgoing antiparticle (arrow in)
     photon_in:   { text: 'ε^μ({p},λ)',            latex: '\\varepsilon^{\\mu}({p},\\lambda)' },
     photon_out:  { text: 'ε^μ*({p},λ)',           latex: '\\varepsilon^{*\\mu}({p},\\lambda)' },
     scalar_in:   { text: '1',                     latex: '1' },
@@ -1655,17 +1770,43 @@ const FR_DEFAULTS = {
     ghost_out:   { text: 'η̄^a({p})',             latex: '\\bar{\\eta}^a({p})' },
   },
   vertices: [
-    { label: 'e',  sig: {fermion:2, photon:1}, text: 'iQeγ^μ',                                           latex: 'iQe\\gamma^{\\mu}' },
-    { label: 'q',  sig: {fermion:2, gluon:1}, text: 'ig_sT^aγ^μ',                                        latex: 'ig_s T^a\\gamma^{\\mu}' },
-    { label: '3g', sig: {gluon:3},            text: 'g_sf^{abc}[η^{μν}(p₁-p₂)^ρ+η^{νρ}(p₂-p₃)^μ+η^{ρμ}(p₃-p₁)^ν]',  latex: 'g_s f^{abc}[\\eta^{\\mu\\nu}(p_1{-}p_2)^{\\rho}+\\eta^{\\nu\\rho}(p_2{-}p_3)^{\\mu}+\\eta^{\\rho\\mu}(p_3{-}p_1)^{\\nu}]' },
-    { label: '4g', sig: {gluon:4},            text: '-ig_s²[f^{ace}f^{bde}(η^{μρ}η^{νσ}-η^{μσ}η^{νρ})+f^{ade}f^{bce}(η^{μσ}η^{νρ}-η^{μν}η^{ρσ})+f^{abe}f^{cde}(η^{μν}η^{ρσ}-η^{μρ}η^{νσ})]',  latex: '-ig_s^2[f^{ace}f^{bde}(\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma}-\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho})+f^{ade}f^{bce}(\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho}-\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma})+f^{abe}f^{cde}(\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma}-\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma})]' },
-    { label: 'λ',  sig: {scalar:4},           text: '−iλ',                                               latex: '-i\\lambda' },
+    // ── QED / QCD ──────────────────────────────────────────────────────────────
+    { label: 'e',   sig: {fermion:2, photon:1}, text: 'iQeγ^μ',              latex: 'iQe\\gamma^{\\mu}' },
+    { label: 'q',   sig: {fermion:2, gluon:1},  text: 'ig_sT^aγ^μ',          latex: 'ig_s T^a\\gamma^{\\mu}' },
+    { label: '3g',  sig: {gluon:3},  text: 'g_sf^{abc}[η^{μν}(p₁-p₂)^ρ+η^{νρ}(p₂-p₃)^μ+η^{ρμ}(p₃-p₁)^ν]',  latex: 'g_s f^{abc}[\\eta^{\\mu\\nu}(p_1{-}p_2)^{\\rho}+\\eta^{\\nu\\rho}(p_2{-}p_3)^{\\mu}+\\eta^{\\rho\\mu}(p_3{-}p_1)^{\\nu}]' },
+    { label: '4g',  sig: {gluon:4},  text: '-ig_s²[f^{ace}f^{bde}(η^{μρ}η^{νσ}-η^{μσ}η^{νρ})+f^{ade}f^{bce}(η^{μσ}η^{νρ}-η^{μν}η^{ρσ})+f^{abe}f^{cde}(η^{μν}η^{ρσ}-η^{μρ}η^{νσ})]',  latex: '-ig_s^2[f^{ace}f^{bde}(\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma}-\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho})+f^{ade}f^{bce}(\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho}-\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma})+f^{abe}f^{cde}(\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma}-\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma})]' },
+    { label: 'λ',   sig: {scalar:4}, text: '−iλ',                            latex: '-i\\lambda' },
+    // ── Weak charged current (W boson, draw W as photon-type line) ─────────
+    { label: 'lW',  sig: {fermion:2, photon:1}, text: 'ig/(2√2) γ^μ(1−γ⁵)',
+      latex: '\\frac{ig}{2\\sqrt{2}}\\gamma^{\\mu}(1-\\gamma^5)' },
+    { label: 'qW',  sig: {fermion:2, photon:1}, text: 'iV_{CKM}g/(2√2) γ^μ(1−γ⁵)',
+      latex: '\\frac{iV_{\\mathrm{CKM}}g}{2\\sqrt{2}}\\gamma^{\\mu}(1-\\gamma^5)' },
+    // ── Weak neutral current (Z boson) ──────────────────────────────────────
+    { label: 'Zf',  sig: {fermion:2, photon:1}, text: 'ig/(2cosθ_W) γ^μ(g_V−g_Aγ⁵)',
+      latex: '\\frac{ig}{2\\cos\\theta_W}\\gamma^{\\mu}(g_V-g_A\\gamma^5)' },
+    // ── Higgs–fermion Yukawa ────────────────────────────────────────────────
+    { label: 'Hf',  sig: {fermion:2, scalar:1}, text: '−im_f/v',
+      latex: '-i\\frac{m_f}{v}' },
+    // ── Triple gauge (W/Z/γ drawn as photon-type) ───────────────────────────
+    { label: 'WWγ', sig: {photon:3}, text: 'ie[g_μν(p₁−p₂)^ρ+g_{νρ}(p₂−p₃)^μ+g_{ρμ}(p₃−p₁)^ν]',
+      latex: 'ie[g_{\\mu\\nu}(p_1{-}p_2)^{\\rho}+g_{\\nu\\rho}(p_2{-}p_3)^{\\mu}+g_{\\rho\\mu}(p_3{-}p_1)^{\\nu}]' },
+    { label: 'WWZ', sig: {photon:3}, text: 'igcosθ_W[g_μν(p₁−p₂)^ρ+g_{νρ}(p₂−p₃)^μ+g_{ρμ}(p₃−p₁)^ν]',
+      latex: 'ig\\cos\\theta_W[g_{\\mu\\nu}(p_1{-}p_2)^{\\rho}+g_{\\nu\\rho}(p_2{-}p_3)^{\\mu}+g_{\\rho\\mu}(p_3{-}p_1)^{\\nu}]' },
+    // ── Higgs–gauge couplings (H drawn as scalar, W/Z as photon) ───────────
+    { label: 'HWW', sig: {scalar:1, photon:2}, text: 'igm_W g_μν',
+      latex: 'igm_W g_{\\mu\\nu}' },
+    { label: 'HZZ', sig: {scalar:1, photon:2}, text: 'igm_Z/cosθ_W g_μν',
+      latex: 'i\\frac{gm_Z}{\\cos\\theta_W}g_{\\mu\\nu}' },
+    // ── Higgs self-coupling ────────────────────────────────────────────────
+    { label: 'H³',  sig: {scalar:3}, text: '−3iλv',
+      latex: '-3i\\lambda v' },
   ],
   measure: { text: '∫d⁴{l}/(2π)⁴', latex: '\\int\\!\\frac{d^4{l}}{(2\\pi)^4}' },
 };
 
 let feynmanRules = JSON.parse(JSON.stringify(FR_DEFAULTS));
 let latexAmplitude = '';
+let lastAmplitudeFactors = [];   // saved on every iM ▶ build, used by → Stepper
 
 function saveFRules() {
   try { localStorage.setItem('feynman_rules', JSON.stringify(feynmanRules)); } catch(e) {}
@@ -1676,9 +1817,14 @@ function loadFRules() {
     if (s) feynmanRules = JSON.parse(s);
   } catch(e) {}
   if (!Array.isArray(feynmanRules.vertices)) feynmanRules.vertices = [];
-  // Always overwrite propagator templates from defaults (ensures {p2} placeholder is current).
+  // Always overwrite propagator templates from defaults (ensures index notation is current).
   Object.keys(FR_DEFAULTS.propagators).forEach(t => {
     feynmanRules.propagators[t] = Object.assign({}, FR_DEFAULTS.propagators[t]);
+  });
+  // Always sync external leg rules so antiparticle keys (v, v̄) are present.
+  if (!feynmanRules.external) feynmanRules.external = {};
+  Object.keys(FR_DEFAULTS.external).forEach(k => {
+    if (!feynmanRules.external[k]) feynmanRules.external[k] = Object.assign({}, FR_DEFAULTS.external[k]);
   });
   // Always sync built-in vertex rules: add missing ones, and update text/latex
   // for any default label so stale cached versions get refreshed.
@@ -2018,7 +2164,12 @@ function buildAmplitude() {
       const fromIsExt = isExtV(vbl(e.from));
       let dirKey;
       if (e.type === 'fermion' || e.type === 'ghost') {
-        dirKey = e.type + ((e.reversed ? !fromIsExt : fromIsExt) ? '_in' : '_out');
+        // reversed=true marks an antiparticle line — use v/v̄ instead of u/ū
+        if (e.reversed) {
+          dirKey = e.type + (fromIsExt ? '_anti_out' : '_anti_in');
+        } else {
+          dirKey = e.type + (fromIsExt ? '_in' : '_out');
+        }
       } else {
         dirKey = e.type + '_in';
       }
@@ -2038,6 +2189,7 @@ function buildAmplitude() {
   // ── Render ───────────────────────────────────────────────────────────────────
   const COL = 36;
   const results = components.map(c => buildOneAmplitude(c.verts, c.edges));
+  lastAmplitudeFactors = results.flatMap(r => r.factors);  // save for → Stepper export
   const multi = results.length > 1;
   const allLines = [];
 
@@ -2490,10 +2642,12 @@ document.getElementById('btn-toggle-rules').addEventListener('click', () => {
 document.getElementById('btn-build-amp').addEventListener('click', buildAmplitude);
 document.getElementById('btn-to-stepper').addEventListener('click', () => {
   buildAmplitude();
-  const ampText = document.getElementById('amp-display').textContent;
-  if (!ampText || ampText.startsWith('Draw a diagram')) { alert('Build the amplitude first (iM ▶).'); return; }
+  if (!lastAmplitudeFactors.length) { alert('Build the amplitude first (iM ▶).'); return; }
+  // Export the mathematical expression for display + comment lines for parsing
+  const iMtext = 'iM = ' + lastAmplitudeFactors.map(f => f.text).join(' × ');
+  const comments = lastAmplitudeFactors.map(f => `← ${f.comment}`).join('\n');
   localStorage.setItem('feynman_iM_export', JSON.stringify({
-    text: ampText, latex: latexAmplitude, timestamp: Date.now()
+    iM: iMtext, comments, latex: latexAmplitude, timestamp: Date.now()
   }));
   const btn = document.getElementById('btn-to-stepper');
   const orig = btn.textContent;
@@ -2530,21 +2684,34 @@ document.getElementById('btn-reset-fr').addEventListener('click', () => {
 
 // ─── Initial state: a sample QED vertex diagram ──────────────────────────────
 function loadSample() {
+  // γγ → e⁺e⁻  (pair production, t-channel)
+  // Two photons come in from the left; e⁻ and e⁺ exit to the right.
+  // One fermion propagator connects the two QED vertices.
   const cx = Math.round(W/2 / GRID) * GRID;
   const cy = Math.round(H/2 / GRID) * GRID;
 
   verts = [
-    {id:1, x:cx-125, y:cy-75,  label:'e⁻', style:'none'},
-    {id:2, x:cx,     y:cy,     label:'e',   style:'dot'},
-    {id:3, x:cx+125, y:cy-75,  label:'e⁻', style:'none'},
-    {id:4, x:cx,     y:cy+100, label:'γ',   style:'none'},
+    // Internal QED vertices
+    {id:1, x:cx-50, y:cy-75,  label:'e', style:'dot',  },  // vertex A (upper)
+    {id:2, x:cx-50, y:cy+75,  label:'e', style:'dot',  },  // vertex B (lower)
+    // External legs
+    {id:3, x:cx-200, y:cy-125, label:'γ₁', style:'none'},  // photon 1 in
+    {id:4, x:cx+125, y:cy-25,  label:'e⁻', style:'none'},  // electron out
+    {id:5, x:cx-200, y:cy+125, label:'γ₂', style:'none'},  // photon 2 in
+    {id:6, x:cx+125, y:cy+25,  label:'e⁺', style:'none'},  // positron out
   ];
   edges = [
-    {id:5, from:1, to:2, type:'fermion', label:'p₁', reversed:false, cx:0, cy:0},
-    {id:6, from:2, to:3, type:'fermion', label:'p₂', reversed:false, cx:0, cy:0},
-    {id:7, from:4, to:2, type:'photon',  label:'k',  reversed:false, cx:0, cy:0},
+    // Internal fermion propagator (t-channel electron)
+    {id:7,  from:1, to:2, type:'fermion', label:'',   reversed:false, cx:0, cy:0},
+    // Photon legs (incoming)
+    {id:8,  from:3, to:1, type:'photon',  label:'k₁', reversed:false, cx:0, cy:0},
+    {id:9,  from:5, to:2, type:'photon',  label:'k₂', reversed:false, cx:0, cy:0},
+    // Electron out (no reversal — standard outgoing e⁻, ū spinor)
+    {id:10, from:1, to:4, type:'fermion', label:'p₃', reversed:false, cx:0, cy:0},
+    // Positron out (reversed — outgoing e⁺, v spinor; arrow points inward toward vertex)
+    {id:11, from:2, to:6, type:'fermion', label:'p₄', reversed:true,  cx:0, cy:0},
   ];
-  nextId = 10;
+  nextId = 15;
 }
 
 loadSample();

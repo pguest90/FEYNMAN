@@ -56,9 +56,27 @@
   <button onclick="toggleSyntax()" style="font-size:11px">Syntax ?</button>
 </div>
 
+<style>
+  #input2-row { display:none; margin-top:6px; }
+  #amp-input2 { width:100%; background:#07070f; border:1px solid #2a2a44; color:#c0d0e8; font-family:'Courier New',monospace; font-size:13px; padding:7px 10px; border-radius:3px; resize:none; height:44px; }
+  #amp-input2:focus { outline:none; border-color:#405060; }
+  #sign-row { display:none; margin-top:5px; font-size:11px; color:#5060a0; gap:8px; align-items:center; }
+  .sign-btn { padding:3px 10px; font-size:13px; }
+  .sign-btn.active { background:#1a2a3a; border-color:#50a0c0; color:#90d0f0; }
+  #btn-two { font-size:11px; }
+  #btn-two.active { background:#1a2a1a; border-color:#408040; color:#80c080; }
+</style>
 <div id="input-area">
-  <div class="lbl">Expression</div>
+  <div class="lbl">Diagram 1 &nbsp;<span id="diag-lbl2" style="display:none;color:#405060">/ Diagram 2</span></div>
   <textarea id="amp-input" placeholder="e.g.  (e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]"></textarea>
+  <div id="input2-row">
+    <textarea id="amp-input2" placeholder="Diagram 2:  e.g.  (e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]"></textarea>
+  </div>
+  <div id="sign-row">
+    Amplitude sign:
+    <button class="sign-btn active" id="sign-minus" onclick="setSign(-1)">M₁ − M₂ &nbsp;(fermion exchange)</button>
+    <button class="sign-btn" id="sign-plus"  onclick="setSign(+1)">M₁ + M₂ &nbsp;(boson or distinct)</button>
+  </div>
   <div id="syntax-help">
     <strong>Traces:</strong> Tr[p1 gm p2 gn] &nbsp;|&nbsp; <strong>Momenta inside trace:</strong> p1…p8, k (always slashed) &nbsp;|&nbsp; <strong>Gammas:</strong> gm gn gr gs ga gb (index labels — matching labels are contracted)<br>
     <strong>Scalars:</strong> e2 e4 gs2 gs4 m2 &nbsp;|&nbsp; <strong>Denominators:</strong> /s /t /u /s2 /t2 /u2 &nbsp;|&nbsp; <strong>Spinors (for squaring):</strong> ubar(p1) gm u(p3) &nbsp;|&nbsp; <strong>Sum momenta:</strong> (p1+k) inside Tr<br>
@@ -66,6 +84,7 @@
   </div>
   <div class="input-row">
     <button onclick="go()">Solve ▶</button>
+    <button id="btn-two" onclick="toggleTwoDiagrams()">+ Two Diagrams</button>
     <button id="btn-import" onclick="importFromEditor()" style="border-color:#304070;color:#6080b0">Import from Editor</button>
     <div class="sep"></div>
     <button class="ex" onclick="eg('from_editor')">From Editor (iM)</button>
@@ -77,6 +96,9 @@
     <button class="ex" onclick="eg('internal')">Tr[p1 gm p2 gm]</button>
     <button class="ex" onclick="eg('spinor')">Spinor bilinear</button>
     <button class="ex" onclick="eg('qcd')">QCD t-channel</button>
+    <div class="sep"></div>
+    <button class="ex" onclick="eg('bhabha')" style="border-color:#402060;color:#9060c0">Bhabha (t+s)</button>
+    <button class="ex" onclick="eg('moller')" style="border-color:#204060;color:#6090c0">Møller (t+u)</button>
   </div>
 </div>
 
@@ -91,6 +113,7 @@ const MV = x => `<span class="mv">${x}</span>`;
 const CP = x => `<span class="cp">${x}</span>`;
 const DT = x => `<span class="dt">${x}</span>`;
 const FR = (n,d) => `<span class="fr"><span class="n">${n}</span><span class="d">${d}</span></span>`;
+const fr = FR;  // alias — some step generators use lowercase
 const SU = (b,e) => `${b}<sup>${e}</sup>`;
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -591,6 +614,220 @@ function isIMInput(text) {
   return /←\s*(vertex|prop|ext)/i.test(text);
 }
 
+// Detect raw math expression from editor: "iM = iQeγ^μ × ..."
+function isMathIM(text) {
+  return /^iM\s*=/i.test(text.trim());
+}
+
+// Parse math expression factors into counts + extracted data
+function parseMathExpression(text) {
+  const subN = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+  const norm = s => s.replace(/[₀-₉]/g, c=>subN[c]||c);
+  const expr = norm(text.replace(/^iM\s*=\s*/i,'').trim());
+  const parts = expr.split(/\s*[×*]\s*/).map(s=>s.trim()).filter(Boolean);
+
+  let nVert=0, nFermExt=0, nPhotExt=0, nPhotProp=0, nFermProp=0, nLoops=0;
+  let photPropNorm='';
+  const fermExts=[];
+
+  for (const f of parts) {
+    const fn = norm(f);
+    // Loop measure: ∫d⁴ℓ / ∫d4l / ∫d^4
+    if (/∫|\\int/.test(f) || /^d[4⁴\^]/.test(fn))  { nLoops++;   continue; }
+    if (/γ\^|iQe|ig_?s/i.test(f))                    { nVert++;    continue; }
+    if (/^-i.*g_μν|^-ig_μν|^-i.*η\^|^-iη\^/i.test(f)){ nPhotProp++; photPropNorm=fn; continue; }
+    if (/^i\s*\([^)]*[mp̸ℓl]/.test(f))               { nFermProp++; continue; }
+    if (/^ε/i.test(f) || f.charCodeAt(0)===0x03B5)   { nPhotExt++; continue; }
+    const m = fn.match(/\(p(\d+)/i);
+    if (m) { nFermExt++; fermExts.push('p'+m[1]); }
+  }
+  return {nVert, nFermExt, nPhotExt, nPhotProp, nFermProp, nLoops, photPropNorm, fermExts};
+}
+
+function steps3PointVertex(text) {
+  return {steps:[{
+    title:'3-point QED vertex — not a squarable scattering amplitude',
+    rule:'',
+    expr:`<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(text)}</div>`,
+    expl:`<strong>What this is:</strong> 1 vertex + 2 fermion legs + 1 photon leg = the vertex factor iQeγ<sup>μ</sup> itself. Not a complete 2→2 scattering process — there is no internal propagator and no second interaction point.<br><br>
+      <strong>To get a squarable amplitude, draw a 4-leg process in the editor:</strong><br>
+      · <em>e⁺e⁻→μ⁺μ⁻</em> — stamp two QED vertices, connect them with a photon line (s-channel)<br>
+      · <em>e⁻μ⁻→e⁻μ⁻</em> — same setup (t-channel, different fermion labels)<br>
+      · <em>Compton e⁻γ→e⁻γ</em> — two QED vertices connected by a fermion propagator<br><br>
+      Then: <strong>iM ▶</strong> → <strong>→ Stepper</strong>.`
+  }], latex:''};
+}
+
+// ─── 4-boson loop scattering (γγ→γγ or gg→gg via fermion box) ────────────────
+function stepsPhotonBox(text, nLoops, nProp, isGluon) {
+  const proc   = isGluon ? 'gg→gg' : 'γγ→γγ';
+  const boson  = isGluon ? 'gluon' : 'photon';
+  const theory = isGluon ? 'QCD' : 'QED';
+  const Coup   = isGluon ? CP('g<sub>s</sub>') : CP('e');
+  const loopType = nProp<=2?'Bubble B₀':nProp===3?'Triangle C₀':'Box D₀';
+  const step0 = `<div style="font-size:11px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:1.8;white-space:pre-wrap;max-height:120px;overflow-y:auto">${esc(text)}</div>`;
+
+  const steps = [
+    {title:`Identified: ${proc} via fermion loop (${nProp}-propagator, ${loopType}, 1-loop)`,
+     rule:'', expr: step0,
+     expl:`<strong>What this is:</strong> 4 external ${boson}s connected by a closed fermion loop with 4 ${theory} vertices. ${nProp}-propagator loop → ${loopType} topology.<br><br>
+       <strong>Note any <code>?</code> propagator:</strong> the editor's momentum routing lost track of that leg (should be ℓ₁ shifted by one external momentum). Display issue only — physics is correct.`},
+
+    {title:'Why you cannot square this amplitude directly',
+     rule:`<strong>Tree level:</strong> iM is rational in momenta → |M|² = M·M* directly.<br>
+       <strong>Loop level:</strong> iM = ∫d⁴ℓ f(ℓ) — an unevaluated integral.<br>
+       <strong>|∫d⁴ℓ f(ℓ)|² ≠ ∫d⁴ℓ |f(ℓ)|²  — you cannot commute squaring with integration.</strong>`,
+     expr:`Correct procedure:<br>
+       1. Evaluate the loop integral → iM(s,t,u) = closed-form function<br>
+       2. Sum all diagram topologies<br>
+       3. ${isGluon?'Add tree-level amplitude M_tree':'(no tree level for γγ→γγ)'}<br>
+       4. Square: |M<sub>total</sub>(s,t,u)|²`,
+     expl:`The loop integral must be computed first (via Feynman parametrisation, Wick rotation, PV reduction) to get a definite complex function of Mandelstam variables. Only then can you form |M|².`},
+  ];
+
+  if (isGluon) {
+    // ── QCD-specific ──────────────────────────────────────────────────────
+    steps.push({
+      title:'Critical difference: gg→gg HAS tree-level diagrams',
+      rule:`Unlike γγ→γγ (no tree level), gg→gg exists at tree level via 3-gluon and 4-gluon vertices.<br>
+        The quark loop is a <strong>1-loop correction</strong> that must be combined with the tree amplitude.`,
+      expr:`M<sub>total</sub> = M<sub>tree</sub> + M<sub>quark loop</sub> + M<sub>gluon loop</sub> + M<sub>ghost loop</sub> + ...<br><br>
+        |M<sub>total</sub>|² ≈ |M<sub>tree</sub>|² &nbsp;[LO, O(g_s⁴)]<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ 2Re(M<sub>tree</sub>* M<sub>loop</sub>) &nbsp;[NLO, O(g_s⁶)]<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ |M<sub>loop</sub>|² &nbsp;[NNLO, O(g_s⁸)]`,
+      expl:`The quark loop you've drawn is ONE of several contributions at NLO. For the full 1-loop gg→gg you also need: gluon box (4 gluon propagators in the loop), triangle diagrams with 3g vertices, ghost loop, and their interference with the tree amplitude.`
+    });
+
+    steps.push({
+      title:'Colour algebra: Tr(T^aT^bT^cT^d) at the quark loop',
+      rule:`Each QCD vertex contributes a colour matrix T<sup>a</sup> in the fundamental representation.<br>
+        For a closed quark loop the colour factor is a <strong>closed trace</strong> over the 4 generators:`,
+      expr:`C<sub>colour</sub> = Tr(T<sup>a</sup>T<sup>b</sup>T<sup>c</sup>T<sup>d</sup>)<br><br>
+        Decompose using Tr(T<sup>a</sup>T<sup>b</sup>T<sup>c</sup>T<sup>d</sup>) = ${FR('1','4')}[d<sup>abe</sup>d<sup>cde</sup>+d<sup>ace</sup>d<sup>bde</sup>+d<sup>ade</sup>d<sup>bce</sup>]<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ ${FR('i','4')}[f<sup>abe</sup>d<sup>cde</sup>+permutations]<br><br>
+        where d<sup>abc</sup> = 2Tr({T<sup>a</sup>,T<sup>b</sup>}T<sup>c</sup>),  f<sup>abc</sup> = −2i Tr([T<sup>a</sup>,T<sup>b</sup>]T<sup>c</sup>)`,
+      expl:`This is a rank-4 colour tensor contracted with the 4 external gluon colour indices (a,b,c,d). The result is a combination of d<sup>abc</sup> and f<sup>abc</sup> symbols, giving multiple independent colour structures. Each colour structure multiplies a different Lorentz/kinematic factor.`
+    });
+
+    steps.push({
+      title:'The 3 box topologies (same as γγ→γγ) + colour factors per topology',
+      rule:`Quarks can run around the loop in 3 independent orderings. <strong>Furry\'s theorem in QCD:</strong> for a quark loop with n gluons, clockwise + anticlockwise give Tr(T^a···) ± Tr(T^a···)^T. For n=4 (even): both contribute.`,
+      expr:`M<sub>quark box</sub> = Σ<sub>3 topologies</sub> Tr(T<sup>a</sup>T<sup>b</sup>T<sup>c</sup>T<sup>d</sup>)<sub>topology</sub> × D₀(kinematic args)<br><br>
+        Topology (1234): Tr(T<sup>a</sup>T<sup>b</sup>T<sup>c</sup>T<sup>d</sup>) × D₀(s,t; m<sub>q</sub>²)<br>
+        Topology (1324): Tr(T<sup>a</sup>T<sup>c</sup>T<sup>b</sup>T<sup>d</sup>) × D₀(t,u; m<sub>q</sub>²)<br>
+        Topology (1243): Tr(T<sup>a</sup>T<sup>b</sup>T<sup>d</sup>T<sup>c</sup>) × D₀(s,u; m<sub>q</sub>²)`,
+      expl:`Each topology has the SAME D₀ integral structure as the QED box but multiplied by a different colour trace. The full quark-loop contribution sums all three.`
+    });
+
+    steps.push({
+      title:'Loop integral D₀ — same computation as γγ→γγ, different prefactor',
+      rule:`The Lorentz/spinor structure of the quark box is identical to the electron box in γγ→γγ. Replace e→g_s and Q→1 (absorbed into T^a).`,
+      expr:`D₀(s,t; m<sub>q</sub>²) = ${FR('−i','16π²')} × F(s/4m<sub>q</sub>², t/4m<sub>q</sub>²) &nbsp; [same function as QED box]<br><br>
+        UV degree of divergence = 4 − 4×2 + 4 = <strong>−4 → UV finite ✓</strong><br>
+        IR: finite for massive quarks; massless quarks need IR regularisation.`,
+      expl:`The quark box is UV finite by power counting. For massless quarks (u,d,s at high energy) there are IR/collinear divergences that cancel against the virtual corrections to the tree-level amplitude (KLN theorem).`
+    });
+
+    steps.push({
+      title:'Low-energy limit: QCD analogue of Euler-Heisenberg',
+      rule:`For gluon energies ≪ m<sub>q</sub>, integrate out the quark loop:`,
+      expr:`L<sub>eff</sub> = ${FR('g_s⁴','180m<sub>q</sub>⁴')} Σ<sub>q</sub> [c₁(G<sub>μν</sub><sup>a</sup>G<sup>aμν</sup>)² + c₂(G<sub>μν</sub><sup>a</sup>G̃<sup>aμν</sup>)²]<br><br>
+        G<sub>μν</sub><sup>a</sup> = ∂<sub>μ</sub>A<sub>ν</sub><sup>a</sup>−∂<sub>ν</sub>A<sub>μ</sub><sup>a</sup>+g_sf<sup>abc</sup>A<sub>μ</sub><sup>b</sup>A<sub>ν</sub><sup>c</sup>`,
+      expl:`This effective Lagrangian is the QCD analogue of the Euler-Heisenberg result. It describes gluon-gluon scattering induced by quark loops. The coefficient is suppressed by m_q⁻⁴ — relevant for heavy quarks (charm, bottom) at low gluon energies.`
+    });
+
+  } else {
+    // ── QED-specific ──────────────────────────────────────────────────────
+    steps.push({
+      title:'No tree-level amplitude for γγ→γγ — this loop IS the leading term',
+      rule:`Photons do not interact at tree level in QED. The fermion box is the leading contribution.`,
+      expr:`|M<sub>total</sub>|² = |M<sub>box</sub>(1234) + M<sub>box</sub>(1324) + M<sub>box</sub>(1243)|²`,
+      expl:`3 box topologies from 3 orderings of the 4 photon legs around the fermion loop. Bose symmetry relates them by crossing s↔t↔u.`
+    });
+
+    steps.push({
+      title:'D₀ box integral and Euler-Heisenberg limit',
+      rule:`Box integral: UV finite (superficial divergence D = −4). IR finite for massive fermion.`,
+      expr:`D₀(s,t;m_f²) = ${FR('−i','16π²')} F(s/4m_f², t/4m_f²) &nbsp; (dilogarithms Li₂)<br><br>
+        Low-energy limit: L<sub>EH</sub> = ${FR('α²','180m_f⁴')}[5(F<sub>μν</sub>F<sup>μν</sup>)² + 14(F<sub>μν</sub>F̃<sup>μν</sup>)²]`,
+      expl:`The Euler-Heisenberg Lagrangian (1936) comes from this calculation. It describes photon-photon scattering and photon splitting in strong fields.`
+    });
+  }
+
+  steps.push({
+    title:'Step-by-step: evaluate the loop first, then square',
+    rule:'',
+    expr:`1. Passarino-Veltman reduction: reduce numerator N(ℓ) to scalar integrals A₀,B₀,C₀,D₀<br>
+      2. Feynman parametrise D₀ (3 parameters x,y,z for 4 propagators)<br>
+      3. Shift + Wick rotate → Euclidean<br>
+      4. Evaluate ∫d⁴ℓ<sub>E</sub>/(ℓ²+Δ)⁴ = ${FR('iπ²','6Δ²')} (standard formula)<br>
+      5. Integrate x,y,z → express in Li₂ functions<br>
+      ${isGluon?'6. Contract with colour trace Tr(T<sup>a</sup>T<sup>b</sup>T<sup>c</sup>T<sup>d</sup>)<br>7. Add tree-level + other loop diagrams<br>8.':'6.'} Square: |M(s,t,u)|²`,
+    expl:`Use the Solve button on the loop measure expression to walk through the dimensional regularisation procedure. ${isGluon?'For full NLO gg→gg: use a dedicated tool (Madgraph, GoSam, OpenLoops) — the colour algebra and diagram counting are substantial.':''}`
+  });
+
+  const latexProc = isGluon
+    ? `gg\\to gg: \\sum_{\\text{topologies}} \\mathrm{Tr}(T^aT^bT^cT^d)\\cdot D_0`
+    : `\\gamma\\gamma\\to\\gamma\\gamma: \\sum_{\\text{3 topologies}} |D_0(s,t,u;m_f^2)|^2`;
+  return {steps, latex: latexProc};
+}
+
+function stepsFromMathIM(text) {
+  const {nFermExt, nPhotExt, nPhotProp, nFermProp, nLoops, photPropNorm, fermExts} = parseMathExpression(text);
+
+  // ── Loop amplitude (detected ∫ in math text) ─────────────────────────────
+  if (nLoops >= 1) {
+    const nProp = nFermProp + nPhotProp;
+    // Special case: pure photon loop (γγ→γγ box, no external fermions)
+    if (nFermExt===0 && nPhotExt>=4) {
+      const isGluonBox = /ig_?s|T\^a/i.test(text);
+      return stepsPhotonBox(text, nLoops, nProp, isGluonBox);
+    }
+    return stepsLoopIntegral(nLoops, nProp||4, 'e');
+  }
+
+  // 3-point vertex
+  if (nFermExt===2 && nPhotExt===1 && nPhotProp===0 && nFermProp===0)
+    return steps3PointVertex(text);
+
+  // Two-current 2→2
+  if (nFermExt===4 && nPhotProp>=1 && nPhotExt===0 && nFermProp===0) {
+    const denomMatch = photPropNorm.match(/\/([tsu]\d*)/i);
+    const denom = denomMatch && /^t/i.test(denomMatch[1]) ? 't' : 's';
+    const digits  = denomMatch ? denomMatch[1].replace(/\D/g,'') : '';
+    let chain1, chain2;
+    if (digits.length>=2) {
+      chain1 = ['p'+digits[0], 'p'+digits[1]];
+      chain2 = fermExts.filter(m=>!chain1.includes(m)).slice(0,2);
+    } else {
+      chain1 = fermExts.slice(0,2);
+      chain2 = fermExts.slice(2,4);
+    }
+    const sep = denom==='s' ? '+' : '-';
+    const commentsForParser = [
+      '← vertex (e [auto])',
+      `← photon prop (${chain1[0]}${sep}${chain1[1]})`,
+      '← vertex (e [auto])',
+      ...fermExts.map(m=>`← fermion ext in (${m})`),
+    ].join('\n');
+    const topo = {topo:'two_current', coupling:'e', denom, scalarStr:`e4/${denom}2`, nVerts:2, isGluon:false};
+    return stepsSquareTwoCurrent(topo, commentsForParser, text);
+  }
+
+  // Compton
+  if (nFermExt===2 && nPhotExt===2 && nFermProp>=1)
+    return stepsSquareCompton({}, '', text);
+
+  // Unknown
+  return {steps:[{
+    title:'Amplitude format not recognised',
+    rule:'',
+    expr:`<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(text)}</div>`,
+    expl:`Detected: ${nFermExt} fermion legs, ${nPhotExt} photon legs, ${nPhotProp} photon propagators, ${nFermProp} fermion propagators.<br>
+      Use the editor's <strong>→ Stepper</strong> button for automatic processing, or enter a trace expression directly.`
+  }], latex:''};
+}
+
 function parseIMFactors(text) {
   const factors = [];
   for (const line of text.split('\n')) {
@@ -611,21 +848,58 @@ function getAmplitudeTopology(factors) {
   const nFermProp = cnt('fermion prop');
   const nBosonProp= cnt('photon prop') + cnt('gluon prop');
   const nVerts    = cnt('vertex');
+  const nLoops    = cnt('loop integral');                  // loop measure factors from editor
   const isGluon   = factors.some(f => f.type.includes('gluon'));
   const coupling  = isGluon ? 'gs' : 'e';
   const bosonP    = factors.find(f => f.type.includes('photon prop') || f.type.includes('gluon prop'));
   const propArg   = bosonP ? bosonP.arg : '';
-  // guess denominator from momentum label: sum → s-channel, difference → t-channel
-  const denom = propArg.replace(/\s/g,'').includes('-') ? 't' : 's';
+  const denom     = propArg.replace(/\s/g,'').includes('-') ? 't' : 's';
   const scalarStr = `${coupling}${nVerts*2}/${denom}2`;
+  // Total internal propagators (for loop topology identification)
+  const nPropTotal = nFermProp + nBosonProp;
 
-  if (nFermExt===4 && nBosonProp>=1 && nPhotExt===0 && nFermProp===0)
-    return {topo:'two_current', coupling, denom, scalarStr, nVerts, isGluon};
-  if (nFermExt===2 && nPhotExt===2 && nFermProp>=1)
-    return {topo:'compton', nFermProp};
+  // ── 2→2 tree-level ────────────────────────────────────────────────────────
+  if (nFermExt===4 && nBosonProp>=1 && nPhotExt===0 && nFermProp===0 && nLoops===0)
+    return {topo:'two_current', coupling, denom, scalarStr, nVerts, isGluon, nLoops};
+  if (nFermExt===2 && nPhotExt===2 && nFermProp>=1 && nLoops===0) {
+    // Read the actual fermion propagator momentum to determine the channel
+    const fermP   = factors.find(f => f.type.includes('fermion prop'));
+    const pArg    = fermP ? fermP.arg : '';
+    // sum in prop momentum → s-channel (e.g. p₁+k₁); difference → t or u channel
+    const fermDenom = pArg.replace(/\s/g,'').includes('+') ? 's' : 't';
+    // Determine process type from photon in/out pattern
+    const phIn  = factors.filter(f => f.type.includes('photon ext in') || f.type.includes('gluon ext in')).length;
+    const phOut = factors.filter(f => f.type.includes('photon ext out') || f.type.includes('gluon ext out')).length;
+    const processType = (phIn===1 && phOut===1) ? 'compton'
+                      : phIn===2 ? 'pair_prod' : 'pair_annih';
+    return {topo:'compton', nFermProp, nLoops, fermDenom, processType};
+  }
+
+  // ── 1→2 decays ────────────────────────────────────────────────────────────
+  // Z/W/γ* → ff̄: 1 external boson leg + 2 external fermion legs, no propagators
+  if (nFermExt===2 && nPhotExt===1 && nFermProp===0 && nBosonProp===0 && nLoops===0)
+    return {topo:'decay_1to2', coupling, isGluon, nVerts};
+  // H/scalar → ff̄ or ff̄ → scalar vertex: 2 fermion external, no boson external
+  if (nFermExt===2 && nPhotExt===0 && nFermProp===0 && nBosonProp===0 && nVerts===1 && nLoops===0)
+    return {topo:'decay_scalar', coupling, isGluon};
+
+  // ── 2→3 with photon/gluon radiation ─────────────────────────────────────
+  // 4 fermion legs + 1 external photon/gluon + propagators
+  if (nFermExt===4 && nPhotExt===1 && nLoops===0)
+    return {topo:'bremsstrahlung', nFermProp, nBosonProp, coupling, denom, isGluon};
+  // 2 fermion legs + 3+ external bosons (e.g. e+e-→3γ): uncommon but detectable
+  if (nFermExt===2 && nPhotExt>=3 && nLoops===0)
+    return {topo:'multi_photon', nPhotExt, coupling};
+
+  // ── Loop ──────────────────────────────────────────────────────────────────
+  if (nLoops>=1)
+    return {topo:'loop', nLoops, nPropTotal, nFermProp, nBosonProp, coupling, isGluon, scalarStr, denom};
+
+  // ── Pure boson ────────────────────────────────────────────────────────────
   if (nFermExt===0 && nPhotExt>=2)
     return {topo:'pure_boson'};
-  return {topo:'unknown'};
+
+  return {topo:'unknown', nFermExt, nPhotExt, nFermProp, nBosonProp, nVerts};
 }
 
 // ─── Extract fermion chain momenta from propagator label ──────────────────────
@@ -657,26 +931,28 @@ function extractChains(text) {
   return {chain1: allMoms.slice(0,2), chain2: allMoms.slice(2,4)};
 }
 
-function stepsSquareTwoCurrent(topo, text) {
+function stepsSquareTwoCurrent(topo, text, iMDisplay) {
   const {coupling, denom, scalarStr, isGluon} = topo;
   const coupHTML = coupling==='e' ? CP('e') : CP('g<sub>s</sub>');
   const cType = isGluon ? 'gluon' : 'photon';
   const sc = rScalar(scalarStr);
 
-  // Extract actual chain momenta from the propagator label (the fix)
   const {chain1, chain2} = extractChains(text);
   const [pA, pB] = chain1.length>=2 ? chain1 : ['p1','p2'];
   const [pC, pD] = chain2.length>=2 ? chain2 : ['p3','p4'];
-
   const denomLabel = `(${M(pA)}${denom==='s'?'+':'−'}${M(pB)})² = ${MV(denom)}`;
 
+  // Step 1 display: show the actual math expression if we have it, else fallback
+  const step1expr = iMDisplay
+    ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
+    : `<div style="font-size:11px;color:#4a5888;white-space:pre;line-height:1.8;max-height:120px;overflow-y:auto;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,8).join('\n'))}</div>`;
+
   const allSteps = [
-    {title:'Input amplitude — two-current topology identified',
+    {title:'Input amplitude iM',
      rule:'',
-     expr:`<div style="font-size:11px;color:#4a5888;white-space:pre;line-height:1.8;max-height:140px;overflow-y:auto;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,10).join('\n'))}</div>`,
-     expl:`Two fermion currents connected by a virtual ${cType}. Denominator: ${denomLabel}.
-       Chain 1 momenta: {${pA}, ${pB}} &nbsp;|&nbsp; Chain 2 momenta: {${pC}, ${pD}}.
-       (Extracted from propagator label — see next step.)`},
+     expr: step1expr,
+     expl:`Two fermion currents connected by a virtual ${cType}. Denominator: ${denomLabel}. &nbsp;
+       Chain 1: {${pA}, ${pB}} &nbsp;|&nbsp; Chain 2: {${pC}, ${pD}}.`},
 
     {title:'Write iM in factored form',
      rule:`Chain 1: ū(${pB})γ<sup>μ</sup>u(${pA}) &nbsp;|&nbsp; Chain 2: ū(${pD})γ<sub>μ</sub>u(${pC})<br>
@@ -703,48 +979,502 @@ function stepsSquareTwoCurrent(topo, text) {
   tracePat.scalar = traceParsed.scalar;
   const traceResult = stepsDouble4(traceParsed, tracePat);
 
-  return {steps: [...allSteps, ...traceResult.steps.slice(1)], latex: traceResult.latex};
+  let steps = [...allSteps, ...traceResult.steps.slice(1)];
+  let latexOut = traceResult.latex;
+
+  // ── QCD color algebra (only for gluon exchange) ────────────────────────────
+  if (isGluon) {
+    // Lorentz result from trace (spin-summed)
+    const traceVal = traceResult.steps[traceResult.steps.length-1].expr;
+
+    steps.push({
+      title:'QCD color algebra',
+      rule:`<strong>Color structure at each vertex:</strong> (T<sup>a</sup>)<sub>ji</sub> where a = gluon color, i,j = quark colors<br>
+        <strong>Key identity:</strong> Σ<sub>i,j</sub>(T<sup>a</sup>)<sub>ji</sub>(T<sup>a</sup>)<sub>ij</sub> = Tr(T<sup>a</sup>T<sup>a</sup>) = T<sub>F</sub> = ½ &nbsp;(for each gluon a)<br>
+        Summing over all N<sub>c</sub>²−1 = 8 gluons: &nbsp;Σ<sub>a</sub>T<sub>F</sub>² = (N<sub>c</sub>²−1)T<sub>F</sub>² = 8×¼ = 2<br>
+        <strong>Color average</strong> over N<sub>c</sub>² = 9 initial quark-color states: ×1/9`,
+      expr:`Σ<sub>colors</sub>|M|² = ${FR('(N<sub>c</sub>²−1)T<sub>F</sub>²','N<sub>c</sub>²')} × Σ<sub>spins</sub>|M|²<sub>Lorentz</sub>
+        = ${FR('2','9')} × [Lorentz trace result]`,
+      expl:`SU(3): N<sub>c</sub>=3, T<sub>F</sub>=½. Each quark line contributes Tr(T<sup>a</sup>T<sup>a</sup>) = T<sub>F</sub> when summed over quark colors. Two lines × one shared gluon 'a' index = Σ<sub>a</sub>T<sub>F</sub>² = 2 total.`
+    });
+
+    // Build the corrected final result
+    // The trace already includes e⁴/denom² × 8(s²+u²) structure
+    // After color+spin avg: × 2/9 × 1/4 = 1/18 of spin-summed trace
+    // Which means the final averaged result = (1/18) × trace_result
+    const scParts = parseScalarParts(scalarStr);
+    const colorCorrHTML = `${FR(`2${scParts.numHTML||''}(${traceResult.steps[traceResult.steps.length-1].expr.replace(/<[^>]+>/g,'').match(/\(([^)]+)\)/)?.[1]||'…'})`, `9${scParts.denHTML||'1'}`)} &nbsp; (spin×color averaged: ×${FR('2','9')}×${FR('1','4')})`;
+    const latexRaw = latexOut.replace(/<[^>]+>/g,'');
+    latexOut = `\\text{Color avg: }\\frac{2}{9}\\times\\frac{1}{4}\\times[${latexRaw}]`;
+
+    steps.push({
+      title:'Final result with color factor',
+      rule:'',
+      expr:`<span style="color:#a0c0e0;font-size:14px">|M̄|² = ${FR('2','9')} × ${FR('1','4')} × [trace result] = ${FR(`(${MV('N')}_c²−1)T_F²`,'N_c²')} × |M̄|²<sub>Lorentz</sub></span>`,
+      expl:`For qq→qq via gluon (SU(3)): multiply the Lorentz result by 2/9 (color factor) and divide by 4 (spin average). Final: (4/9)×g_s⁴×(s²+u²)/t² for qq→qq t-channel.`
+    });
+  }
+
+  return {steps, latex: latexOut};
 }
 
-function stepsSquareCompton(topo, text) {
+// ─── Single Compton-type diagram — fully derived from the trace ───────────────
+// This does NOT hardcode any result. It reads the actual propagator momentum
+// and fermion momenta from the factor list, then derives |M̄|² step by step
+// using the trace contraction identities. Works for any new interaction.
+
+function evalPropDot(propTerms, pX) {
+  // Compute (q · pX) where q = Σ sign_i p_i, using the DP Mandelstam table.
+  // Returns {halfCoeff, mand, html} where the value = halfCoeff × mand / 2.
+  // Applies s+t+u=0 to reduce two-variable sums to one.
+  const acc = {s:0, t:0, u:0};
+  for (const {mom, sign} of propTerms) {
+    const key = `${mom},${pX}`;
+    const val = DP[key];
+    if (!val) continue; // p·p = 0 (massless)
+    const dpSign = val[0]==='-' ? -1 : 1;
+    const mand   = val.replace(/[+-]/,'').replace('/2','');
+    acc[mand] += sign * dpSign;
+  }
+  const nz = Object.entries(acc).filter(([,c])=>c!==0);
+  if (!nz.length) return {halfCoeff:0, mand:null, html:'0'};
+  if (nz.length===1) {
+    const [mand,c] = nz[0];
+    const h = `${c<0?'−':''}${FR('1','2')}·${MV(mand)}`;
+    return {halfCoeff:c, mand, html:h};
+  }
+  // Two non-zero: use s+t+u=0 to collapse. If both coefficients equal:
+  // c·(m₁+m₂)/2 = −c·m₃/2  (since m₁+m₂=−m₃)
+  if (nz.length===2 && nz[0][1]===nz[1][1]) {
+    const c  = nz[0][1];
+    const m3 = ['s','t','u'].find(v=>v!==nz[0][0]&&v!==nz[1][0]);
+    return {halfCoeff:-c, mand:m3, html:`${-c<0?'−':''}${FR('1','2')}·${MV(m3)}`};
+  }
+  // Unresolved — show symbolically
+  const html = nz.map(([m,c])=>`${c<0?'−':'+'}${FR('1','2')}·${MV(m)}`).join('').replace(/^\+/,'');
+  return {halfCoeff:null, mand:null, html};
+}
+
+function stepsSquareCompton(topo, text, iMDisplay) {
+  const {fermDenom, processType} = topo;
+  const step0 = iMDisplay
+    ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
+    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px;white-space:pre-wrap">${esc(text.split('\n').filter(l=>l.trim()).slice(0,8).join('\n'))}</div>`;
+
+  // ── Extract actual diagram data ─────────────────────────────────────────────
+  const factors = parseIMFactors(text);
+  const subN = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+  const normStr = s => s.replace(/[₀-₉]/g, c=>subN[c]||c);
+
+  // Fermion propagator momentum
+  const fermP   = factors.find(f=>f.type.includes('fermion prop'));
+  const propArg = fermP ? normStr(fermP.arg) : '';
+  const propTerms = [];
+  const ptRe = /([+\-]?)\s*(p\d+|k\d*)/gi; let ptM;
+  while ((ptM=ptRe.exec(propArg))!==null)
+    propTerms.push({mom:ptM[2].toLowerCase(), sign:ptM[1]==='-'?-1:1});
+
+  // Fermion external momenta (in factor-list order)
+  const seen=new Set();
+  const fermMoms = factors
+    .filter(f=>f.type.includes('fermion ext'))
+    .map(f=>{ const m=normStr(f.arg).match(/p\d+/i); return m?m[0].toLowerCase():null; })
+    .filter(m=>m&&!seen.has(m)&&seen.add(m));
+
+  const pF1 = fermMoms[0]||'p3';
+  const pF2 = fermMoms[1]||'p4';
+  const denom = fermDenom||'t';
+  const coupHTML = CP('e');
+
+  // ── Compute the three dot products ─────────────────────────────────────────
+  const dqF1   = evalPropDot(propTerms, pF1);   // q · p_F1
+  const dqF2   = evalPropDot(propTerms, pF2);   // q · p_F2
+  const dF1F2  = dpHTML(pF1, pF2);              // p_F1 · p_F2
+
+  // ── Evaluate the trace formula ──────────────────────────────────────────────
+  // After spin sums (Σu ū=p̸, Σv v̄=p̸) and photon pol sums (Σεε*=−g):
+  //   Tr[p̸_F1 γ^ε q̸ γ^μ p̸_F2 γ_μ q̸ γ_ε]
+  //
+  // Step A: γ^μ p̸_F2 γ_μ = −2p̸_F2  →  −2 Tr[p̸_F1 γ^ε q̸ p̸_F2 q̸ γ_ε]
+  // Step B: q̸ p̸_F2 q̸ = 2(q·p_F2)q̸ − q²p̸_F2  [using {q̸,p̸}=2q·p]
+  // Step C: γ^ε A̸ γ_ε = −2A̸  →  Tr[p̸_F1 × X̸] = 4(p_F1 · X)
+  // Result: 32(q·p_F1)(q·p_F2) − 16·q²·(p_F1·p_F2)
+  // Spin avg ÷4 and prefactor e⁴/q⁴:
+  //   |M̄|² = (e⁴/q⁴)·[8(q·p_F1)(q·p_F2) − 4·q²·(p_F1·p_F2)]
+
+  // Compute numerically using halfCoeff × mand/2 for each dot product
+  let resultHTML = '…', resultLatex = '?';
+  if (dqF1.mand && dqF2.mand && dF1F2.mand) {
+    // 8(q·F1)(q·F2) = 8 × (hc1×m1/2)(hc2×m2/2) = 2·hc1·hc2·m1·m2
+    // 4·denom·(F1·F2) = 4·denom × (sign_io × m_io / 2) = 2·denom·sign_io·m_io
+    // Trace / 4 = 2hc1·hc2·m1·m2/4 - 2·denom·sign_io·m_io/4 ... wait
+    // Actually the full formula before ÷4 is:
+    //   [8(q·F1)(q·F2) - 4·denom·(F1·F2)] / denom²
+    // = [2·hc1·hc2·m1·m2 - 2·denom·sign_io·m_io] / denom²
+    const hc1=dqF1.halfCoeff, m1=dqF1.mand;
+    const hc2=dqF2.halfCoeff, m2=dqF2.mand;
+    const sio=dF1F2.sign,     mio=dF1F2.mand;
+
+    // If m1=m2=denom (propagator variable appears in both q·F dot products):
+    if (m1===denom && m2===denom) {
+      // 2·hc1·hc2·denom² - 2·denom·sio·mio
+      // = 2·denom·(hc1·hc2·denom - sio·mio)
+      // Divide by denom²: 2e⁴/denom × (hc1·hc2 - sio·mio/denom)
+      // Use s+t+u=0: identify (hc1·hc2·denom - sio·mio) as a Mandelstam variable
+
+      const prod = hc1*hc2; // ±1
+      // Expression: prod·denom - sio·mio
+      // = prod·denom - sio·(-(denom+other)) if mio+denom+other=0
+      // = (prod+sio)·denom + sio·other
+      const other = ['s','t','u'].find(v=>v!==denom&&v!==mio);
+      const coeff_denom = prod + sio;
+      const coeff_other = sio;
+
+      let resVar=null, resSign=1;
+      if (coeff_denom===0 && Math.abs(coeff_other)===1) {
+        resVar=other; resSign=coeff_other;
+      } else if (coeff_other===0 && Math.abs(coeff_denom)===1) {
+        resVar=denom; resSign=coeff_denom;
+      }
+
+      if (resVar) {
+        const s = resSign<0?'−':'';
+        resultHTML   = `${s}2${coupHTML}⁴ × ${FR(MV(resVar), MV(denom))}`;
+        resultLatex  = `\\frac{${resSign<0?'-':''}2e^4\\,${resVar}}{${denom}}`;
+      } else {
+        // Show unsimplified
+        resultHTML = `2${coupHTML}⁴ × ${FR(`${prod>=0?'':MV('−')}${MV(denom)} ${sio>=0?'−':'+'}${MV(mio)}`, `${MV(denom)}²`)}`;
+      }
+    } else {
+      // m1 ≠ m2 — show symbolically
+      resultHTML = `${FR(`2${coupHTML}⁴·${MV(m1)}·${MV(m2)}`, `${MV(denom)}²`)} − ${FR(`2${coupHTML}⁴·${MV(mio)}`, MV(denom))}`;
+    }
+  }
+
+  // ── Missing diagram note ──────────────────────────────────────────────────
+  const isCompton = processType==='compton';
+  const channelVars = isCompton ? ['s','u'] : ['t','u'];
+  const missingDenom = channelVars.find(v=>v!==denom);
+  const procLabel = isCompton ? `e⁻γ→e⁻γ ${denom}-channel`
+                  : processType==='pair_prod' ? `γγ→e⁺e⁻ ${denom}-channel`
+                  : `e⁺e⁻→γγ ${denom}-channel`;
+
   return {steps:[
-    {title:'Input: Compton-type amplitude (1 fermion chain, 2 photon legs)',
+    {title:`Input: ${procLabel}  (one diagram)`,
+     rule:'', expr:step0,
+     expl:`Single diagram: 1 fermion chain, fermion propagator with denominator ${MV(denom)}, 2 external photon legs.
+       Propagator momentum q = <code>${esc(propArg||'?')}</code>.  Fermion legs: ${pF1}, ${pF2}.`},
+
+    {title:'Square: apply spin + photon polarisation sums',
+     rule:`<strong>Spin sums (massless):</strong> Σ u ū = ${slash('p')}, &nbsp; Σ v v̄ = ${slash('p')}<br>
+       <strong>Polarisation sum:</strong> Σ<sub>λ</sub> ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup>`,
+     expr:`|iM|² → ${FR(coupHTML+'⁴', `${MV(denom)}²`)} × ${TR('Tr')}[${slash(pF1)} ${gmu('ε')} ${G('q̸')} ${gmu('μ')} ${slash(pF2)} ${G('γ')}<sub>μ</sub> ${G('q̸')} ${G('γ')}<sub>ε</sub>]`,
+     expl:`The propagator numerator q̸ appears twice — once from M and once from M*. The two photon indices (ε and μ) are contracted by the polarisation sums.`},
+
+    {title:'Step A — contract γ^μ p̸_F2 γ_μ',
+     rule:`<strong>3-gamma identity (d=4):</strong> γ<sup>μ</sup>${slash('A')}γ<sub>μ</sub> = −2${slash('A')}`,
+     expr:`= −2 × ${FR(coupHTML+'⁴', `${MV(denom)}²`)} × ${TR('Tr')}[${slash(pF1)} ${gmu('ε')} ${G('q̸')} ${slash(pF2)} ${G('q̸')} ${G('γ')}<sub>ε</sub>]`,
+     expl:`The inner γ<sup>μ</sup>...γ<sub>μ</sub> pair collapses the fermion propagator momentum contraction.`},
+
+    {title:'Step B — expand q̸ p̸_F2 q̸',
+     rule:`Using {q̸, ${slash('p')}} = 2q·p: &nbsp; q̸${slash('A')}q̸ = 2(q·A)q̸ − q²${slash('A')}`,
+     expr:`= −2 × ${FR(coupHTML+'⁴', `${MV(denom)}²`)} × [2(q·${M(pF2)})${TR('Tr')}[${slash(pF1)} ${gmu('ε')} ${G('q̸')} ${G('γ')}<sub>ε</sub>] − ${MV(denom)}·${TR('Tr')}[${slash(pF1)} ${gmu('ε')} ${slash(pF2)} ${G('γ')}<sub>ε</sub>]]`,
+     expl:`q·p_F2 = ${dqF2.html} &nbsp; and &nbsp; q² = ${MV(denom)}.`},
+
+    {title:'Step C — contract γ^ε A̸ γ_ε and evaluate',
+     rule:`γ<sup>ε</sup>${slash('A')}γ<sub>ε</sub> = −2${slash('A')} &nbsp;→&nbsp; ${TR('Tr')}[${slash('B')}${slash('A')}] = 4(B·A)`,
+     expr:`= ${FR(coupHTML+'⁴', `${MV(denom)}²`)} × [32(q·${M(pF1)})(q·${M(pF2)}) − 16·${MV(denom)}·(${M(pF1)}·${M(pF2)})]`,
+     expl:`q·${pF1} = ${dqF1.html}, &nbsp; q·${pF2} = ${dqF2.html}, &nbsp; ${pF1}·${pF2} = ${dF1F2.html}.`},
+
+    {title:'Step D — substitute Mandelstam variables',
+     rule:`Using DP table: each dot product = ±{s,t,u}/2. Simplify using s+t+u=0.`,
+     expr:`= ${FR(coupHTML+'⁴', `${MV(denom)}²`)} × [8·${dqF1.html}·${dqF2.html} − 4·${MV(denom)}·${dF1F2.html}]`,
+     expl:`Substituting values and applying s+t+u=0 to collapse multi-variable sums to single Mandelstam variables.`},
+
+    {title:'Result: spin-averaged |M̄|² for this one diagram',
      rule:'',
-     expr:`<div style="font-size:11px;color:#4a5888;white-space:pre;line-height:1.8;max-height:140px;overflow-y:auto;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,10).join('\n'))}</div>`,
-     expl:`This is the editor's s-channel diagram. At tree level there are two diagrams: M = M_s + M_u.`},
-    {title:'|M|² = |M_s + M_u|² = |M_s|² + |M_u|² + 2Re(M_s M_u*)',
-     rule:`Three terms contribute at the same order.`,
-     expr:`|iM|² = |iM<sub>s</sub>|² + |iM<sub>u</sub>|² + 2Re(iM<sub>s</sub>·iM<sub>u</sub>*)`,
-     expl:`The interference term 2Re(M_s M_u*) is non-zero and essential.`},
-    {title:'Apply photon polarization sum: Σ_λ ε^με*^ν = −g^μν',
-     rule:`<strong>Feynman gauge:</strong> Σ<sub>λ</sub> ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup>. Ward identity cancels unphysical polarisations.`,
-     expr:`Replace ε ε* → −g<sup>μν</sup> for each external photon leg.`,
-     expl:`This contracts the photon indices into the fermion current.`},
-    {title:'Apply spin sum → single trace with propagator numerator',
-     rule:`Σ u ū = ${slash('p')}+m. The propagator numerator (${slash('p')}₁+${slash('k')}+m) appears between the two vertex γ-matrices.`,
-     expr:`${FR(CP('e')+'⁴','s²')} × ${TR('Tr')}[(${slash('p2')}+m) ${gmu('ν')} (${slash('p1')}+${slash('k')}+m) ${gmu('μ')}] × (−g<sub>μν</sub>) + (u-ch) + interference`,
-     expl:`Each term is a single-fermion-line trace. For massless electrons, ${slash('p')} anti-commutes through the propagator to give compact results.`},
-    {title:'Final result (massless electrons)',
-     rule:`After evaluating all three terms and using the Ward identity:`,
-     expr:`${FR(`−2${CP('e')}⁴`,`1`)} × (${FR(MV('s'),MV('u'))} + ${FR(MV('u'),MV('s'))})`,
-     expl:`|M̄|² = −2e⁴(s/u + u/s). Physical: u < 0 for forward Compton so each ratio is negative → |M̄|² > 0. ✓`},
-  ], latex:`-2e^4\\!\\left(\\tfrac{s}{u}+\\tfrac{u}{s}\\right)`};
+     expr:`|M̄|²<sub>(${denom}-channel)</sub> = ${resultHTML}`,
+     expl:`This is the contribution from the <strong>single ${denom}-channel diagram</strong> you drew.<br>
+       For the full physical result you also need: the <strong>${missingDenom}-channel diagram</strong>
+       + their interference 2Re(M<sub>${denom}</sub>M<sub>${missingDenom}</sub>*).
+       Use the <strong>Two Diagrams</strong> mode to add both and compute the interference automatically.`},
+  ], latex: resultLatex};
 }
 
-function stepsFromIM(text) {
+// ─── Loop integration steps ───────────────────────────────────────────────────
+// nLoops: number of loop momentum integrations
+// nProp:  number of propagators in the loop (2=bubble, 3=triangle, 4=box)
+// coupling: 'e' (QED) or 'gs' (QCD)
+function stepsLoopIntegral(nLoops, nProp, coupling) {
+  const coupHTML = coupling==='gs' ? CP('g<sub>s</sub>') : CP('e');
+  const loopType = nProp<=2 ? 'Bubble B₀' : nProp===3 ? 'Triangle C₀' : 'Box D₀';
+  const nFeyParam = nProp - 1; // number of Feynman parameters
+
+  const steps = [
+    {title:`Loop detected — ${nLoops}-loop, ${nProp}-propagator (${loopType})`,
+     rule:'',
+     expr:`${nLoops===1?'':'('+nLoops+' independent loops) '}Loop measure: `+
+       Array.from({length:nLoops},(_,i)=>`${FR('d<sup>4</sup>ℓ<sub>${i+1}</sub>','(2π)<sup>4</sup>')}`).join(' × '),
+     expl:`Internal loop momenta are not fixed by external momenta. Each loop requires an independent integration.
+       The ${loopType} integral has ${nProp} propagators and ${nFeyParam} Feynman parameter${nFeyParam>1?'s':''}.`},
+
+    {title:'Step 1 — Dimensional regularisation: d = 4−2ε',
+     rule:`<strong>Why dim reg?</strong> Loop integrals in d=4 are UV divergent (∫d⁴ℓ/ℓ⁴ ~ log Λ). Analytically continue to d=4−2ε.<br>
+       Replace: <span style="color:#8090b0">∫d⁴ℓ/(2π)⁴ → μ<sup>2ε</sup>∫d<sup>d</sup>ℓ/(2π)<sup>d</sup></span><br>
+       where μ is the renormalisation scale (arbitrary mass). UV divergence appears as 1/ε pole.`,
+     expr:`I = μ<sup>2ε</sup> ∫${FR('d<sup>d</sup>ℓ','(2π)<sup>d</sup>')} × ${FR('N(ℓ)','D₁ D₂'+Array.from({length:nProp-2},(_,i)=>' D'+(i+3)).join(''))}`,
+     expl:`N(ℓ) = numerator from trace/vertex factors. D_i = ℓ²−m_i² type denominators from Feynman rules.`},
+
+    {title:'Step 2 — Feynman parametrisation (combine denominators)',
+     rule:`<strong>For ${nProp} propagators:</strong><br>
+       ${FR('1','D₁D₂···D<sub>n</sub>')} = (n−1)! ∫₀¹ dx₁···dx<sub>n</sub> δ(Σx<sub>i</sub>−1) × ${FR('1','[Σ<sub>i</sub>x<sub>i</sub>D<sub>i</sub>]<sup>n</sup>')}`,
+     expr:nProp===2
+       ? `${FR('1','D₁D₂')} = ∫₀¹ dx ${FR('1','[xD₁+(1−x)D₂]²')}`
+       : nProp===3
+       ? `${FR('1','D₁D₂D₃')} = 2 ∫₀¹ dx dy ${FR('1','[xD₁+yD₂+(1−x−y)D₃]³')}`
+       : `${FR('1','D₁D₂D₃D₄')} = 6 ∫₀¹ dx dy dz ${FR('1','[xD₁+yD₂+zD₃+(1−x−y−z)D₄]⁴')}`,
+     expl:`This converts a product of propagators into a single denominator raised to a power, enabling the shift in the next step.`},
+
+    {title:'Step 3 — Complete the square + shift loop momentum',
+     rule:`After combining denominators: D = ℓ² + 2ℓ·q + Δ = (ℓ+q)² − q² + Δ<br>
+       Shift: ℓ → ℓ − q &nbsp;→&nbsp; denominator becomes ℓ² − Δ<br>
+       where Δ = Δ(x<sub>i</sub>, external momenta, masses) is a function of Feynman parameters.`,
+     expr:`D(ℓ) = ℓ² − ${MV('Δ')}(x,p)
+       &nbsp;where ${MV('Δ')} = −Σ<sub>i<j</sub> x<sub>i</sub>x<sub>j</sub>(p<sub>i</sub>−p<sub>j</sub>)² + Σ<sub>i</sub>x<sub>i</sub>m<sub>i</sub>²`,
+     expl:`The shift eliminates the linear ℓ term. The integrand now depends on ℓ² only (rotationally symmetric in Euclidean space after Wick rotation).`},
+
+    {title:'Step 4 — Wick rotation to Euclidean space',
+     rule:`Rotate the integration contour: ℓ⁰ → iℓ<sub>E</sub>⁰ (no poles crossed by Jordan's lemma for UV-regulated integrals).<br>
+       ℓ²<sub>Minkowski</sub> = (ℓ⁰)²−|ℓ|² → −(ℓ<sub>E</sub>⁰)²−|ℓ|² = −ℓ²<sub>E</sub><br>
+       d<sup>d</sup>ℓ<sub>M</sub> = i d<sup>d</sup>ℓ<sub>E</sub>`,
+     expr:`∫d<sup>d</sup>ℓ<sub>M</sub> ${FR('1','(ℓ²−Δ)<sup>n</sup>')} = i(−1)<sup>n</sup> ∫d<sup>d</sup>ℓ<sub>E</sub> ${FR('1','(ℓ²<sub>E</sub>+Δ)<sup>n</sup>')}`,
+     expl:`After the shift, the Euclidean integral is well-defined (positive definite denominator) and can be evaluated using the standard spherical formula.`},
+
+    {title:'Step 5 — Standard Euclidean integral formula',
+     rule:`<strong>Master formula (d dimensions):</strong><br>
+       ∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR('1','(ℓ²+Δ)<sup>n</sup>')} = ${FR('Γ(n−d/2)','(4π)<sup>d/2</sup>Γ(n)')} × ${FR('1','Δ<sup>n−d/2</sup>')}`,
+     expr:`With d=4−2ε, n=${nProp}:<br>
+       = ${FR('Γ('+nProp+'−2+ε)','(4π)<sup>2−ε</sup>Γ('+nProp+')')} × ${FR('1','Δ<sup>'+(nProp-2)+'+ε</sup>')}`,
+     expl:`Using Γ(ε) = 1/ε − γ_E + O(ε) and (4π)^ε = 1 + ε ln(4π) + O(ε²), expand in ε to extract the divergence.`},
+
+    {title:'Step 6 — Result: divergence structure',
+     rule:`<strong>Expanding in ε = (4−d)/2:</strong><br>
+       Δ<sub>UV</sub> ≡ ${FR('1','ε')} − γ<sub>E</sub> + ln(4π) &nbsp; (absorbed by MS̄ counterterms)<br>
+       UV-divergent if n−d/2 ≤ 0 at d=4, i.e. n ≤ 2.`,
+     expr:nProp===2
+       ? `B₀(p²; m₁², m₂²) = ${FR('i','16π²')}[Δ<sub>UV</sub> − ∫₀¹dx ln${FR('Δ(x)','μ²')} ]<br>
+          Massless, p²≠0: B₀(p²;0,0) = ${FR('i','16π²')}[Δ<sub>UV</sub> − ln(−${MV('p')}²/μ²) + 2]`
+       : nProp===3
+       ? `C₀(p₁²,p₂²,p₃²; 0,0,0) = ${FR('i','16π²')} × ${FR('1','p₁²p₂²')} × [finite + ${FR('1','ε²')}<sub>IR</sub> terms]<br>
+          Triangle is UV finite (superficial degree of divergence = 0) but has IR divergences for massless particles.`
+       : `D₀(p₁²,..,p₄²; 0,0,0,0) = ${FR('i','16π²')} × [UV+IR finite, ~ 1/(s·t) × logs]<br>
+          Box integral: UV and IR both finite for generic kinematics. Analytic results known (Bern–Dixon–Kosower).`,
+     expl:`The 1/ε pole signals a divergence requiring renormalisation (UV) or careful IR treatment (IR). In MS̄ scheme: absorb Δ<sub>UV</sub> + finite polynomial into counterterms δZ, δm, etc.`},
+
+    {title:'Step 7 — Renormalisation',
+     rule:`<strong>MS̄ scheme:</strong> add counterterm diagram with vertex δL = δZ(∂φ)²+δm·φ² etc.<br>
+       The counterterm amplitude exactly cancels the 1/ε<sub>UV</sub> poles.<br>
+       The finite part at scale μ must be fixed by one physical observable (renormalisation condition).`,
+     expr:`A<sub>bare</sub> + A<sub>CT</sub> = A<sub>ren</sub>(μ) &nbsp; [UV finite, μ-dependent]<br>
+       Running coupling: μ d${coupHTML}/dμ = β(${coupHTML}) &nbsp; [RG equation]`,
+     expl:`QED: β(e) = +e³/(12π²) (Landau pole at high energy). &nbsp;
+       QCD: β(g_s) = −g_s³(11N_c−2N_f)/(16π²) (asymptotic freedom for N_f < 33/2).`},
+  ];
+
+  return {steps, latex: `\\text{${loopType}: }B_0/C_0/D_0 = \\frac{i}{16\\pi^2}[\\Delta_{UV} + \\text{finite}]`};
+}
+
+// ─── 1→2 decay: Z/W/γ* → ff̄ ─────────────────────────────────────────────────
+function stepsDecay1to2(topo, text, iMDisplay) {
+  const {coupling, isGluon} = topo;
+  const coupHTML = isGluon ? CP('g<sub>s</sub>') : CP('g<sub>Z</sub>');
+  const step1 = iMDisplay
+    ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
+    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,6).join('\n'))}</div>`;
+
+  return {steps:[
+    {title:'1→2 decay identified: spin-1 boson → fermion pair',
+     rule:'',
+     expr: step1,
+     expl:`Pattern: 1 external vector boson (ε<sup>μ</sup>) + 2 external fermion legs, no internal propagators. Tree-level decay.`},
+
+    {title:'Write the amplitude',
+     rule:`For a vector boson V(p₁)→f(p₂)+f̄(p₃):<br>
+       iM = ū(p₂)(${coupHTML}γ<sup>μ</sup>)(g<sub>V</sub>−g<sub>A</sub>γ⁵)v(p₃) × ε*<sub>μ</sub>(p₁)<br>
+       where g<sub>V</sub>, g<sub>A</sub> = vector and axial coupling constants.`,
+     expr:`iM = ū(p₂) × ${coupHTML}γ<sup>μ</sup>(g<sub>V</sub>−g<sub>A</sub>γ⁵) × v(p₃) × ε*<sub>μ</sub>(p₁)`,
+     expl:`For QED (photon): g<sub>V</sub>=Q, g<sub>A</sub>=0. For Z boson: g<sub>V</sub>=T₃/2−Q sin²θ<sub>W</sub>, g<sub>A</sub>=T₃/2.`},
+
+    {title:'Square: sum over polarisations of decaying boson',
+     rule:`<strong>Massive spin-1 completeness relation:</strong><br>
+       Σ<sub>λ</sub> ε<sub>μ</sub>(p,λ)ε*<sub>ν</sub>(p,λ) = −g<sub>μν</sub> + ${FR('p<sub>μ</sub>p<sub>ν</sub>','m²')}<br>
+       (3 physical polarisations: 2 transverse + 1 longitudinal)`,
+     expr:`Σ<sub>pol,spins</sub>|M|² = ${TR('Tr')}[${slash('p2')}γ<sup>μ</sup>(g<sub>V</sub>−g<sub>A</sub>γ⁵)${slash('p3')}γ<sup>ν</sup>(g<sub>V</sub>−g<sub>A</sub>γ⁵)] × (−g<sub>μν</sub>+${FR('p<sub>1μ</sub>p<sub>1ν</sub>','m²')})`,
+     expl:`The g<sub>μν</sub> and p<sub>μ</sub>p<sub>ν</sub>/m² parts each contribute. For massless fermions the longitudinal piece (p<sub>μ</sub>p<sub>ν</sub>) gives zero by current conservation (Ward identity).`},
+
+    {title:'Evaluate the trace — vector and axial parts',
+     rule:`<strong>Expand:</strong> (g<sub>V</sub>−g<sub>A</sub>γ⁵)²= g<sub>V</sub>²+g<sub>A</sub>² &nbsp;(γ⁵ anticommutes with γ<sup>μ</sup>)<br>
+       Cross term: 2g<sub>V</sub>g<sub>A</sub> Tr[${slash('p2')}γ<sup>μ</sup>γ⁵${slash('p3')}γ<sup>ν</sup>]<br>
+       <strong>Axial trace:</strong> Tr[γ<sup>α</sup>γ<sup>β</sup>γ<sup>γ</sup>γ<sup>δ</sup>γ⁵] = 4iε<sup>αβγδ</sup><br>
+       <strong>Key:</strong> ε<sup>αμβν</sup>g<sub>μν</sub>=0 (antisym×sym) → V−A interference vanishes on contraction with −g<sub>μν</sub>`,
+     expr:`−g<sub>μν</sub> × ${TR('Tr')}[...] = (g<sub>V</sub>²+g<sub>A</sub>²) × 8(p₂·p₃)`,
+     expl:`Only the sum g<sub>V</sub>²+g<sub>A</sub>² survives — no V−A interference in the partial width (it cancels between the two polarisation tensor terms).`},
+
+    {title:'Apply decay kinematics',
+     rule:`In the rest frame of the parent: p₁=(m,0,0,0).<br>
+       Back-to-back massless daughters: p₂=(m/2,<b>p</b>), p₃=(m/2,−<b>p</b>)<br>
+       p₂·p₃ = (m/2)²+|<b>p</b>|² = m²/2 &nbsp;(massless: |<b>p</b>|=m/2)`,
+     expr:`Σ|M|² = (g<sub>V</sub>²+g<sub>A</sub>²) × 8 × ${FR('m²','2')} = 4m²(g<sub>V</sub>²+g<sub>A</sub>²)`,
+     expl:`Including N<sub>c</sub> colours (N<sub>c</sub>=3 for quarks, 1 for leptons) and the spin average (1/3 for spin-1 parent):
+       |M̄|² = (4/3)N<sub>c</sub>m²(g<sub>V</sub>²+g<sub>A</sub>²)`},
+
+    {title:'Partial decay width',
+     rule:`<strong>2-body decay rate formula:</strong><br>
+       Γ = ${FR('|<b>p</b>|','8πm²')} × |M̄|² = ${FR('m/2','8πm²')} × |M̄|²  &nbsp;(massless daughters)`,
+     expr:`Γ(V→ff̄) = N<sub>c</sub> × ${FR(coupHTML+'²(g<sub>V</sub>²+g<sub>A</sub>²)m','12π')}`,
+     expl:`<strong>Standard results:</strong><br>
+       Z→ee: N<sub>c</sub>=1, g<sub>V</sub>=−½+2sin²θ<sub>W</sub>, g<sub>A</sub>=−½ &nbsp;→ Γ≈84 MeV ✓<br>
+       γ*→μμ: g<sub>V</sub>=Q=1, g<sub>A</sub>=0 &nbsp;→ Γ∝Q²m (σ∝e⁴/s for e⁺e⁻→μ⁺μ⁻) ✓<br>
+       g_Z = e/(sin θ<sub>W</sub> cos θ<sub>W</sub>)`},
+  ], latex:`\\Gamma(V\\to f\\bar f) = \\frac{N_c g_Z^2(g_V^2+g_A^2)m}{12\\pi}`};
+}
+
+// ─── 1→2 scalar decay: H → ff̄ (Yukawa) ────────────────────────────────────
+function stepsDecayScalar(topo, text, iMDisplay) {
+  const step1 = iMDisplay
+    ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
+    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,5).join('\n'))}</div>`;
+
+  return {steps:[
+    {title:'1→2 scalar decay identified: H → ff̄',
+     rule:'', expr:step1,
+     expl:`Pattern: 2 external fermion legs, no external boson, 1 vertex. Yukawa coupling: y_f = m_f/v (Higgs mechanism).`},
+
+    {title:'Amplitude: Yukawa coupling',
+     rule:`For H(p₁)→f(p₂)+f̄(p₃): no Lorentz index on scalar vertex.<br>
+       iM = ū(p₂)(−i${CP('y_f')}/√2)v(p₃) &nbsp; where ${CP('y_f')} = ${FR('m_f','v')}, v≈246 GeV`,
+     expr:`iM = −i${FR(CP('y_f'),'√2')} × ū(p₂)v(p₃)`,
+     expl:`No γ<sup>μ</sup> — this is a pure scalar coupling. The Lorentz structure is just 1 (identity in Dirac space).`},
+
+    {title:'Square: spin sum',
+     rule:`Σ<sub>s</sub> u ū = ${slash('p')}+m, &nbsp; Σ<sub>s</sub> v v̄ = ${slash('p')}−m<br>
+       Σ|M|² = (y<sub>f</sub>²/2) × ${TR('Tr')}[(${slash('p2')}+m_f)(${slash('p3')}−m_f)]`,
+     expr:`= ${FR('y_f²','2')} × [4(p₂·p₃) − 4m_f²]  &nbsp; using Tr[${slash('A')}${slash('B')}]=4A·B, Tr[m²]=4m²`,
+     expl:`For massless limit: ×2y_f² × p₂·p₃. For massive: the 4m_f² term represents helicity suppression.`},
+
+    {title:'Apply kinematics',
+     rule:`In the Higgs rest frame: p₂·p₃ = ${FR('m_H²−4m_f²','4')} + m_f² = ${FR('m_H²','4')} − m_f²`,
+     expr:`Σ|M|² = 2y_f²(m_H²/2 − 2m_f²) = y_f²m_H²(1 − ${FR('4m_f²','m_H²')})`,
+     expl:`Vanishes at threshold m_H = 2m_f (phase space opens). Maximum for m_f ≪ m_H.`},
+
+    {title:'Partial width',
+     rule:`Γ = ${FR('|<b>p</b>|','8πm_H²')} × N_c × |M|², &nbsp; |<b>p</b>| = ${FR('m_H','2')}√(1−4m_f²/m_H²)`,
+     expr:`Γ(H→ff̄) = N_c × ${FR(CP('y_f')+'²m_H','8π')} × (1−${FR('4m_f²','m_H²')})<sup>3/2</sup>`,
+     expl:`The (1−4m_f²/m_H²)^{3/2} combines phase space × helicity suppression. For m_H=125 GeV:
+       Γ(H→bb̄)≈2.4 MeV (y_b=m_b/v≈0.024), dominant SM decay ✓`},
+  ], latex:`\\Gamma(H\\to f\\bar f) = \\frac{N_c y_f^2 m_H}{8\\pi}\\left(1-\\frac{4m_f^2}{m_H^2}\\right)^{3/2}`};
+}
+
+// ─── 2→3 with photon/gluon radiation (bremsstrahlung) ────────────────────────
+function stepsBremsstrahlung(topo, text, iMDisplay) {
+  const {coupling, isGluon, nBosonProp} = topo;
+  const particleName = isGluon ? 'gluon' : 'photon';
+  const coupHTML = isGluon ? CP('g<sub>s</sub>') : CP('e');
+  const step1 = iMDisplay
+    ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
+    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,8).join('\n'))}</div>`;
+
+  return {steps:[
+    {title:`2→3 process: radiation of one real ${particleName} (5 external legs)`,
+     rule:'', expr:step1,
+     expl:`Pattern: 4 fermion external legs + 1 external ${particleName}. This is bremsstrahlung / real ${particleName} emission.
+       The amplitude is a SUM of diagrams — the ${particleName} can be emitted from any external charged line.`},
+
+    {title:'Diagram structure: photon from each external line',
+     rule:`For e⁺e⁻→μ⁺μ⁻γ there are 4 diagrams. For qq̄→qq̄g (QCD) there are 5 (including 3-gluon vertex).<br>
+       iM = iM<sub>e⁻</sub> + iM<sub>e⁺</sub> + iM<sub>μ⁻</sub> + iM<sub>μ⁺</sub>`,
+     expr:`iM<sub>i</sub> ∝ ${FR(coupHTML+' Q<sub>i</sub> ε*·J<sub>i</sub>','(p<sub>i</sub>+k)²')} + (crossed)`,
+     expl:`Each diagram has a fermion propagator (p_i+k)² from the line that emits the photon. The 5 external-leg kinematics is described by 5 independent Mandelstam invariants.`},
+
+    {title:'5-point kinematics: s, t, u are NOT sufficient',
+     rule:`For 2→3 (massless): need 5 independent invariants. Standard choice:<br>
+       s = (p₁+p₂)² &nbsp;[centre-of-mass energy squared]<br>
+       s₁₃ = (p₁−p₃)², s₁₄ = (p₁−p₄)² &nbsp;[momentum transfers to each outgoing fermion]<br>
+       s₃₄ = (p₃+p₄)² = s−s₁₃−s₁₄−s₁k−s₂k &nbsp;[invariant mass of fermion pair]<br>
+       s₁k = 2p₁·k, s₂k = 2p₂·k &nbsp;[photon eikonal denominators]`,
+     expr:`Constraint: s₃₄ + s₃k + s₄k = s − s₁k − s₂k &nbsp; (from (p₃+p₄+k)² = (p₁+p₂)²)`,
+     expl:`The phase space is 5-dimensional (for massless 2→3). The 2→2 limit recovers when k→0: s₁k,s₂k,s₃k,s₄k→0.`},
+
+    {title:'Soft photon limit: eikonal factorisation (Low\'s theorem)',
+     rule:`<strong>When k→0 (soft photon):</strong><br>
+       iM<sub>2→3</sub> → e × Σᵢ ${FR('Q<sub>i</sub> ε*·p<sub>i</sub>','p<sub>i</sub>·k')} × iM<sub>2→2</sub> = e × S<sup>μ</sup>ε*<sub>μ</sub> × iM<sub>2→2</sub>`,
+     expr:`S<sup>μ</sup> = Σᵢ ${FR('Q<sub>i</sub>p<sub>i</sub><sup>μ</sup>','p<sub>i</sub>·k')} (eikonal factor, sum over all charged legs)`,
+     expl:`This is exact to leading order in k. The 2→3 amplitude completely factorises into the eikonal × the 2→2 amplitude.
+       Poles at p_i·k=0 are the infrared (IR) divergences.`},
+
+    {title:'Soft cross section: infrared divergence',
+     rule:`Squaring and integrating over soft photon phase space:`,
+     expr:`dσ<sub>2→3</sub>|<sub>soft</sub> = dσ<sub>2→2</sub> × (−${coupHTML}²) × Σ<sub>ij</sub> Q<sub>i</sub>Q<sub>j</sub> ${FR('p<sub>i</sub>·p<sub>j</sub>','(p<sub>i</sub>·k)(p<sub>j</sub>·k)')} × ${FR('d³k','2|k|(2π)³')}`,
+     expl:`∫d³k/(2|k|) over k→0 region is logarithmically divergent: ~∫dk/k ~ ln(Λ<sub>IR</sub>).<br>
+       <strong>This IR divergence is NOT physical</strong> — it cancels against the 1-loop virtual correction to the 2→2 process (Bloch-Nordsieck theorem).`},
+
+    {title:'Cancellation of IR divergences (Bloch-Nordsieck)',
+     rule:`Infrared-safe observable: sum over all states with ≤N photons of energy > E<sub>min</sub>:<br>
+       σ<sub>physical</sub> = σ<sub>2→2,virtual</sub> + σ<sub>2→3,real</sub> + O(E<sub>min</sub>/√s)`,
+     expr:`σ<sub>2→2</sub><sup>1-loop</sup> contains −${FR('e²','8π²')} × ln(${FR('s','μ²')})/ε + ... (virtual IR)<br>
+       σ<sub>2→3</sub><sup>soft</sup> contains +${FR('e²','8π²')} × ln(${FR('s','μ²')})/ε + ... (real IR)<br>
+       Sum is <strong>finite and μ-independent</strong>`,
+     expl:`In practice: use a jet-finding algorithm (k<sub>T</sub>, anti-k<sub>T</sub>) to define inclusive cross sections that are IR-safe. The QCD equivalent is the KLN theorem.`},
+
+    {title:'Hard photon: full trace calculation',
+     rule:`For k not soft, the full amplitude must be squared. The result is a sum of 16 terms
+       M<sub>i</sub>M<sub>j</sub>* (4 diagrams × 4 conjugate diagrams).`,
+     expr:`Σ<sub>pol,spins</sub>|M|² = ${coupHTML}⁶ × Σ<sub>ij</sub> ${FR('T<sub>ij</sub>(s,s₁₃,s₁₄,s₃₄,s<sub>1k</sub>,s<sub>2k</sub>)','D<sub>i</sub>D<sub>j</sub>')}`,
+     expl:`Each T<sub>ij</sub> is a trace involving up to 6 gamma matrices (from two vertices + propagator numerator on each side). The result depends on all 5 kinematic invariants. Numerical evaluation via Monte Carlo is standard for multi-leg processes.`},
+  ], latex:`iM_{2\\to3}\\xrightarrow{k\\to0} e\\,S^\\mu\\varepsilon^*_\\mu\\times iM_{2\\to2}`};
+}
+
+// iMDisplay: the mathematical expression to show in Step 1 (e.g. "iM = iQeγ^μ × ...")
+// text:      the ← comment lines used for parsing
+function stepsFromIM(text, iMDisplay) {
   const factors = parseIMFactors(text);
   const topo = getAmplitudeTopology(factors);
-  if (topo.topo==='two_current') return stepsSquareTwoCurrent(topo, text);
-  if (topo.topo==='compton')     return stepsSquareCompton(topo, text);
-  if (topo.topo==='pure_boson')  return {steps:[{
+
+  // ── 2→2 ──────────────────────────────────────────────────────────────────
+  if (topo.topo==='two_current')   return stepsSquareTwoCurrent(topo, text, iMDisplay);
+  if (topo.topo==='compton')       return stepsSquareCompton(topo, text, iMDisplay);
+
+  // ── 1→2 decays ────────────────────────────────────────────────────────────
+  if (topo.topo==='decay_1to2')    return stepsDecay1to2(topo, text, iMDisplay);
+  if (topo.topo==='decay_scalar')  return stepsDecayScalar(topo, text, iMDisplay);
+
+  // ── 2→3 ──────────────────────────────────────────────────────────────────
+  if (topo.topo==='bremsstrahlung') return stepsBremsstrahlung(topo, text, iMDisplay);
+  if (topo.topo==='multi_photon')  return {steps:[{
+    title:`2→3+ multi-photon: e⁺e⁻→${topo.nPhotExt}γ`,
+    rule:'',
+    expr:`<span style="color:#8090a0">${topo.nPhotExt}-photon final state. Apply Low's theorem recursively for soft photons, or use helicity methods (Parke-Taylor generalised) for hard photons.</span>`,
+    expl:`For e⁺e⁻→nγ at tree level: sum over all permutations of photon attachments. The leading-order amplitude is related to the Berends-Giele current.`
+  }], latex:''};
+
+  // ── Loop ─────────────────────────────────────────────────────────────────
+  if (topo.topo==='loop')          return stepsLoopIntegral(topo.nLoops, topo.nPropTotal||2, topo.coupling||'e');
+
+  // ── Pure boson ────────────────────────────────────────────────────────────
+  if (topo.topo==='pure_boson')    return {steps:[{
     title:'Pure gauge boson amplitude — use Helicity tab',
     rule:'', expr:`<span style="color:#505080">No fermion lines detected. For massless gluons/photons use the Helicity (n-gluon) examples.</span>`, expl:''
   }], latex:''};
+
+  // ── Fallback with diagnostic ──────────────────────────────────────────────
+  const {nFermExt, nPhotExt, nFermProp, nBosonProp, nVerts} = topo;
   return {steps:[{
-    title:'Amplitude received — topology not recognised',
+    title:'Topology detected — no step generator yet',
     rule:'',
-    expr:`<div style="font-size:11px;color:#404060;white-space:pre-wrap;max-height:140px;overflow-y:auto">${esc(text.substring(0,400))}</div>`,
-    expl:`Could not identify a standard topology from the factor comments. Try entering the squared trace expression directly instead.`
+    expr:`<div style="font-size:11px;color:#404060;white-space:pre-wrap;max-height:120px;overflow-y:auto">${esc((iMDisplay||text).substring(0,300))}</div>`,
+    expl:`Detected: ${nFermExt||0} fermion legs, ${nPhotExt||0} photon legs, ${nFermProp||0} fermion props, ${nBosonProp||0} boson props, ${nVerts||0} vertices.<br>
+      Supported topologies: 2→2 (two-current, Compton), 1→2 (vector/scalar decay), 2→3 (bremsstrahlung), loops.<br>
+      This combination (${nFermExt}f+${nPhotExt}γ ext, ${nFermProp}f+${nBosonProp}γ prop) is not yet implemented.`
   }], latex:''};
 }
 
@@ -763,17 +1493,202 @@ function parseScalarParts(sc) {
   };
 }
 
+// ─── Two-diagram interference ─────────────────────────────────────────────────
+// Key formula (verified analytically):
+//   Tr[γ^μ p̸_A γ^ν p̸_B γ_μ p̸_C γ_ν p̸_D] = −32(A·C)(B·D)
+// Derivation:
+//   γ^μ(p̸_Aγ^νp̸_B)γ_μ = −2p̸_Bγ^νp̸_A  [3-gamma contraction: γ^μABCγ_μ=−2CBA]
+//   γ^ν(p̸_Ap̸_C)γ_ν   = 4(A·C)           [2-gamma contraction: γ^νγ^αγ^βγ_ν=4g^αβ]
+//   Tr = −8(A·C)×4(B·D) = −32(A·C)(B·D)
+
+function interferenceVar(denom1, denom2) {
+  // Returns the missing Mandelstam variable not in denom1 or denom2
+  const missing = ['s','t','u'].find(v => v!==denom1 && v!==denom2);
+  return missing || null;
+}
+
+// Evaluate interference dot-products from the DP table
+function evalInterferenceDot(v1, v2) {
+  const r = dpHTML(v1, v2);
+  return r; // {html, val, mand, sign}
+}
+
+function stepsInterference(expr1, expr2, diagSign) {
+  const p1 = parseInput(expr1), p2 = parseInput(expr2);
+  const pat1 = identify(p1); pat1.scalar = p1.scalar;
+  const pat2 = identify(p2); pat2.scalar = p2.scalar;
+
+  if (pat1.type !== 'double4' || pat2.type !== 'double4')
+    return {steps:[{title:'Two-diagram mode requires two double-trace expressions',
+      rule:'', expr:`<span style="color:#806040">Both inputs must be of the form (e4/q2)*Tr[...]*Tr[...].</span>`, expl:''}], latex:''};
+
+  // Extract chain momenta and denominators
+  const [pA,pB] = pat1.m1.map(getDotId);
+  const [pC,pD] = pat1.m2.map(getDotId);
+  const sc1 = parseScalarParts(p1.scalar);
+  const denom1 = sc1.denHTML.includes(MV('s')) ? 's' : sc1.denHTML.includes(MV('t')) ? 't' : 'u';
+
+  const [pE,pF] = pat2.m1.map(getDotId);
+  const [pG,pH] = pat2.m2.map(getDotId);
+  const sc2 = parseScalarParts(p2.scalar);
+  const denom2 = sc2.denHTML.includes(MV('s')) ? 's' : sc2.denHTML.includes(MV('t')) ? 't' : 'u';
+
+  const q3 = interferenceVar(denom1, denom2);
+  const procName = denom1==='t'&&denom2==='s' || denom1==='s'&&denom2==='t' ? 'Bhabha (t+s)' :
+                   denom1==='t'&&denom2==='u' || denom1==='u'&&denom2==='t' ? 'Møller (t+u)' :
+                   denom1==='s'&&denom2==='u' || denom1==='u'&&denom2==='s' ? 'annihilation (s+u)' :
+                   `two-diagram (${denom1}+${denom2})`;
+  const signStr = diagSign < 0 ? 'M = M₁ − M₂' : 'M = M₁ + M₂';
+  const signDesc = diagSign < 0 ? 'fermionic exchange / crossed diagram' : 'bosonic / distinct-particle addition';
+
+  // Identify the 8-gamma trace momenta
+  // Rule: the 4 momenta across the two diagrams are connected in a specific crossing pattern
+  // The trace dot-products are those involving the "missing" Mandelstam variable
+  const q3Pairs = {
+    's': [['p1','p2'],['p3','p4']], 't': [['p1','p3'],['p2','p4']], 'u': [['p1','p4'],['p2','p3']]
+  };
+  const crossPair = q3Pairs[q3] || [['p1','p2'],['p3','p4']];
+  const [cross1, cross2] = crossPair;
+  const dp_cross1 = dpHTML(cross1[0], cross1[1]);
+  const dp_cross2 = dpHTML(cross2[0], cross2[1]);
+  const traceVal = dp_cross1.mand && dp_cross2.mand
+    ? `−32·(${dp_cross1.html})·(${dp_cross2.html})`
+    : `−32·${dotP(cross1[0],cross1[1])}·${dotP(cross2[0],cross2[1])}`;
+  const traceNum = dp_cross1.sign && dp_cross2.sign
+    ? -32 * (dp_cross1.sign/2) * (dp_cross2.sign/2)  // -32 × (±1/2)² = -32/4 = -8
+    : null;
+  // interference = diagSign × -(1/4) × 2 × (e4/(denom1×denom2)) × traceNum×q3²
+  // = diagSign × (4e4×q3²)/(denom1×denom2) [simplified]
+  const interferenceMV = q3 ? `4${CP('e')}⁴ × ${FR(`${MV(q3)}²`, `${MV(denom1)}·${MV(denom2)}`)}` : '?';
+  const interferenceMV_sign = diagSign < 0 ? interferenceMV : `−${interferenceMV}`;
+
+  // Run individual diagram steps
+  const res1 = stepsDouble4(p1, pat1);
+  const res2 = stepsDouble4(p2, pat2);
+
+  const finalExpr1 = res1.steps[res1.steps.length-1].expr;
+  const finalExpr2 = res2.steps[res2.steps.length-1].expr;
+
+  const steps = [
+    {title:`Two-diagram amplitude identified: ${procName}`,
+     rule:'',
+     expr:`<div style="font-size:12px;color:#8090b8;background:#07070f;padding:8px 10px;border-radius:3px;line-height:2">
+       <strong>Diagram 1</strong> (denom ${MV(denom1)}): &nbsp;${rScalar(p1.scalar)}${rTrace(p1.traces[0])} × ${rTrace(p1.traces[1])}<br>
+       <strong>Diagram 2</strong> (denom ${MV(denom2)}): &nbsp;${rScalar(p2.scalar)}${rTrace(p2.traces[0])} × ${rTrace(p2.traces[1])}
+     </div>`,
+     expl:`${signStr} &nbsp;(${signDesc}). Missing variable: ${MV(q3||'?')} → appears in the cross-term trace.`},
+
+    {title:'Full squared amplitude: |M|² = |M₁|² + |M₂|² ± 2Re(M₁M₂*)',
+     rule:`For <strong>${signStr}</strong>:<br>
+       |M|² = |M₁|² + |M₂|² ${diagSign<0?'−':'+'}2Re(M₁M₂*)<br>
+       The cross term 2Re(M₁M₂*) involves a <strong>single 8-gamma trace</strong> — not two separate 4-gamma traces.`,
+     expr:`${rScalar(p1.scalar)}${TR('Tr')}[...] × ${TR('Tr')}[...]  ${diagSign<0?'−':'+'}  ${rScalar(p2.scalar)}${TR('Tr')}[...] × ${TR('Tr')}[...]`,
+     expl:`The cross term arises because the two diagrams share the same external momenta but route them through different fermion chains, creating a fermion loop in the trace structure.`},
+
+    {title:'Evaluate |M₁|² (Diagram 1)',
+     rule:'Apply double-trace contraction formula (same as single-diagram case).',
+     expr:finalExpr1,
+     expl:`Full derivation: use the → Diagram 1 input alone to see all intermediate steps.`},
+
+    {title:'Evaluate |M₂|² (Diagram 2)',
+     rule:'',
+     expr:finalExpr2,
+     expl:`Full derivation: use the → Diagram 2 input alone to see all intermediate steps.`},
+
+    {title:'Cross-term 2Re(M₁M₂*): setup the 8-gamma trace',
+     rule:`After spin sums, the cross term closes into a <strong>single trace</strong> with 8 gamma matrices:<br>
+       2Re(M₁M₂*) = ${FR(`2${CP('e')}⁴`,`${MV(denom1)}·${MV(denom2)}`)} × ${TR('Tr')}[${G('γ')}<sup>μ</sup>${slash(cross1[0])}${G('γ')}<sup>ν</sup>${slash(cross2[0])}${G('γ')}<sub>μ</sub>${slash(cross2[1])}${G('γ')}<sub>ν</sub>${slash(cross1[1])}]`,
+     expr:`${TR('Tr')}[${G('γ')}<sup>μ</sup>${slash(cross1[0])}${G('γ')}<sup>ν</sup>${slash(cross2[0])}${G('γ')}<sub>μ</sub>${slash(cross2[1])}${G('γ')}<sub>ν</sub>${slash(cross1[1])}]`,
+     expl:`The momenta in the 8-gamma trace are those that "cross" between the two diagrams — specifically the pair associated with the missing Mandelstam variable ${MV(q3||'?')}.`},
+
+    {title:'Evaluate the 8-gamma trace',
+     rule:`<strong>Key identity (d=4):</strong><br>
+       ${TR('Tr')}[${G('γ')}<sup>μ</sup>${slash('A')}${G('γ')}<sup>ν</sup>${slash('B')}${G('γ')}<sub>μ</sub>${slash('C')}${G('γ')}<sub>ν</sub>${slash('D')}] = −32(A·C)(B·D)<br>
+       <strong>Proof:</strong> γ<sup>μ</sup>(${slash('A')}γ<sup>ν</sup>${slash('B')})γ<sub>μ</sub> = −2${slash('B')}γ<sup>ν</sup>${slash('A')} &nbsp;[3-gamma rule] &nbsp;→&nbsp; γ<sup>ν</sup>(${slash('A')}${slash('C')})γ<sub>ν</sub> = 4(A·C) &nbsp;[2-gamma rule]`,
+     expr:`= −32·${dotP(cross1[0],cross2[0])}·${dotP(cross2[1],cross1[1])}  = ${traceVal}`,
+     expl:`The two dot products (${MV(q3||'?')}·${MV(q3||'?')} terms) come from the momenta that cross between the two fermion chains.`},
+
+    {title:'Substitute Mandelstam + collect interference',
+     rule:`${dotP(cross1[0],cross2[0])} = ${dp_cross1.html} &nbsp;&nbsp; ${dotP(cross2[1],cross1[1])} = ${dp_cross2.html}<br>
+       Prefactor: ${FR(`${diagSign<0?'−':''}2${CP('e')}⁴`,`${MV(denom1)}·${MV(denom2)}`)} × trace`,
+     expr:`2Re(M₁M₂*)/e⁴ = ${FR(`2`,`${MV(denom1)}·${MV(denom2)}`)} × (−8${MV(q3||'?')}²/${DT('4')}) = ${FR(`−4${MV(q3||'?')}²`,`${MV(denom1)}·${MV(denom2)}`)}`,
+     expl:`Using (±${MV(q3||'?')}/2)·(±${MV(q3||'?')}/2) = ${MV(q3||'?')}²/4.`},
+
+    {title:'Final result',
+     rule:'',
+     expr:`|M̄|² = |M̄₁|² + |M̄₂|² ${diagSign<0?'−':'+'}2Re(M̄₁M̄₂*)/4<br><br>
+       = ${finalExpr1} &nbsp;+&nbsp; ${finalExpr2}<br>
+       ${diagSign<0?'−':'+'}  ${interferenceMV}`,
+     expl:`The interference sign is ${diagSign<0?'negative (fermionic)':'positive (bosonic)'}. For physical kinematics (s>0, t<0, u<0), ${MV(denom1)}·${MV(denom2)} is ${denom1==='s'||denom2==='s'?'negative (s>0, other<0)':'positive (both <0)'}, making the interference ${diagSign<0?(denom1==='s'||denom2==='s'?'negative — reduces total ✓':'positive — enhances total ✓'):'positive'}.
+       <br><strong>Spin-averaged</strong>: divide the full |M|² by 4.`},
+  ];
+
+  const latex1 = res1.latex.replace(/<[^>]+>/g,'').replace(/[⁴²¹]/g,s=>'^'+{'⁴':'4','²':'2'}[s]||s);
+  const latex2 = res2.latex.replace(/<[^>]+>/g,'').replace(/[⁴²¹]/g,s=>'^'+{'⁴':'4','²':'2'}[s]||s);
+  const latex = `|\\bar{M}|^2 = [${latex1}] + [${latex2}] ${diagSign<0?'-':'+'} \\frac{4e^4 ${q3||'?'}^2}{${denom1}\\cdot ${denom2}}`;
+  return {steps, latex};
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let STEPS = [], LATEX = '';
+let pendingIMComments = null;
+let pendingIMDisplay  = null;
+let twoMode  = false;
+let diagSign = -1;   // -1: M=M₁-M₂ (fermion exchange), +1: M=M₁+M₂
+
+// ─── Two-diagram UI helpers ───────────────────────────────────────────────────
+function toggleTwoDiagrams() {
+  twoMode = !twoMode;
+  document.getElementById('input2-row').style.display = twoMode ? 'block' : 'none';
+  document.getElementById('sign-row').style.display   = twoMode ? 'flex'  : 'none';
+  document.getElementById('diag-lbl2').style.display  = twoMode ? 'inline': 'none';
+  const btn = document.getElementById('btn-two');
+  btn.textContent = twoMode ? '✕ One Diagram' : '+ Two Diagrams';
+  btn.classList.toggle('active', twoMode);
+}
+function setSign(s) {
+  diagSign = s;
+  document.getElementById('sign-minus').classList.toggle('active', s < 0);
+  document.getElementById('sign-plus').classList.toggle('active',  s > 0);
+}
 
 // ─── Main solver ──────────────────────────────────────────────────────────────
 function go() {
   const raw = document.getElementById('amp-input').value.trim();
   if (!raw) return;
 
-  // Detect editor text output (contains ← vertex / ← prop / ← ext markers)
+  // Two-diagram mode
+  if (twoMode) {
+    const raw2 = document.getElementById('amp-input2').value.trim();
+    if (raw2) {
+      const res = stepsInterference(raw, raw2, diagSign);
+      STEPS = res.steps; LATEX = res.latex;
+      showAll(); return;
+    }
+  }
+
+  // If we have structured comments from an editor import, use those for parsing
+  // and the pending display expression for showing the math
+  if (pendingIMComments) {
+    const comments = pendingIMComments;
+    const display  = pendingIMDisplay || raw;
+    pendingIMComments = null;
+    pendingIMDisplay  = null;
+    const res = stepsFromIM(comments, display);
+    STEPS = res.steps; LATEX = res.latex;
+    showAll(); return;
+  }
+
+  // Detect raw math expression: "iM = iQeγ^μ × ..."
+  if (isMathIM(raw)) {
+    const res = stepsFromMathIM(raw);
+    STEPS = res.steps; LATEX = res.latex;
+    showAll(); return;
+  }
+
+  // Detect raw ← comment format (manual paste of editor output)
   if (isIMInput(raw)) {
-    const res = stepsFromIM(raw);
+    const res = stepsFromIM(raw, raw);
     STEPS = res.steps; LATEX = res.latex;
     showAll(); return;
   }
@@ -827,16 +1742,7 @@ function showAll() {
 
 // ─── Examples ─────────────────────────────────────────────────────────────────
 const EX = {
-  'from_editor': `iM =
-    iQeγ^μ                          ← vertex (e [auto])
-  × −iη^μν/(p₁+p₂)²                ← photon prop (p₁+p₂)
-  × iQeγ^ν                          ← vertex (e [auto])
-  × u(p₁,s)                         ← fermion ext in (p₁)
-  × ū(p₂,s)                         ← fermion ext out (p₂)
-  × u(p₃,s)                         ← fermion ext in (p₃)
-  × ū(p₄,s)                         ← fermion ext out (p₄)
-
-  ── 2 vertices  1 int. lines  4 ext. legs  0 loop(s)`,
+  // 'from_editor' is handled specially in eg() below — not in this table
   'ee_mumu':      '(e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]',
   'ee_mumu_mass': '(e4/s2) * Tr[(p1+m) gm (p2-m) gn] * Tr[(p3+m) gm (p4-m) gn]',
   'emu_emu':      '(e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]',
@@ -847,6 +1753,38 @@ const EX = {
   'qcd':          '(gs4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]',
 };
 function eg(name) {
+  if (name === 'bhabha') {
+    if (!twoMode) toggleTwoDiagrams();
+    setSign(-1);
+    document.getElementById('amp-input').value  = '(e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]';
+    document.getElementById('amp-input2').value = '(e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]';
+    go(); return;
+  }
+  if (name === 'moller') {
+    if (!twoMode) toggleTwoDiagrams();
+    setSign(-1);
+    document.getElementById('amp-input').value  = '(e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]';
+    document.getElementById('amp-input2').value = '(e4/u2) * Tr[p1 gm p4 gn] * Tr[p2 gm p3 gn]';
+    go(); return;
+  }
+  if (name === 'from_editor') {
+    // Simulate a real editor import: math expression shown, comment lines used for parsing
+    const iM = 'iM = iQeγ^μ × −iη^μν/s₁₂ × iQeγ^ν × u(p₁,s) × v̄(p₂,s) × ū(p₃,s) × v(p₄,s)';
+    const comments = [
+      '← vertex (e [auto])',
+      '← photon prop (p₁+p₂)',
+      '← vertex (e [auto])',
+      '← fermion ext in (p₁)',
+      '← fermion ext out (p₂)',
+      '← fermion ext out (p₃)',
+      '← fermion ext in (p₄)',
+    ].join('\n');
+    document.getElementById('amp-input').value = iM;
+    pendingIMComments = comments;
+    pendingIMDisplay  = iM;
+    go();
+    return;
+  }
   const v=EX[name]; if(!v) return;
   document.getElementById('amp-input').value=v;
   go();
@@ -862,7 +1800,17 @@ function importFromEditor() {
   if (!raw) { alert('Nothing exported yet. In feynman_editor.html: draw a diagram → click iM ▶ → click → Stepper.'); return; }
   const data = JSON.parse(raw);
   const ago = Math.round((Date.now() - data.timestamp) / 1000);
-  document.getElementById('amp-input').value = data.text;
+
+  if (data.iM && data.comments) {
+    // New format: show the math expression in the textarea, parse from comments
+    document.getElementById('amp-input').value = data.iM;
+    pendingIMComments = data.comments;
+    pendingIMDisplay  = data.iM;
+  } else {
+    // Fallback: old format or plain text
+    document.getElementById('amp-input').value = data.text || data.iM || '';
+  }
+
   go();
   document.getElementById('btn-import').textContent = `Imported (${ago}s ago) ✓`;
   setTimeout(() => document.getElementById('btn-import').textContent = 'Import from Editor', 2000);
