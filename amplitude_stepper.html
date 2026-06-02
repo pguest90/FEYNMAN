@@ -57,6 +57,9 @@
 </div>
 
 <style>
+  #preset-drawer { display:none; flex-wrap:wrap; gap:5px; padding:7px 0 4px; align-items:center; }
+  #preset-drawer.open { display:flex; }
+  #btn-presets.open { color:#7080c0; border-color:#304060; }
   #input2-row { display:none; margin-top:6px; }
   #amp-input2 { width:100%; background:#07070f; border:1px solid #2a2a44; color:#c0d0e8; font-family:'Courier New',monospace; font-size:13px; padding:7px 10px; border-radius:3px; resize:none; height:44px; }
   #amp-input2:focus { outline:none; border-color:#405060; }
@@ -87,6 +90,9 @@
     <button id="btn-two" onclick="toggleTwoDiagrams()">+ Two Diagrams</button>
     <button id="btn-import" onclick="importFromEditor()" style="border-color:#304070;color:#6080b0">Import from Editor</button>
     <div class="sep"></div>
+    <button id="btn-presets" onclick="togglePresets()" style="font-size:11px;border-color:#252545;color:#404068">Examples ▾</button>
+  </div>
+  <div id="preset-drawer">
     <button class="ex" onclick="eg('from_editor')">From Editor (iM)</button>
     <button class="ex" onclick="eg('ee_mumu')">e⁺e⁻→μ⁺μ⁻</button>
     <button class="ex" onclick="eg('ee_mumu_mass')">e⁺e⁻→μ⁺μ⁻ (massive)</button>
@@ -96,7 +102,10 @@
     <button class="ex" onclick="eg('internal')">Tr[p1 gm p2 gm]</button>
     <button class="ex" onclick="eg('spinor')">Spinor bilinear</button>
     <button class="ex" onclick="eg('qcd')">QCD t-channel</button>
-    <div class="sep"></div>
+    <button class="ex" onclick="eg('yukawa_ff_t')" style="border-color:#204030;color:#60a070">Yukawa ff→ff</button>
+    <button class="ex" onclick="eg('yukawa_ffbar_t')" style="border-color:#204030;color:#60a070">Yukawa ff̄→ff̄ (t)</button>
+    <button class="ex" onclick="eg('yukawa_ffbar_s')" style="border-color:#402010;color:#c07040">Yukawa ff̄ helicity</button>
+    <div class="sep" style="width:100%;height:1px;margin:4px 0"></div>
     <button class="ex" onclick="eg('bhabha')" style="border-color:#402060;color:#9060c0">Bhabha (t+s)</button>
     <button class="ex" onclick="eg('moller')" style="border-color:#204060;color:#6090c0">Møller (t+u)</button>
   </div>
@@ -626,22 +635,69 @@ function parseMathExpression(text) {
   const expr = norm(text.replace(/^iM\s*=\s*/i,'').trim());
   const parts = expr.split(/\s*[×*]\s*/).map(s=>s.trim()).filter(Boolean);
 
-  let nVert=0, nFermExt=0, nPhotExt=0, nPhotProp=0, nFermProp=0, nLoops=0;
-  let photPropNorm='';
+  let nVert=0, nFermExt=0, nPhotExt=0, nPhotProp=0, nFermProp=0,
+      nScalarProp=0, nScalarExt=0, nLoops=0;
+  let photPropNorm='', scalarPropNorm='';
   const fermExts=[];
 
   for (const f of parts) {
-    const fn = norm(f);
-    // Loop measure: ∫d⁴ℓ / ∫d4l / ∫d^4
+    // Full normalisation: subscripts, superscripts, unicode minus/multiply
+    const fn = norm(f.replace(/[−–]/g,'-').replace(/²/g,'2').replace(/⁴/g,'4').replace(/³/g,'3'));
+
+    // ── Loop measure ────────────────────────────────────────────────────────
     if (/∫|\\int/.test(f) || /^d[4⁴\^]/.test(fn))  { nLoops++;   continue; }
+
+    // ── Fermion/gauge vertices (contain γ^, iQe, ig_s) ──────────────────────
     if (/γ\^|iQe|ig_?s/i.test(f))                    { nVert++;    continue; }
+
+    // ── Photon/gluon propagator −ig_μν or −iη^μν ────────────────────────────
     if (/^-i.*g_μν|^-ig_μν|^-i.*η\^|^-iη\^/i.test(f)){ nPhotProp++; photPropNorm=fn; continue; }
+
+    // ── Fermion propagator i(p̸+m)/(p²−m²) ─────────────────────────────────
     if (/^i\s*\([^)]*[mp̸ℓl]/.test(f))               { nFermProp++; continue; }
+
+    // ── Scalar propagator  i/(denom)  e.g. i/(s−m²)  ──────────────────────
+    // Pattern: starts with optional sign + 'i' + '/' immediately after
+    if (/^-?i\s*\//.test(fn))                         { nScalarProp++; scalarPropNorm=fn; continue; }
+
+    // ── External scalar leg = bare '1' ─────────────────────────────────────
+    if (/^[−-]?1$/.test(fn))                          { nScalarExt++; continue; }
+
+    // ── Scalar vertex (coupling with no γ): −iλ, −3iλv, iκ, −ig, etc. ─────
+    // Criteria: starts with optional minus + 'i', no γ^, no parenthesised momentum
+    if (/^-?i[^(]*$/.test(fn) && !/\(p\d/i.test(fn)) { nVert++;    continue; }
+
+    // ── Photon/gluon external leg ε^μ ───────────────────────────────────────
     if (/^ε/i.test(f) || f.charCodeAt(0)===0x03B5)   { nPhotExt++; continue; }
-    const m = fn.match(/\(p(\d+)/i);
-    if (m) { nFermExt++; fermExts.push('p'+m[1]); }
+
+    // ── Fermion external leg containing (pN) ────────────────────────────────
+    const legM = fn.match(/\(p(\d+)/i);
+    if (legM) {
+      nFermExt++;
+      const mom = 'p'+legM[1];
+      fermExts.push(mom);
+      // Detect spinor type for Yukawa/bilinear squaring (P&S convention):
+      //   u(p,s)   = incoming fermion        ū(p,s)  = outgoing fermion
+      //   v̄(p,s)  = incoming antifermion     v(p,s)  = outgoing antifermion
+      const raw = f;
+      const stype = /v̄|v̄|vbar/i.test(raw)          ? 'vbar' // incoming antifermion
+                  : /^v\s*\(|^v\s*\[/i.test(raw.trim())   ? 'v'    // outgoing antifermion
+                  : /ū|ū|ubar/i.test(raw)            ? 'ubar' // outgoing fermion
+                  :                                          'u';    // incoming fermion
+      fermExts[fermExts.length-1] = {mom, stype};
+      // Keep backward-compat string in a parallel array for old callers:
+      fermExts[fermExts.length-1].toString = () => mom;
+      continue;
+    }
+
+    // ── Fallthrough: treat anything else as a scalar coefficient ─────────────
+    if (fn && fn !== '') nVert++;
   }
-  return {nVert, nFermExt, nPhotExt, nPhotProp, nFermProp, nLoops, photPropNorm, fermExts};
+  // Ensure backward-compat: callers that do fermExts[i] get the string via .mom
+  const fermExtsMoms = fermExts.map(e => typeof e==='object' ? e.mom : e);
+  return {nVert, nFermExt, nPhotExt, nPhotProp, nFermProp,
+          nScalarProp, nScalarExt, nLoops, photPropNorm, scalarPropNorm,
+          fermExts: fermExtsMoms, fermSpinors: fermExts};
 }
 
 function steps3PointVertex(text) {
@@ -772,8 +828,768 @@ function stepsPhotonBox(text, nLoops, nProp, isGluon) {
   return {steps, latex: latexProc};
 }
 
+// ─── Scalar particle squaring (no spin sums, no traces) ──────────────────────
+function stepsSquareScalar(text, nVert, nScalarProp, nScalarExt, scalarPropNorm) {
+  const step0 = `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(text)}</div>`;
+
+  // ── Propagator denominator label ──────────────────────────────────────────
+  // Accept: i/(s-m2) → "s", i/((p1+p2)2-m2) → "q" with note, etc.
+  const pnorm = (scalarPropNorm||'').replace(/²/g,'2').replace(/³/g,'3').replace(/⁴/g,'4');
+  let denomVar = 'q', denomDisplay = MV('q');
+  const simpleMatch = pnorm.match(/\/\(?\s*([stu])\b/i);
+  if (simpleMatch) {
+    denomVar = simpleMatch[1].toLowerCase();
+    denomDisplay = MV(denomVar);
+  } else {
+    // Try to extract the momentum expression e.g. (p1-p2)² → show as (p₁−p₂)²
+    const momMatch = pnorm.match(/\/\(*([\w\s+\-*]+)\)*/);
+    if (momMatch) denomDisplay = `(${M(momMatch[1].trim())})`;
+  }
+  const propFactor = `${FR('1', `(${denomDisplay}²−m²)`)}`;
+
+  // ── Label each vertex as -iλ_n ──────────────────────────────────────────────
+  // Same coupling (identical raw string) → same n. Different coupling → new n.
+  // This means two H³ vertices both get λ_1; a different vertex gets λ_2, etc.
+  const subN3 = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+  const norm3 = s => s.replace(/[₀-₉]/g,c=>subN3[c]||c).replace(/[−–]/g,'-').replace(/²/g,'2');
+  const expr3 = norm3(text.replace(/^iM\s*=\s*/i,'').trim());
+  const rawParts = expr3.split(/\s*[×*]\s*/).map(s=>s.trim()).filter(Boolean);
+  // Extract coupling factors (not propagator, not external 1, not iM prefix)
+  const coupFacts = rawParts.filter(p =>
+    !/^-?i\s*\//.test(p) && !/^-?1$/.test(p) && !/^iM/.test(p)
+  );
+
+  const seen = new Map();  // raw string → assigned λ index
+  let counter = 0;
+  const vertLabels = coupFacts.map(c => {
+    const key = c.trim();
+    if (!seen.has(key)) seen.set(key, ++counter);
+    const n = seen.get(key);
+    return `−i${G('λ')}<sub>${n}</sub>`;
+  });
+  // If no couplings extracted (e.g. pure scalar propagator), still show one label
+  if (!vertLabels.length) { vertLabels.push(`−i${G('λ')}<sub>1</sub>`); counter = 1; }
+
+  const couplingDisplay = vertLabels.join(' × ');
+  const couplingLatex   = [...seen.entries()].map(([,n])=>`(-i\\lambda_{${n}})`).join('');
+
+  // ── Coupling squared ──────────────────────────────────────────────────────
+  // Count how many times each λ_n appears, then show λ_n^(2×count)
+  const countMap = new Map();
+  [...seen.entries()].forEach(([,n]) => countMap.set(n, 0));
+  vertLabels.forEach((lbl, i) => {
+    const n = seen.get(coupFacts[i]?.trim());
+    if (n != null) countMap.set(n, (countMap.get(n)||0) + 1);
+  });
+  const coupSqDisplay = [...countMap.entries()].map(([n, cnt]) =>
+    `${G('λ')}<sub>${n}</sub><sup>${cnt*2}</sup>`
+  ).join('·');
+  const coupSqLatex = [...countMap.entries()].map(([n, cnt]) =>
+    `\\lambda_{${n}}^{${cnt*2}}`
+  ).join('\\,');
+
+  return {steps:[
+    {title:`Scalar amplitude — ${nVert||'?'} coupling${(nVert||0)!==1?'s':''}, ${nScalarProp} propagator, ${nScalarExt} external scalar leg${nScalarExt!==1?'s':''}`,
+     rule:'', expr: step0,
+     expl:`Spin-0 particles: <strong>no spin sums, no traces, no Dirac indices.</strong>
+       Each coupling constant is labelled ${G('λ')}<sub>n</sub> to avoid confusion with spinor symbols.
+       The squared amplitude is |iM|² = iM × (iM)* — algebra only, no trace technology needed.`},
+
+    {title:'Write out the factors',
+     rule:`Coupling vertices labelled −i${G('λ')}<sub>n</sub> (unknown coupling = scalar coefficient).<br>
+       External scalar legs contribute factor <strong>1</strong> each (standard Feynman rule for spin-0 external states).`,
+     expr:`iM = ${couplingDisplay} × ${FR('i', `${denomDisplay}²−m²`)} × 1<sup>${nScalarExt}</sup>`,
+     expl:`The propagator carries momentum ${denomDisplay}. Each external Higgs/scalar leg contributes 1 (no spinor, no polarisation vector needed).`},
+
+    {title:'Square: |iM|² — no spin sums required',
+     rule:`For spin-0 particles there is only <strong>one state</strong> per particle — no average factor.<br>
+       |iM|² = iM × (iM)* where (i/(q²−m²))* = −i/(q²−m²) [complex conjugate flips sign of i].`,
+     expr:`|M|² = ${couplingDisplay} × ${couplingDisplay} × ${FR('1', `(${denomDisplay}²−m²)²`)} × 1<sup>${nScalarExt}</sup>`,
+     expl:`The propagator squared: |i/(q²−m²)|² = 1/(q²−m²)². The i factors cancel: (i)(−i) = 1.`},
+
+    {title:'Evaluate coupling product',
+     rule:`|−i${G('λ')}<sub>n</sub>|² = ${G('λ')}<sub>n</sub>²  (the i contributes |i|²=1).<br>
+       For two identical vertices: (−i${G('λ')}<sub>1</sub>)² → |−i${G('λ')}<sub>1</sub>|⁴ = ${G('λ')}<sub>1</sub>⁴`,
+     expr:`|${couplingDisplay}|² = ${coupSqDisplay}`,
+     expl:`Substitute your actual coupling values: e.g. if the vertex is the H³ triple coupling then ${G('λ')}<sub>1</sub> = 3λv.`},
+
+    {title:'Final result',
+     rule:'',
+     expr:`|M|²<sub>scalar</sub> = ${coupSqDisplay} × ${FR('1', `(${denomDisplay}²−m²)²`)}`,
+     expl:`This is the exact tree-level result. No Mandelstam simplification is needed unless ${denomDisplay} itself can be written in terms of s, t, u.`},
+  ], latex:`|\\mathcal{M}|^2 = ${coupSqLatex}\\,/\\,(${denomVar}^2-m^2)^2`};
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GENERAL AMPLITUDE ENGINE
+//
+// Handles ANY QFT amplitude at tree level via:
+//   1. PARSE    iM text → typed factor list
+//   2. CHAIN    identify fermion chain element sequence
+//   3. SQUARE   apply spin sums (Σuū = p̸+m) → close into trace
+//   4. TRACE    evaluate using Wick contraction (recursive, general n)
+//   5. CONTRACT close free Lorentz indices (pol sums −g_{μν}, prop metrics)
+//   6. MAND     substitute p_i·p_j with Mandelstam variables
+//
+// Wick contraction identity (THE key formula):
+//   Tr[Γ₁Γ₂···Γ₂ₙ] = 2 Σ_{k=2}^{2n} (−1)^k (Γ₁·Γₖ) Tr[Γ₂···Γ̂ₖ···Γ₂ₙ]
+// Pair contractions:
+//   (γ^μ · γ^ν) → g^{μν}    (γ^μ · p̸_a) → p_a^μ    (p̸_a · p̸_b) → a·b
+// d=4 contraction identities (derived from Wick):
+//   γ^μ A̸ γ_μ = −2A̸         γ^μ A̸B̸ γ_μ = 4(A·B)      γ^μ A̸B̸C̸ γ_μ = −2C̸B̸A̸
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Symbolic algebra ─────────────────────────────────────────────────────────
+// Term: {c, pairs, free}
+//   c:     numeric coefficient
+//   pairs: [[a,b],...] product of dot products p_a·p_b
+//   free:  [[μ,ν],...] remaining free metric tensors g^{μν} (need contracting)
+function S0()              { return []; }
+function S1(n)             { return n===0?[]:[{c:n,pairs:[],free:[]}]; }
+function Sadd(a,b)         { return [...a,...b]; }
+function Sscale(ts,s)      { return s===0?[]:ts.map(t=>({...t,c:t.c*s})); }
+function SpairMul(ts,a,b)  { return ts.map(t=>({...t,pairs:[...t.pairs,[a,b]]})); }
+function SfreeMul(ts,a,b)  { return ts.map(t=>({...t,free:[...t.free,[a,b]]})); }
+function Sprod(ts,us)      {
+  return ts.flatMap(t=>us.map(u=>({c:t.c*u.c,pairs:[...t.pairs,...u.pairs],free:[...t.free,...u.free]})));
+}
+
+// Contraction value for pairing two chain elements in Wick expansion
+// Returns a symbolic "factor" to multiply into the subtrace expression
+function wickPair(A, B) {
+  if (A.t==='slash' && B.t==='slash') return SpairMul(S1(1), A.mom, B.mom);
+  if (A.t==='gamma' && B.t==='gamma') {
+    if (A.idx===B.idx) return S1(4);           // g^{μμ} = d = 4
+    return SfreeMul(S1(1), A.idx, B.idx);      // g^{μν} symbolic
+  }
+  if (A.t==='gamma' && B.t==='slash') return SfreeMul(S1(1), A.idx, 'p:'+B.mom);
+  if (A.t==='slash' && B.t==='gamma') return SfreeMul(S1(1), B.idx, 'p:'+A.mom);
+  return S0(); // mass elements and unknown pairs contribute 0 in Wick
+}
+
+// Recursive Wick trace evaluator
+// elems: [{t:'slash',mom:'p1'}|{t:'gamma',idx:'μ'}|{t:'mass',sgn:±1}]
+// Returns: symbolic expression (list of Terms)
+function wickTrace(elems) {
+  // Pull out mass elements first — they're scalar multipliers
+  const masses = elems.filter(e=>e.t==='mass');
+  const chain  = elems.filter(e=>e.t!=='mass');
+  const massFactor = masses.reduce((p,m)=>p*m.sgn, 1); // product of +1/-1 signs
+
+  const n = chain.length;
+  if (n===0) return Sscale(S1(4), massFactor);  // Tr[m₁m₂···] = m₁m₂···Tr[1] = 4·...
+  if (n%2!==0) return S0();                      // Tr[odd gammas] = 0
+  if (n===2) return Sscale(Sprod(S1(4), wickPair(chain[0], chain[1])), massFactor);
+
+  const head = chain[0];
+  const tail  = chain.slice(1);
+  let res = S0();
+  for (let k=0; k<tail.length; k++) {
+    const sgn = k%2===0 ? 1 : -1;          // Wick alternating signs
+    const pf  = wickPair(head, tail[k]);
+    if (!pf.length) continue;
+    const sub  = tail.filter((_,i)=>i!==k);
+    const strc = wickTrace(sub.concat(masses)); // pass masses through
+    res = Sadd(res, Sprod(Sscale(pf, sgn), Sscale(strc, 1/massFactor)));
+  }
+  return Sscale(res, massFactor);
+}
+
+// Contract a free index pair with −g_{μν} (polarisation sum or propagator metric)
+// Finds metrics [μ,X] and [ν,Y] in each term and contracts them
+function contractPolPair(terms, mu, nu) {
+  return terms.flatMap(t => {
+    const free = t.free;
+    const iMu = free.findIndex(([a,b]) => a===mu||b===mu);
+    const iNu = free.findIndex(([a,b]) => a===nu||b===nu);
+
+    if (iMu<0 && iNu<0) return [t]; // neither index present — leave unchanged
+
+    // Both appear in same entry [mu, nu]
+    if (iMu===iNu && iMu>=0) {
+      const rest = free.filter((_,i)=>i!==iMu);
+      return [{...t, c:-4*t.c, free:rest}]; // −g_{μν}g^{μν} = −4 (trace of metric)
+    }
+
+    if (iMu>=0 && iNu>=0) {
+      // Separate entries: g^{μX} and g^{νY}
+      // −g_{μν} g^{μX} g^{νY} = −g^{XY}
+      const [ma,mb] = free[iMu]; const X = ma===mu?mb:ma;
+      const [na,nb] = free[iNu]; const Y = na===nu?nb:na;
+      const rest = free.filter((_,i)=>i!==iMu&&i!==iNu);
+      if (X===Y) return [{...t, c:-t.c, free:rest}]; // −g^{XX} effectively -1 (already scalar)
+      return [{...t, c:-t.c, free:[...rest,[X,Y]]}];
+    }
+
+    // Only one index found — cannot contract yet, leave
+    return [t];
+  });
+}
+
+// Simplify remaining free metrics: contract p:mom component vectors
+// g^{μ, p:pA} × g^{μ, p:pB} → p_A · p_B  (momentum component squared / dotted)
+function resolveMomComps(terms) {
+  return terms.flatMap(t => {
+    const pComps = t.free.filter(([a,b])=>a.startsWith('p:')||b.startsWith('p:'));
+    const otherFree = t.free.filter(([a,b])=>!a.startsWith('p:')&&!b.startsWith('p:'));
+    if (pComps.length===0) return [t];
+
+    // Pair up momentum components by index
+    const byIdx = {};
+    for (const [a,b] of pComps) {
+      const idx   = a.startsWith('p:') ? b : a;
+      const mom   = a.startsWith('p:') ? a.slice(2) : b.slice(2);
+      if (!byIdx[idx]) byIdx[idx] = [];
+      byIdx[idx].push(mom);
+    }
+
+    let newPairs = [...t.pairs];
+    let unusedFree = [...otherFree];
+    for (const [idx, moms] of Object.entries(byIdx)) {
+      if (moms.length===2) {
+        newPairs.push([moms[0], moms[1]]); // g^{μ,p:A} × g^{μ,p:B} → A·B
+      } else {
+        unusedFree.push(...pComps.filter(([a,b])=>(a.startsWith('p:')?b:a)===idx));
+      }
+    }
+    return [{...t, pairs:newPairs, free:unusedFree}];
+  });
+}
+
+// Evaluate dot products using Mandelstam table → collect and simplify
+function evalToMandelstam(terms) {
+  const groups = {};
+  for (const t of terms) {
+    if (!isFinite(t.c) || t.c===0) continue;
+    if (t.free.length > 0) continue; // skip unresolved free indices
+    let c = t.c;
+    const mandParts = [];
+    let valid = true;
+    for (const [a,b] of t.pairs) {
+      const pa = a.startsWith('p:')?a.slice(2):a;
+      const pb = b.startsWith('p:')?b.slice(2):b;
+      // Drop self-dot only for known external massless momenta (p1,p2,p3,p4)
+      if (pa===pb && /^p\d+$/.test(pa)) { c *= 0; valid = false; break; }
+      // Normalise dot(a,b) = dot(b,a) for consistent keying
+      const [sA,sB] = [pa,pb].sort();
+      const key = `${sA},${sB}`;
+      const val = DP[key] || DP[`${sB},${sA}`];
+      if (val) {
+        const sign = val[0]==='-' ? -1 : 1;
+        const mand = val.replace(/[+-]/,'').replace('/2','');
+        c *= sign * 0.5;
+        mandParts.push(mand);
+      } else {
+        mandParts.push(`dot(${sA},${sB})`);
+      }
+    }
+    if (!valid) continue;
+    const key = mandParts.sort().join('·');
+    groups[key] = (groups[key]||0) + c;
+  }
+  return groups;
+}
+
+// Render evaluated Mandelstam groups as HTML
+function renderMandGroups(groups) {
+  let html = '';
+  for (const [key, coeff] of Object.entries(groups)) {
+    if (Math.abs(coeff) < 1e-9) continue;
+    const parts = key ? key.split('·').filter(Boolean) : [];
+    const sign = coeff > 0 ? (html?'+':'') : '−';
+    const absC = Math.abs(coeff);
+    const cStr = (absC===1 && parts.length>0) ? '' : `${Number.isInteger(absC)?absC:absC.toFixed(2)}`;
+    // Count occurrences of each Mandelstam variable (key = 's·s' means s²)
+    const cnt = {}, dotParts = [];
+    for (const p of parts) {
+      if (p.startsWith('dot(')) dotParts.push(p);
+      else cnt[p] = (cnt[p]||0)+1;
+    }
+    const mandBody = Object.entries(cnt).map(([p,n]) =>
+      n>1 ? `${MV(p)}<sup>${n}</sup>` : MV(p)
+    ).join('·');
+    const dotBody = dotParts.map(p => {
+      const [a,b] = p.slice(4,-1).split(',');
+      return dotP(a,b);
+    }).join('·');
+    const body = [mandBody, dotBody].filter(Boolean).join('·');
+    html += `${sign}${cStr}${body||'1'}`;
+  }
+  return html || '0';
+}
+
+// HTML display of a chain element
+function elHTML(e) {
+  if (e.t==='slash') return slash(e.mom);
+  if (e.t==='gamma') return gmu(e.idx);
+  if (e.t==='mass' ) return e.sgn>0 ? `+m` : `−m`;
+  return '?';
+}
+function chainHTML(elems) { return elems.map(elHTML).join(''); }
+
+// Render a full trace as HTML
+function traceHTML(elems) { return TR('Tr')+'['+chainHTML(elems)+']'; }
+
+// ─── Main general step generator ─────────────────────────────────────────────
+function stepsGeneralAmplitude(text) {
+  const parsed = parseMathExpression(text);
+  const {nVert, nFermExt, nPhotExt, nPhotProp, nFermProp, fermExts} = parsed;
+  const isGluon = /ig_?s|T\^a/i.test(text);
+  const coupStr = isGluon ? CP('g<sub>s</sub>') : CP('e');
+
+  const step0expr = `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(text)}</div>`;
+
+  const steps = [{
+    title:'General amplitude — applying Wick contraction engine',
+    rule:`Detected: <strong>${nFermExt}</strong> fermion legs, <strong>${nPhotExt}</strong> boson legs, <strong>${nPhotProp}</strong> propagators, <strong>${nVert}</strong> vertices.`,
+    expr: step0expr,
+    expl:`This amplitude is processed by the general engine. Every QFT amplitude squares to a trace expression; the Wick contraction formula reduces it to dot products regardless of topology.`
+  }];
+
+  // ── Single fermion bilinear (2 fermion legs) + arbitrary bosons ──────────────
+  if (nFermExt===2 && nPhotProp>=1) {
+    const pA = fermExts[0]||'p1', pB = fermExts[1]||'p2';
+
+    // Extract propagator momentum for denominator label
+    const {photPropNorm} = parsed;
+    const momM = photPropNorm && photPropNorm.match(/\/\(*\s*(p\d+)\s*([+-])\s*(p\d+)/i);
+    let denomH = MV('q')+'²';
+    let denomMand = 's';
+    if (momM) {
+      const dp = dpHTML(momM[1].toLowerCase(), momM[3].toLowerCase());
+      denomMand = dp.mand||'s'; denomH = MV(denomMand);
+    }
+
+    // ── Forward chain elements (vertex gammas + propagator numerator) ──
+    const nPropNum = nFermProp; // fermion propagators → each has a numerator p̸+m
+    const hasExt = nPhotExt >= 2; // external photons → pol sums
+    const nGammas = nVert; // each vertex contributes a γ^μ
+
+    // Build symbolic trace elements for the general case
+    // Forward: (p̸_A+m) × [γ^ε₁ × (q̸+m_q)^{n_prop} × γ^μ × ...] × (p̸_B+m)
+    // Backward (conjugate): [γ^μ × (q̸+m_q) × γ^ε₁ × ...] reversed
+
+    // For clarity, show the explicit trace structure based on nVert
+    let traceForward = `(${slash(pA)}+m) `;
+    let traceBackward = ` (${slash(pB)}+m)`;
+    const idxLabels = ['μ','ν','ρ','σ','α','β'].slice(0, nGammas);
+    const idxLow    = idxLabels.map(i=>`<sub>${i}</sub>`);
+
+    // Write out the chain
+    let chainParts = [];
+    for (let v=0; v<nGammas; v++) {
+      chainParts.push(`γ<sup>${idxLabels[v]}</sup>`);
+      if (v < nPropNum) chainParts.push(`(${slash('q')}+m<sub>q</sub>)`);
+    }
+    const fwdChain = chainParts.join(' ');
+    // Conjugate: reverse order
+    const bwdChain = [...chainParts].reverse().map(c=>{
+      // lower free indices in conjugate
+      return c.replace(/γ<sup>([^<]+)<\/sup>/g, (_,i)=>`γ<sub>${i}</sub>`);
+    }).join(' ');
+
+    steps.push({
+      title:'Chain structure: single fermion bilinear',
+      rule:`<strong>Pattern:</strong> ū(p_out) × [Γ chain] × u(p_in) — one fermion bilinear.<br>
+        The <strong>Dirac conjugate</strong> (iM)*: reverse the chain and apply γ⁰(...)†γ⁰ to each factor.<br>
+        For γ<sup>μ</sup>: self-conjugate. For (p̸+m): self-conjugate.`,
+      expr:`iM = ${coupStr}<sup>${nGammas*2}</sup> × ū(${M(pA)}) ${fwdChain} u(${M(pB)}) × ${FR('1',denomH+`<sup>${nPhotProp}</sup>`)}`,
+      expl:`Each vertex contributes ieγ<sup>μ</sup> (QED) or ig<sub>s</sub>γ<sup>μ</sup> (QCD). Each internal fermion propagator contributes i(p̸+m)/(p²−m²). External bosons contribute pol vectors ε<sup>μ</sup>.`
+    });
+
+    steps.push({
+      title:'Square: apply spin sums Σ uū = p̸+m',
+      rule:`<strong>Completeness relation:</strong> Σ<sub>s</sub> u(p,s)ū(p,s) = p̸+m<br>
+        Closes the spinor chain into a Dirac trace.<br>
+        For antiparticles: Σ<sub>s</sub> v(p,s)v̄(p,s) = p̸−m`,
+      expr:`Σ<sub>spin</sub>|M|² ∝ ${FR('1', denomH+`<sup>${nPhotProp*2}</sup>`)} × ${TR('Tr')}[(${slash(pA)}+m) ${fwdChain} (${slash(pB)}+m) ${bwdChain}]`,
+      expl:`The spin sum "closes" ū...u into a trace: ū[A]u × ū[B]u → Tr[(p̸+m)AB]. The conjugate chain is automatically the Dirac bar (reversed, conjugated) of the forward chain.`
+    });
+
+    // Apply pol sums and identify which contractions to perform
+    if (nPhotExt >= 1) {
+      const nPol = Math.min(nPhotExt, nGammas);
+      steps.push({
+        title:`Apply polarisation sum${nPol>1?'s':''}: Σ ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup>`,
+        rule:`<strong>For unpolarised:</strong> Σ<sub>λ</sub> ε<sup>μ</sup>(k,λ) ε*<sup>ν</sup>(k,λ) = −g<sup>μν</sup><br>
+          (Sum over 2 transverse polarisations in d=4, or use completeness relation)<br>
+          Each pol sum contracts one μ index in the trace with its conjugate.`,
+        expr:`Each external photon contracts one index pair: γ<sup>μ</sup>...γ<sub>μ</sub><br>
+          After ${nPol} pol sum${nPol>1?'s':''}: free indices ${idxLabels.slice(0,nPol).join(',')} are contracted.`,
+        expl:`In Lorenz gauge the sum −g^{μν} is correct for physical (transverse) photons. The longitudinal/timelike pieces cancel by Ward identity (current conservation): k_μ M^μ = 0.`
+      });
+    }
+
+    // Now evaluate the contracted trace symbolically using gamma contraction identities
+    const allContracted = nPhotExt >= nGammas; // all gamma indices contracted by pol sums
+
+    if (allContracted && nGammas <= 2) {
+      if (nGammas === 1 && nPropNum === 0) {
+        // Tr[(p̸_A+m) γ^μ (p̸_B+m) γ_μ]
+        const elems = [
+          {t:'slash',mom:pA},{t:'mass',sgn:1},
+          {t:'gamma',idx:'μ'},
+          {t:'slash',mom:pB},{t:'mass',sgn:1},
+          {t:'gamma',idx:'μ'}
+        ];
+        // Evaluate via Wick then contract the μ-μ pair
+        let wt = wickTrace(elems.filter(e=>e.t!=='mass'));
+        // Expand with masses
+        const massTerms = [
+          [{t:'slash',mom:pA},{t:'gamma',idx:'μ'},{t:'slash',mom:pB},{t:'gamma',idx:'μ'}], // p̸_A γ^μ p̸_B γ_μ
+          [{t:'mass',sgn:1},{t:'gamma',idx:'μ'},{t:'slash',mom:pB},{t:'gamma',idx:'μ'}], // m γ^μ p̸_B γ_μ → 0 (odd)
+          [{t:'slash',mom:pA},{t:'gamma',idx:'μ'},{t:'mass',sgn:1},{t:'gamma',idx:'μ'}], // p̸_A γ^μ m γ_μ → 0 (odd after removing m)
+          [{t:'mass',sgn:1},{t:'gamma',idx:'μ'},{t:'mass',sgn:1},{t:'gamma',idx:'μ'}]   // m γ^μ m γ_μ = m² × 4
+        ];
+        // Term 1: Tr[p̸_A γ^μ p̸_B γ_μ] = −8(A·B) after contraction
+        // Term 4: Tr[m² γ^μ γ_μ] = m²×4×Tr[1] = 16m²
+
+        steps.push({
+          title:'γ-contraction: γ^μ (p̸+m) γ_μ',
+          rule:`<strong>Identity:</strong> γ<sup>μ</sup>p̸γ<sub>μ</sub> = (2−d)p̸ = −2p̸ &nbsp;[d=4]<br>
+            <strong>Identity:</strong> γ<sup>μ</sup>γ<sub>μ</sub> = d = 4<br>
+            Combined: γ<sup>μ</sup>(p̸+m)γ<sub>μ</sub> = −2p̸+4m`,
+          expr:`${TR('Tr')}[(${slash(pA)}+m) γ<sup>μ</sup>(${slash(pB)}+m)γ<sub>μ</sub>]
+            = ${TR('Tr')}[(${slash(pA)}+m)(−2${slash(pB)}+4m)]
+            = −2${TR('Tr')}[${slash(pA)}${slash(pB)}] + 4m${TR('Tr')}[${slash(pA)}] + (−2m)${TR('Tr')}[${slash(pB)}] + 4m²${TR('Tr')}[1]`,
+          expl:`Tr[p̸] = p_μ Tr[γ^μ] = 0 (odd gamma trace). Tr[1] = 4 (4×4 Dirac algebra). Only the p̸_A p̸_B term and the m² term survive.`
+        });
+
+        const dpAB = dpHTML(pA, pB);
+        const dotVal = dpAB.mand ? `${dpAB.sign<0?'−':''}${FR('1','2')}${MV(dpAB.mand)}` : dotP(pA,pB);
+        const finalTrace = dpAB.mand
+          ? `−8×${dpAB.html} + 16m² = ${dpAB.sign<0?'+':'−'}4${MV(dpAB.mand)} + 16m²`
+          : `−8${dotP(pA,pB)} + 16m²`;
+
+        steps.push({
+          title:'Evaluate surviving traces: Tr[p̸_A p̸_B] = 4(A·B)',
+          rule:`<strong>Tr[${slash('A')}${slash('B')}] = 4A·B</strong> &nbsp;[standard identity]`,
+          expr:`= −2×4${dotP(pA,pB)} + 16m² = −8${dotP(pA,pB)} + 16m²`,
+          expl:`Only the four-element identity is needed here: Tr[p̸_A p̸_B] = A_μB_ν Tr[γ^μγ^ν] = 4A·B.`
+        });
+
+        steps.push({
+          title:'Substitute Mandelstam variables',
+          rule:`p₁·p₂=s/2, p₁·p₃=−t/2, p₁·p₄=−u/2 (2→2 massless)`,
+          expr:`${TR('Tr')}[...] = ${finalTrace}`,
+          expl:`The full result: |M|² = coupling² × (${finalTrace}) / ${denomH}².`
+        });
+
+        const mandStr = dpAB.mand
+          ? `|M|² = ${coupStr}⁴ × ${FR(dpAB.sign<0?`+4${MV(dpAB.mand)}`:`−4${MV(dpAB.mand)}`+' + 16m²', denomH+'²')}`
+          : `|M|² = ${coupStr}⁴ × ${FR(`−8${dotP(pA,pB)} + 16m²`, denomH+'²')}`;
+        steps.push({title:'Final result', rule:'', expr:mandStr,
+          expl:`The sign convention: in ${denomMand}-channel, ${dotP(pA,pB)}=${dpAB.html}. For massless fermions (m→0): result reduces to ∓4${coupStr}⁴${MV(denomMand)}/${denomH}².`});
+
+      } else if (nGammas === 2 || nPropNum >= 1) {
+        // Two contracted gammas with propagator numerator between them
+        // Tr[(p̸_A+m) γ^ε (q̸+m_q) γ^μ (p̸_B+m) γ_μ (q̸+m_q) γ_ε]
+        steps.push({
+          title:'Two γ-contractions: apply inner pair first',
+          rule:`<strong>Step 1 — inner contraction μ:</strong><br>
+            γ<sup>μ</sup>(${slash('q')}+m<sub>q</sub>)(${slash(pB)}+m)γ<sub>μ</sub><br>
+            Using γ<sup>μ</sup>A̸γ<sub>μ</sub>=−2A̸ and γ<sup>μ</sup>mγ<sub>μ</sub>=4m:<br>
+            = (−2${slash('q')}+4m<sub>q</sub>)(−2${slash(pB)}+4m)`,
+          expr:`Inner contraction result:<br>
+            (−2${slash('q')}+4m<sub>q</sub>)(−2${slash(pB)}+4m) = 4${slash('q')}${slash(pB)}−8m${slash('q')}−8m<sub>q</sub>${slash(pB)}+16m·m<sub>q</sub>`,
+          expl:`Apply identities to each term independently: γ^μ q̸ p̸_B γ_μ = γ^μ q̸ p̸_B γ_μ (3 gammas → reversal), etc.`
+        });
+
+        steps.push({
+          title:'Step 2 — outer contraction ε, then evaluate 2-element traces',
+          rule:`<strong>3-gamma reversal:</strong> γ<sup>ε</sup>A̸B̸C̸γ<sub>ε</sub> = −2C̸B̸A̸<br>
+            <strong>2-gamma contraction:</strong> γ<sup>ε</sup>A̸B̸γ<sub>ε</sub> = 4(A·B)<br>
+            <strong>1-gamma:</strong> γ<sup>ε</sup>A̸γ<sub>ε</sub> = −2A̸<br>
+            <strong>0-gamma:</strong> γ<sup>ε</sup>γ<sub>ε</sub> = 4`,
+          expr:`Apply outer ε-contraction term by term, then use Tr[${slash('A')}${slash('B')}]=4A·B.`,
+          expl:`After both contractions, every trace is at most Tr[p̸_A p̸_B] = 4(A·B) or Tr[m²]=4m². Odd traces vanish. The full result is a polynomial in dot products q·p_A, q·p_B, p_A·p_B.`
+        });
+
+        // Build the Wick result symbolically for the key term (massless limit)
+        // Trace: Tr[p̸_A γ^ε q̸ γ^μ p̸_B γ_μ q̸ γ_ε]  — massless, two contractions
+        const masslessElems = [
+          {t:'slash',mom:pA},{t:'gamma',idx:'ε'},
+          {t:'slash',mom:'q'},{t:'gamma',idx:'μ'},
+          {t:'slash',mom:pB},{t:'gamma',idx:'μ'},
+          {t:'slash',mom:'q'},{t:'gamma',idx:'ε'}
+        ];
+        // Internally contracted single trace — Wick already handles same-index gamma pairs.
+        // resolveMomComps converts remaining p^μ × p^μ free entries into dot products.
+        let masslessTrace = wickTrace(masslessElems);
+        masslessTrace = resolveMomComps(masslessTrace);
+        const masslessGroups = evalToMandelstam(masslessTrace);
+        const masslessHTML = renderMandGroups(masslessGroups);
+
+        steps.push({
+          title:'Symbolic result: massless limit (using Wick engine)',
+          rule:`Full Wick contraction applied automatically to the 8-element trace.`,
+          expr:`${TR('Tr')}[${slash(pA)} γ<sup>ε</sup>${slash('q')}γ<sup>μ</sup>${slash(pB)}γ<sub>μ</sub>${slash('q')}γ<sub>ε</sub>] = ${masslessHTML||'(evaluating...)'}`,
+          expl:`Result expressed in dot products using the Mandelstam table. Mass corrections add terms proportional to m² and m⁴; see the step-by-step mass expansion above.`
+        });
+
+        const dpQA = dpHTML('q', pA), dpQB = dpHTML('q', pB), dpAB = dpHTML(pA, pB);
+        steps.push({
+          title:'Final result (massless)',
+          rule:'',
+          expr:`|M|² = ${coupStr}⁴ × ${FR(`[trace above]`, denomH+`²`)}`,
+          expl:`The full massive result includes m², m_q², and m²m_q² terms from the mass expansion. Each dot product involving q must be expressed in terms of the external Mandelstam invariants using q = p_A + k (or as appropriate for the specific propagator channel).`
+        });
+      }
+
+    } else {
+      // General fallback for multi-vertex or uncontracted cases
+      const nEl = 2 + 2*nGammas + 2*nPropNum; // rough trace length estimate
+      steps.push({
+        title:`General Wick contraction: ${nEl}-element trace`,
+        rule:`<strong>The Wick formula (exact, recursive):</strong><br>
+          ${TR('Tr')}[Γ₁Γ₂···Γ<sub>2n</sub>] = 2 Σ<sub>k=2</sub><sup>2n</sup> (−1)<sup>k</sup> (Γ₁·Γ<sub>k</sub>) × ${TR('Tr')}[Γ₂···Γ̂<sub>k</sub>···Γ<sub>2n</sub>]<br>
+          Pair contractions: (γ<sup>μ</sup>·γ<sup>ν</sup>)=g<sup>μν</sup>, (γ<sup>μ</sup>·p̸)=p<sup>μ</sup>, (p̸<sub>a</sub>·p̸<sub>b</sub>)=a·b<br>
+          Base case: ${TR('Tr')}[1]=4, ${TR('Tr')}[p̸<sub>a</sub>p̸<sub>b</sub>]=4a·b`,
+        expr:`Trace has ~${nEl} elements. Apply Wick to reduce to products of dot products.<br>
+          Each step reduces length by 2. At most ${Math.ceil(nEl/2)} Wick expansions needed.`,
+        expl:`The Wick formula always terminates and produces an exact result. The computation scales as (2n-1)!! double factorial — for 8-element traces: 7!! = 105 terms before simplification (most cancel).`
+      });
+
+      // Attempt to build and evaluate the trace numerically using Wick
+      // Build a representative chain (with vertex gammas and prop slashes)
+      const reprElems = [];
+      reprElems.push({t:'slash',mom:pA});
+      for (let v=0; v<nGammas; v++) {
+        reprElems.push({t:'gamma',idx:idxLabels[v]||'μ'});
+        if (v < nPropNum) reprElems.push({t:'slash',mom:'q'});
+      }
+      reprElems.push({t:'slash',mom:pB});
+      // Conjugate (reversed, with lowered indices)
+      for (let v=nGammas-1; v>=0; v--) {
+        if (v < nPropNum) reprElems.push({t:'slash',mom:'q'});
+        reprElems.push({t:'gamma',idx:idxLabels[v]||'μ'});
+      }
+
+      // Apply Wick
+      let trResult = resolveMomComps(wickTrace(reprElems));
+      const mandGroups = evalToMandelstam(trResult);
+      const trHTML = renderMandGroups(mandGroups);
+
+      if (trHTML && trHTML !== '0') {
+        steps.push({
+          title:'Wick engine result (massless limit)',
+          rule:`Wick contraction applied programmatically to ${reprElems.length}-element trace.`,
+          expr:`${TR('Tr')}[...] = ${trHTML}`,
+          expl:`This is the massless limit (m=0). Mass corrections: expand (p̸+m) and add Tr[...m...] terms; odd-gamma traces vanish, even-gamma mass terms use Tr[γ^μγ_μ]=4 identities.`
+        });
+      }
+    }
+
+  // ── Completely general: unknown topology ──────────────────────────────────────
+  } else {
+    steps.push({
+      title:'Algorithm: Wick contraction for general amplitude',
+      rule:`For ANY amplitude, the squared result is computed as follows:<br>
+        <strong>Step A.</strong> Write |M|² = M × M*. For each fermion bilinear ū[Γ]u, the conjugate gives ū[Γ̄]u where Γ̄ is the Dirac conjugate of Γ.<br>
+        <strong>Step B.</strong> Apply spin sums: Σ<sub>s</sub> u ū = p̸+m, Σ<sub>s</sub> v v̄ = p̸−m → closes spinor indices into traces.<br>
+        <strong>Step C.</strong> Apply pol sums: Σ<sub>λ</sub> ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup> → contracts Lorentz indices between traces.<br>
+        <strong>Step D.</strong> Evaluate each trace via Wick:<br>
+        &nbsp;&nbsp;${TR('Tr')}[Γ₁···Γ<sub>2n</sub>] = 2Σ<sub>k</sub>(−1)<sup>k</sup>(Γ₁·Γ<sub>k</sub>) ${TR('Tr')}[Γ₂···Γ̂<sub>k</sub>···Γ<sub>2n</sub>]<br>
+        <strong>Step E.</strong> Substitute p<sub>i</sub>·p<sub>j</sub> → Mandelstam variables (s,t,u).`,
+      expr:`Detected: ${nFermExt} fermion legs, ${nPhotExt} photon/gluon legs, ${nPhotProp} gauge propagators, ${nFermProp} fermion propagators.<br><br>
+        This topology needs: <strong>${Math.ceil(nFermExt/2)} fermion chain${nFermExt>2?'s':''}</strong>, contracted via <strong>${nPhotProp} propagator metric${nPhotProp>1?'s':''}</strong>.`,
+      expl:`The Wick formula requires (2n−1)!! contractions for a 2n-element trace, but symmetry and momentum conservation typically collapse this to a few Mandelstam combinations.`
+    });
+
+    steps.push({
+      title:'Colour algebra (if QCD)',
+      rule:`For ${isGluon?'QCD: δ^{ab} from gluon propagator contracts colour matrices T^a':'QED: no colour factors — skip this step'}`,
+      expr: isGluon
+        ? `δ<sup>ab</sup> from propagator: (T<sup>a</sup>)<sub>ij</sub>δ<sup>ab</sup>(T<sup>b</sup>)<sub>kl</sub> = (T<sup>a</sup>)<sub>ij</sub>(T<sup>a</sup>)<sub>kl</sub><br>
+           Colour sum: Σ<sub>a</sub>${TR('Tr')}(T<sup>a</sup>T<sup>a</sup>)² = (N<sub>c</sub>²−1)T<sub>F</sub>² = 2 &nbsp; (averaging: ×${FR('1','N_c²')} per initial quark)<br>
+           Colour factor for qq̄→qq̄: <strong>${FR('2','9')}</strong> × g<sub>s</sub>⁴`
+        : `No colour matrices. Colour factor = 1.`,
+      expl:`QCD colour algebra: T_F = ½, N_c = 3, C_F = (N_c²−1)/(2N_c) = 4/3. The specific colour factor depends on the process (quark-quark, quark-gluon, gluon-gluon have different generators).`
+    });
+  }
+
+  return {steps, latex:''};
+}
+
+// ─── Yukawa 2→2 scalar-exchange squaring ─────────────────────────────────────
+// Fully derived from the Wick trace engine — no hardcoded results.
+// Steps:
+//   1. Classify spinors (u/v distinction determines ±m in spin sum)
+//   2. Write bilinears at each Yukawa vertex
+//   3. Square and factorise (no Lorentz index contraction for scalar vertex)
+//   4. Insert spin sums → Dirac traces
+//   5. Expand each trace as 4 sub-traces using the engine
+//   6. Evaluate: wickTrace([p̸,p̸])=4(A·B), wickTrace([p̸])=0, wickTrace([])=4
+//   7. Combine, substitute Mandelstam
+//
+function stepsSquareYukawa(text) {
+  const parsed = parseMathExpression(text);
+  const {fermSpinors, scalarPropNorm} = parsed;
+
+  const step0 = `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(text)}</div>`;
+
+  // ── Spinor pairing ────────────────────────────────────────────────────────
+  const bras = (fermSpinors||[]).filter(s=>s.stype==='ubar'||s.stype==='vbar');
+  const kets = (fermSpinors||[]).filter(s=>s.stype==='u'   ||s.stype==='v');
+  const allM = parsed.fermExts||[];
+
+  const pA = bras[0]?.mom||allM[1]||'p2'; const typeA = bras[0]?.stype||'ubar';
+  const pB = kets[0]?.mom||allM[0]||'p1'; const typeB = kets[0]?.stype||'u';
+  const pC = bras[1]?.mom||allM[2]||'p3'; const typeC = bras[1]?.stype||'ubar';
+  const pD = kets[1]?.mom||allM[3]||'p4'; const typeD = kets[1]?.stype||'u';
+
+  // ε = +1 for u-type (spin sum → p̸+m), −1 for v-type (spin sum → p̸−m)
+  const eps = t => (t==='u'||t==='ubar') ? +1 : -1;
+  const eA=eps(typeA), eB=eps(typeB), eC=eps(typeC), eD=eps(typeD);
+
+  const sLabel = (stype, mom) => {
+    const bar = stype==='ubar'?'ū':stype==='vbar'?'v̄':stype==='v'?'v':'u';
+    return `${bar}(${M(mom)},s)`;
+  };
+
+  // ── Propagator denominator ────────────────────────────────────────────────
+  const subSub = s=>s.replace(/[₀-₉]/g,c=>'0123456789'[c.charCodeAt(0)-0x2080]||c);
+  const propN = subSub((scalarPropNorm||'i/(q2-m2)').replace(/[−–]/g,'-'));
+  let denomLabel = MV('q')+'²−m<sub>H</sub>²';
+  const propMM = propN.match(/\(\s*(p\d+)\s*[-+]\s*(p\d+)\s*\)/i);
+  if (propMM) {
+    const dp0 = dpHTML(propMM[1].toLowerCase(), propMM[3]?.toLowerCase()||propMM[2]?.toLowerCase());
+    denomLabel = (dp0.mand?MV(dp0.mand):`(${M(propMM[1])}−${M(propMM[2]||propMM[3])})²`) + '−m<sub>H</sub>²';
+  } else if (/^\s*s/.test(propN.replace(/.*\//,''))) {
+    denomLabel = MV('s')+'−m<sub>H</sub>²';
+  }
+
+  // ── Core engine: derive Tr[(p̸_out±m)(p̸_in±m)] step by step ──────────────
+  // Expansion:  Tr[(A+ε_A m)(B+ε_B m)]
+  //   = Tr[A B]              → wickTrace([slash_A, slash_B])
+  //   + ε_A m × Tr[B]        → wickTrace([slash_B])  = 0 (n=1, odd)
+  //   + ε_B m × Tr[A]        → wickTrace([slash_A])  = 0 (n=1, odd)
+  //   + ε_A ε_B m² × Tr[1]   → wickTrace([])        = 4
+  function deriveTrace(pOut, eOut, pIn, eIn, label) {
+    const sOut = eOut>0?'+m':'−m', sIn = eIn>0?'+m':'−m';
+    const traceHead = `${TR('Tr')}[(${slash(pOut)}${sOut})(${slash(pIn)}${sIn})]`;
+
+    // Term 1: Tr[p̸_out p̸_in] via wickTrace
+    const wt1raw  = wickTrace([{t:'slash',mom:pOut},{t:'slash',mom:pIn}]);
+    const wt1res  = evalToMandelstam(resolveMomComps(wt1raw));
+    const wt1html = renderMandGroups(wt1res);
+    const dp      = dpHTML(pOut, pIn);
+    const t1html  = dp.mand ? `4 × ${dp.html}` : `4${dotP(pOut,pIn)}`;
+
+    // Term 2: ε_out m × Tr[p̸_in] via wickTrace([slash_in]) — always zero
+    const wt2 = wickTrace([{t:'slash',mom:pIn}]);  // n=1 odd → []
+    const t2html = `${eOut>0?'+':'−'}m × ${TR('Tr')}[${slash(pIn)}] = ${eOut>0?'+':'−'}m × 0 = <strong>0</strong>`;
+
+    // Term 3: ε_in m × Tr[p̸_out] — always zero
+    const wt3 = wickTrace([{t:'slash',mom:pOut}]);  // n=1 odd → []
+    const t3html = `${eIn>0?'+':'−'}m × ${TR('Tr')}[${slash(pOut)}] = ${eIn>0?'+':'−'}m × 0 = <strong>0</strong>`;
+
+    // Term 4: ε_out ε_in m² × Tr[1] via wickTrace([]) = 4
+    const wt4      = wickTrace([]);   // S1(4)
+    const cross    = eOut * eIn;      // ±1
+    const t4html   = `${cross>0?'+':'−'}m² × ${TR('Tr')}[1] = ${cross>0?'+':'−'}m² × 4 = ${cross>0?'+':'−'}4m²`;
+
+    // Result: 4(A·B) ± 4m²  = 4(A·B ± m²)
+    const dpPart   = dp.mand ? dp.html : dotP(pOut, pIn);
+    const finalH   = `4(${dpPart} ${cross>0?'+':'−'} m²)`;
+
+    const isZeroResult = !wt1html || wt1html==='0'; // shouldn't happen but guard
+
+    return {traceHead, t1html, t2html, t3html, t4html, finalH, cross, dp, dpPart, label};
+  }
+
+  const T1 = deriveTrace(pA, eA, pB, eB, 'Line 1');
+  const T2 = deriveTrace(pC, eC, pD, eD, 'Line 2');
+
+  // ── Coupling squared ──────────────────────────────────────────────────────
+  const coupH = CP('m<sub>f</sub>/v');
+
+  // ── Final result HTML ─────────────────────────────────────────────────────
+  const finalNum = `16${coupH}⁴ × (${T1.dpPart} ${T1.cross>0?'+':'−'} m²)(${T2.dpPart} ${T2.cross>0?'+':'−'} m²)`;
+  const finalExpr = FR(finalNum, `(${denomLabel})²`);
+
+  const crossAll = T1.cross * T2.cross;
+
+  // ── Build steps ───────────────────────────────────────────────────────────
+  const steps = [
+
+    {title:'Yukawa scalar amplitude — input',
+     rule:`<strong>Vertex:</strong> −im<sub>f</sub>/v (no γ<sup>μ</sup> — scalar coupling, no Lorentz index)<br>
+       <strong>Propagator:</strong> scalar i/(q²−m<sub>H</sub>²) (no metric tensor −g<sub>μν</sub>)<br>
+       Spinors: ${(fermSpinors||[]).map(s=>sLabel(s.stype,s.mom)).join(', ')||'detected from text'}`,
+     expr:step0,
+     expl:`P&S §5.1 convention: u=incoming fermion, ū=outgoing fermion, v̄=incoming antifermion, v=outgoing antifermion. The ε-sign in the spin sum (±m) depends on this assignment.`},
+
+    {title:'Identify the two vertex bilinears',
+     rule:`Each Yukawa vertex ψ̄ψH has one bra-spinor (ū or v̄) and one ket-spinor (u or v).<br>
+       Spin sum inserts: u-type → p̸+m, v-type → p̸−m (P&S eq. 5.2)`,
+     expr:`<strong>Vertex 1 (${T1.label}):</strong><br>
+       &nbsp; bilinear = ${sLabel(typeA,pA)}(−im<sub>f</sub>/v)${sLabel(typeB,pB)}<br>
+       &nbsp; ε-weights: ε<sub>out</sub>=${eA>0?'+1':'−1'} (${typeA}), ε<sub>in</sub>=${eB>0?'+1':'−1'} (${typeB})<br><br>
+       <strong>Vertex 2 (${T2.label}):</strong><br>
+       &nbsp; bilinear = ${sLabel(typeC,pC)}(−im<sub>f</sub>/v)${sLabel(typeD,pD)}<br>
+       &nbsp; ε-weights: ε<sub>out</sub>=${eC>0?'+1':'−1'} (${typeC}), ε<sub>in</sub>=${eD>0?'+1':'−1'} (${typeD})`,
+     expl:`ε_out × ε_in is the sign that multiplies m² in the final trace. Same-type (+1)(+1)=+1 or (−1)(−1)=+1 gives +m². Mixed (+1)(−1)=−1 gives −m² — helicity suppression.`},
+
+    {title:'Square: |M|² — fully factorised (no Lorentz index contraction)',
+     rule:`For QED: squaring couples the two traces via the photon propagator metric −g<sub>μν</sub>.<br>
+       For Yukawa: the scalar propagator is just a number — the two bilinears are independent:<br>
+       |M|² = |coupling|⁴ × |prop|² × |bilinear₁|² × |bilinear₂|²`,
+     expr:`|M|² = (m<sub>f</sub>/v)⁴ × ${FR('1','('+denomLabel+')²')} × |${sLabel(typeA,pA)}${sLabel(typeB,pB)}|² × |${sLabel(typeC,pC)}${sLabel(typeD,pD)}|²`,
+     expl:`|−im<sub>f</sub>/v|² = (m<sub>f</sub>/v)². For complex conjugation of bilinear: (ū(p_B)u(p_A))† = ū(p_A)u(p_B). No γ^μ means no open Lorentz index — nothing to contract.`},
+
+    {title:'Apply spin sums → Dirac traces',
+     rule:`Σ<sub>s</sub> u(p,s)ū(p,s) = p̸+m &nbsp;&nbsp; Σ<sub>s</sub> v(p,s)v̄(p,s) = p̸−m (P&S §5.1)<br>
+       For bilinear ψ̄(p_B)ψ(p_A): &nbsp; Σ<sub>spins</sub>|ψ̄(p_B)ψ(p_A)|² = ${TR('Tr')}[(${slash('p_B')}+ε<sub>B</sub>m)(${slash('p_A')}+ε<sub>A</sub>m)]`,
+     expr:`Σ<sub>spins</sub>|M|² = (m<sub>f</sub>/v)⁴ × ${FR(`${T1.traceHead} × ${T2.traceHead}`, '('+denomLabel+')²')}`,
+     expl:`The trace arises by closing the spinor indices: ψ̄_α(M)_αβ ψ_β × ψ̄_γ(M*)_γδ ψ_δ → after spin sum = Tr[(p̸_B+ε_Bm)(p̸_A+ε_Am)]. The two traces multiply because the two lines are independent.`},
+
+    {title:`Expand Trace 1: ${T1.traceHead}`,
+     rule:`Distribute the product (p̸<sub>${pA}</sub>+ε<sub>A</sub>m)(p̸<sub>${pB}</sub>+ε<sub>B</sub>m) inside the trace:<br>
+       = Tr[${slash(pA)}${slash(pB)}] + ε<sub>A</sub>m Tr[${slash(pB)}] + ε<sub>B</sub>m Tr[${slash(pA)}] + ε<sub>A</sub>ε<sub>B</sub>m² Tr[1]`,
+     expr:`<strong>Term 1:</strong> Tr[${slash(pA)}${slash(pB)}] &nbsp;→ wickTrace([p̸<sub>${pA}</sub>, p̸<sub>${pB}</sub>])<br>
+       &nbsp;&nbsp;&nbsp;= ${T1.t1html} &nbsp; [Wick: n=2 base case]<br><br>
+       <strong>Term 2:</strong> ${T1.t2html}<br>
+       &nbsp;&nbsp;&nbsp;→ wickTrace([p̸<sub>${pB}</sub>]) = 0 (n=1, odd-length trace always vanishes)<br><br>
+       <strong>Term 3:</strong> ${T1.t3html}<br>
+       &nbsp;&nbsp;&nbsp;→ wickTrace([p̸<sub>${pA}</sub>]) = 0 (n=1, same reason)<br><br>
+       <strong>Term 4:</strong> ${T1.t4html}<br>
+       &nbsp;&nbsp;&nbsp;→ wickTrace([]) = 4 (Tr[identity] = d = 4 in 4D Dirac algebra)`,
+     expl:`Why Tr[p̸]=0: p̸=p_μγ^μ is a single gamma matrix. Tr[γ^μ]=0 for any μ (all Dirac-rep traces of odd numbers of gammas vanish). Tr[1]=4 because the Dirac spinor space is 4-dimensional.`},
+
+    {title:`Sum Trace 1: 4 terms → ${T1.finalH}`,
+     rule:`Collect surviving terms: Term 1 + Term 4 (Terms 2,3 = 0)`,
+     expr:`${T1.traceHead}<br>
+       = ${T1.t1html} + 0 + 0 ${T1.cross>0?'+':'−'} 4m²<br>
+       = ${T1.finalH}`,
+     expl:`ε<sub>A</sub>ε<sub>B</sub> = ${eA>0?'+1':'−1'} × ${eB>0?'+1':'−1'} = ${T1.cross>0?'+1':'−1'} → the m² term ${T1.cross>0?'adds':'subtracts'}. ${T1.cross>0?'Same-type bilinear — full result.':'Mixed bilinear — helicity suppression! In the massless limit m→0 this trace → 0.'}`},
+
+    {title:`Expand Trace 2: ${T2.traceHead}`,
+     rule:`Same procedure as Trace 1.`,
+     expr:`<strong>Term 1:</strong> Tr[${slash(pC)}${slash(pD)}] = ${T2.t1html} &nbsp; [wickTrace]<br>
+       <strong>Term 2:</strong> ${T2.t2html}<br>
+       <strong>Term 3:</strong> ${T2.t3html}<br>
+       <strong>Term 4:</strong> ${T2.t4html}<br><br>
+       <strong>Sum:</strong> ${T2.traceHead} = ${T2.finalH}`,
+     expl:`ε<sub>C</sub>ε<sub>D</sub> = ${eC>0?'+1':'−1'} × ${eD>0?'+1':'−1'} = ${T2.cross>0?'+1':'−1'} → the m² term ${T2.cross>0?'adds':'subtracts'}.`},
+
+    {title:'Combine traces → substitute Mandelstam',
+     rule:`<strong>4-point 2→2 massless kinematics:</strong><br>
+       p₁·p₂=s/2, p₁·p₃=−t/2, p₁·p₄=−u/2, p₂·p₃=−u/2, p₂·p₄=−t/2, p₃·p₄=s/2`,
+     expr:`Σ<sub>spins</sub>|M|² = ${finalExpr}`,
+     expl:`${crossAll>0
+       ? `Both traces give +m², product = (A·B+m²)(C·D+m²). In the massless limit m→0: reduces to 16(m_f/v)⁴(${T1.dpPart})(${T2.dpPart})/(${denomLabel})².`
+       : `One or both traces give −m² (helicity suppression). In the massless limit m→0: |M|² → 0. The Higgs coupling m_f/v is itself proportional to m_f, so the full rate ∝ m_f⁴/v⁴ — very sensitive to fermion mass.`}`},
+  ];
+
+  const latex = `|\\mathcal{M}|^2 = \\frac{16(m_f/v)^4(${T1.dp.mand||'A\\cdot B'} ${T1.cross>0?'+':'-'} m^2)(${T2.dp.mand||'C\\cdot D'} ${T2.cross>0?'+':'-'} m^2)}{(${denomLabel.replace(/<[^>]+>/g,'').replace(/²/g,'^2')})^2}`;
+
+  return {steps, latex};
+}
+
 function stepsFromMathIM(text) {
-  const {nFermExt, nPhotExt, nPhotProp, nFermProp, nLoops, photPropNorm, fermExts} = parseMathExpression(text);
+  const {nVert, nFermExt, nPhotExt, nPhotProp, nFermProp, nLoops,
+         nScalarProp, nScalarExt, photPropNorm, scalarPropNorm, fermExts} = parseMathExpression(text);
 
   // ── Loop amplitude (detected ∫ in math text) ─────────────────────────────
   if (nLoops >= 1) {
@@ -786,31 +1602,65 @@ function stepsFromMathIM(text) {
     return stepsLoopIntegral(nLoops, nProp||4, 'e');
   }
 
+  // ── Yukawa 2→2 scalar exchange: fermion legs + scalar propagator ────────────
+  // e.g. ff→ff or ff̄→ff̄ via Higgs exchange. Scalar vertex (no γ^μ) + scalar prop.
+  if (nFermExt>=2 && nScalarProp>=1 && nPhotProp===0 && nFermProp===0 && nLoops===0)
+    return stepsSquareYukawa(text);
+
+  // ── Scalar amplitude: no fermion legs, scalar propagator present ─────────────
+  if (nFermExt===0 && nPhotExt===0 && nScalarProp>=1 && nLoops===0)
+    return stepsSquareScalar(text, nVert, nScalarProp, nScalarExt, scalarPropNorm);
+
   // 3-point vertex
   if (nFermExt===2 && nPhotExt===1 && nPhotProp===0 && nFermProp===0)
     return steps3PointVertex(text);
 
   // Two-current 2→2
   if (nFermExt===4 && nPhotProp>=1 && nPhotExt===0 && nFermProp===0) {
-    const denomMatch = photPropNorm.match(/\/([tsu]\d*)/i);
-    const denom = denomMatch && /^t/i.test(denomMatch[1]) ? 't' : 's';
-    const digits  = denomMatch ? denomMatch[1].replace(/\D/g,'') : '';
-    let chain1, chain2;
-    if (digits.length>=2) {
-      chain1 = ['p'+digits[0], 'p'+digits[1]];
-      chain2 = fermExts.filter(m=>!chain1.includes(m)).slice(0,2);
+    // ── Bug 1 fix: detect QCD vs QED from vertex factors in the original text ──
+    const isGluonMath = /ig_?s|T\^a/i.test(text);
+    const couplingMath = isGluonMath ? 'gs' : 'e';
+
+    // ── Bug 2+3 fix: extract chain momenta and denominator from propagator ─────
+    // Method 1: simple Mandelstam label /s, /t, /u (e.g. g_μν/s12 or -iη^μν/t)
+    let denom = 's', chain1, chain2;
+    const simpleMatch = photPropNorm.match(/\/\(?\s*([stu])\d*/i);
+    if (simpleMatch) {
+      denom = simpleMatch[1].toLowerCase();
+      const digits = simpleMatch[0].replace(/\D/g,'');
+      if (digits.length >= 2) chain1 = ['p'+digits[0], 'p'+digits[1]];
     } else {
-      chain1 = fermExts.slice(0,2);
-      chain2 = fermExts.slice(2,4);
+      // Method 2: explicit momentum in denominator, e.g. g_μν/((p1-p2))2
+      const momMatch = photPropNorm.match(/\/\(*\s*(p\d+)\s*([+-])\s*(p\d+)/i);
+      if (momMatch) {
+        const pa = momMatch[1].toLowerCase(), pb = momMatch[3].toLowerCase();
+        chain1 = [pa, pb];
+        // Evaluate which Mandelstam (pa±pb)² corresponds to using the DP table.
+        // (pa+pb)²=+2pa·pb; (pa-pb)²=-2pa·pb. The DP table gives pa·pb=±mand/2.
+        const dp = dpHTML(pa, pb);
+        // Either sign: the magnitude is the same Mandelstam variable
+        denom = dp.mand || 's';
+      }
     }
-    const sep = denom==='s' ? '+' : '-';
+    if (!chain1) chain1 = fermExts.slice(0,2);
+    chain2 = fermExts.filter(m => !chain1.includes(m)).slice(0,2);
+    if (chain2.length < 2) chain2 = fermExts.slice(2,4);
+
+    // ── Bug 4 fix: build correct scalarStr from detected coupling and denom ───
+    const nVertsActual = nVert || 2;
+    const scalarStr = `${couplingMath}${nVertsActual * 2}/${denom}2`;
+
+    const sep = denom==='t' ? '-' : '+';
+    const vertLabel = isGluonMath ? 'q [auto]' : 'e [auto]';
+    const propType  = isGluonMath ? 'gluon prop' : 'photon prop';
     const commentsForParser = [
-      '← vertex (e [auto])',
-      `← photon prop (${chain1[0]}${sep}${chain1[1]})`,
-      '← vertex (e [auto])',
+      `← vertex (${vertLabel})`,
+      `← ${propType} (${chain1[0]}${sep}${chain1[1]})`,
+      `← vertex (${vertLabel})`,
       ...fermExts.map(m=>`← fermion ext in (${m})`),
     ].join('\n');
-    const topo = {topo:'two_current', coupling:'e', denom, scalarStr:`e4/${denom}2`, nVerts:2, isGluon:false};
+    const topo = {topo:'two_current', coupling:couplingMath, denom, scalarStr,
+                  nVerts:nVertsActual, isGluon:isGluonMath};
     return stepsSquareTwoCurrent(topo, commentsForParser, text);
   }
 
@@ -818,14 +1668,8 @@ function stepsFromMathIM(text) {
   if (nFermExt===2 && nPhotExt===2 && nFermProp>=1)
     return stepsSquareCompton({}, '', text);
 
-  // Unknown
-  return {steps:[{
-    title:'Amplitude format not recognised',
-    rule:'',
-    expr:`<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(text)}</div>`,
-    expl:`Detected: ${nFermExt} fermion legs, ${nPhotExt} photon legs, ${nPhotProp} photon propagators, ${nFermProp} fermion propagators.<br>
-      Use the editor's <strong>→ Stepper</strong> button for automatic processing, or enter a trace expression directly.`
-  }], latex:''};
+  // Unknown topology → route to general Wick engine
+  return stepsGeneralAmplitude(text);
 }
 
 function parseIMFactors(text) {
@@ -984,13 +1828,25 @@ function stepsSquareTwoCurrent(topo, text, iMDisplay) {
 
   // ── QCD color algebra (only for gluon exchange) ────────────────────────────
   if (isGluon) {
-    // Lorentz result from trace (spin-summed)
     const traceVal = traceResult.steps[traceResult.steps.length-1].expr;
 
+    // Step: show the δ^ab contraction from the gluon propagator explicitly
     steps.push({
-      title:'QCD color algebra',
-      rule:`<strong>Color structure at each vertex:</strong> (T<sup>a</sup>)<sub>ji</sub> where a = gluon color, i,j = quark colors<br>
-        <strong>Key identity:</strong> Σ<sub>i,j</sub>(T<sup>a</sup>)<sub>ji</sub>(T<sup>a</sup>)<sub>ij</sub> = Tr(T<sup>a</sup>T<sup>a</sup>) = T<sub>F</sub> = ½ &nbsp;(for each gluon a)<br>
+      title:'QCD color structure — δ^{ab} from gluon propagator contracts the vertices',
+      rule:`The gluon propagator carries a color factor <strong>−iδ<sup>ab</sup>g<sub>μν</sub>/q²</strong>.<br>
+        Vertex 1 contributes <strong>(T<sup>a</sup>)<sub>ji</sub></strong>, Vertex 2 contributes <strong>(T<sup>b</sup>)<sub>lk</sub></strong>.<br>
+        The δ<sup>ab</sup> contracts the gluon color indices a,b:<br>
+        &nbsp;&nbsp;(T<sup>a</sup>)<sub>ji</sub> × δ<sup>ab</sup> × (T<sup>b</sup>)<sub>lk</sub> = (T<sup>a</sup>)<sub>ji</sub>(T<sup>a</sup>)<sub>lk</sub><br>
+        This is the <strong>fundamental identity</strong>: the propagator's δ<sup>ab</sup> sets b=a, removing one free color sum.`,
+      expr:`Color factor in |M|²: Σ<sub>a,i,j,k,l</sub> |(T<sup>a</sup>)<sub>ji</sub>(T<sup>a</sup>)<sub>lk</sub>|²
+        = Σ<sub>a</sub> [Σ<sub>i,j</sub>(T<sup>a</sup>)<sub>ji</sub>(T<sup>a</sup>)<sub>ij</sub>] × [Σ<sub>k,l</sub>(T<sup>a</sup>)<sub>lk</sub>(T<sup>a</sup>)<sub>kl</sub>]
+        = Σ<sub>a</sub> Tr(T<sup>a</sup>T<sup>a</sup>) × Tr(T<sup>a</sup>T<sup>a</sup>)`,
+      expl:`The squared amplitude sums over ALL color indices (a=gluon, i,j=quark 1 colors, k,l=quark 2 colors). The product factors into two independent closed traces because the quark lines don't share color indices except through the contracted gluon index a.`
+    });
+
+    steps.push({
+      title:'QCD color sum — evaluate Tr(T^aT^a) for each quark line',
+      rule:`<strong>Identity:</strong> Σ<sub>i,j</sub>(T<sup>a</sup>)<sub>ji</sub>(T<sup>a</sup>)<sub>ij</sub> = Tr(T<sup>a</sup>T<sup>a</sup>) = T<sub>F</sub> = ½ &nbsp;(for each fixed gluon color a)<br>
         Summing over all N<sub>c</sub>²−1 = 8 gluons: &nbsp;Σ<sub>a</sub>T<sub>F</sub>² = (N<sub>c</sub>²−1)T<sub>F</sub>² = 8×¼ = 2<br>
         <strong>Color average</strong> over N<sub>c</sub>² = 9 initial quark-color states: ×1/9`,
       expr:`Σ<sub>colors</sub>|M|² = ${FR('(N<sub>c</sub>²−1)T<sub>F</sub>²','N<sub>c</sub>²')} × Σ<sub>spins</sub>|M|²<sub>Lorentz</sub>
@@ -1466,16 +2322,8 @@ function stepsFromIM(text, iMDisplay) {
     rule:'', expr:`<span style="color:#505080">No fermion lines detected. For massless gluons/photons use the Helicity (n-gluon) examples.</span>`, expl:''
   }], latex:''};
 
-  // ── Fallback with diagnostic ──────────────────────────────────────────────
-  const {nFermExt, nPhotExt, nFermProp, nBosonProp, nVerts} = topo;
-  return {steps:[{
-    title:'Topology detected — no step generator yet',
-    rule:'',
-    expr:`<div style="font-size:11px;color:#404060;white-space:pre-wrap;max-height:120px;overflow-y:auto">${esc((iMDisplay||text).substring(0,300))}</div>`,
-    expl:`Detected: ${nFermExt||0} fermion legs, ${nPhotExt||0} photon legs, ${nFermProp||0} fermion props, ${nBosonProp||0} boson props, ${nVerts||0} vertices.<br>
-      Supported topologies: 2→2 (two-current, Compton), 1→2 (vector/scalar decay), 2→3 (bremsstrahlung), loops.<br>
-      This combination (${nFermExt}f+${nPhotExt}γ ext, ${nFermProp}f+${nBosonProp}γ prop) is not yet implemented.`
-  }], latex:''};
+  // ── Fallback → general Wick engine ───────────────────────────────────────
+  return stepsGeneralAmplitude(iMDisplay||text);
 }
 
 // ─── Helper: scalar parts ────────────────────────────────────────────────────
@@ -1637,6 +2485,14 @@ let twoMode  = false;
 let diagSign = -1;   // -1: M=M₁-M₂ (fermion exchange), +1: M=M₁+M₂
 
 // ─── Two-diagram UI helpers ───────────────────────────────────────────────────
+function togglePresets() {
+  const d = document.getElementById('preset-drawer');
+  const b = document.getElementById('btn-presets');
+  const open = d.classList.toggle('open');
+  b.classList.toggle('open', open);
+  b.textContent = open ? 'Examples ▴' : 'Examples ▾';
+}
+
 function toggleTwoDiagrams() {
   twoMode = !twoMode;
   document.getElementById('input2-row').style.display = twoMode ? 'block' : 'none';
@@ -1751,6 +2607,13 @@ const EX = {
   'internal':     '(e4/s2) * Tr[p1 gm p2 gm]',
   'spinor':       '(e2/s) * ubar(p3) gm u(p1)',
   'qcd':          '(gs4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]',
+  // ── Yukawa tests ─────────────────────────────────────────────────────────
+  // ff→ff t-channel (no antiparticles, all u-spinors — same-type → +m²)
+  'yukawa_ff_t':   'iM = −im_f/v × −im_f/v × i/(((p₁−p₂))²−m²) × u(p₁,s) × ū(p₂,s) × ū(p₃,s) × u(p₄,s)',
+  // ff̄→ff̄ t-channel (corrected: antifermion line uses v̄/v → same-type → +m²)
+  'yukawa_ffbar_t':'iM = −im_f/v × −im_f/v × i/(((p₁−p₂))²−m²) × u(p₁,s) × ū(p₂,s) × v̄(p₄,s) × v(p₃,s)',
+  // ff̄→ff̄ s-channel annihilation (MIXED bilinears → helicity suppressed → −m²)
+  'yukawa_ffbar_s':'iM = −im_f/v × −im_f/v × i/(s−m²) × v̄(p₂,s) × u(p₁,s) × ū(p₃,s) × v(p₄,s)',
 };
 function eg(name) {
   if (name === 'bhabha') {

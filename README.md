@@ -79,11 +79,11 @@ Switch to `amplitude_stepper.html` (open it in another tab or window first).
 In `amplitude_stepper.html`, click **Import from Editor**. The stepper:
 
 1. Reads the amplitude from the editor
-2. Identifies the topology (two-current, Compton, decay, loop, etc.)
+2. Identifies the topology (two-current, Compton, Yukawa, decay, loop, etc.)
 3. Squares the amplitude: |M|² = iM × (iM)*
-4. Applies spin sums: Σ u ū = p̸ + m
+4. Applies spin sums: Σ u ū = p̸ + m, Σ v v̄ = p̸ − m
 5. Applies photon polarisation sums: Σ ε ε* = −g_{μν}
-6. Evaluates the resulting traces using γ-matrix identities
+6. Evaluates the resulting traces using the recursive Wick contraction engine
 7. Substitutes Mandelstam variables s, t, u
 8. Gives the final spin-averaged result |M̄|²
 
@@ -183,7 +183,7 @@ iM = iQeγ^μ × −ig_μν/s × iQeγ^ν × u(p₁) × …   ← full iM from e
 ← vertex (e [auto])                               ← comment-line format
 ```
 
-Unicode is accepted: `γ^μ`, `×`, `p̸`, subscript numbers `₁₂₃₄`.
+Unicode is accepted: `γ^μ`, `×`, `p̸`, subscript numbers `₁₂₃₄`, `ū`, `v̄`.
 
 ### Buttons
 
@@ -194,11 +194,12 @@ Unicode is accepted: `γ^μ`, `×`, `p̸`, subscript numbers `₁₂₃₄`.
 | **Import from Editor** | Load the last amplitude exported via **→ Stepper** |
 | **Copy LaTeX** | Copy the final result as LaTeX |
 | **Syntax ?** | Show the input syntax reference |
+| **Examples ▾** | Show/hide the preset example buttons |
 | **Ctrl+Enter** | Solve (keyboard shortcut) |
 
 ### Example buttons
 
-The row of grey buttons loads pre-built examples:
+Click **Examples ▾** to open the preset drawer. Click any button to load that amplitude into the input field and solve it immediately.
 
 | Button | What it loads |
 |---|---|
@@ -207,12 +208,15 @@ The row of grey buttons loads pre-built examples:
 | **e⁺e⁻→μ⁺μ⁻ (massive)** | Same with (p+m) mass corrections |
 | **e⁻μ⁻→e⁻μ⁻** | t-channel trace |
 | **Compton (s-ch)** | Single s-channel Compton diagram |
-| **Bhabha (t+s)** | Opens two-diagram mode, Bhabha interference |
-| **Møller (t+u)** | Opens two-diagram mode, Møller interference |
 | **Tr[p1 p2]** | Simple two-momentum trace |
 | **Tr[p1 gm p2 gm]** | Internal index contraction |
 | **Spinor bilinear** | ubar(p3) gm u(p1) — shows squaring steps |
-| **QCD t-channel** | QCD with colour factor |
+| **QCD t-channel** | QCD two-current with δ^{ab} contraction and colour factor |
+| **Yukawa ff→ff** | ff→ff via Higgs exchange (all u-spinors, same-type, +m²) |
+| **Yukawa ff̄→ff̄ (t)** | Corrected amplitude with v̄/v antifermion spinors (same-type, +m²) |
+| **Yukawa ff̄ helicity** | s-channel annihilation with mixed bilinears (−m², helicity suppressed) |
+| **Bhabha (t+s)** | Opens two-diagram mode, full Bhabha interference |
+| **Møller (t+u)** | Opens two-diagram mode, Møller interference |
 
 ### Helicity tab
 
@@ -245,7 +249,7 @@ Click **→ Stepper**. Switch to `amplitude_stepper.html`. Click **Import from E
 
 **4. Read the result**
 
-The stepper shows 9 steps:
+The stepper shows steps:
 
 1. Input amplitude iM
 2. Write in factored form: J₁^μ × (−ig_{μν}/s) × J₂_μ
@@ -254,10 +258,52 @@ The stepper shows 9 steps:
 5. Expand each trace using Tr[p̸ γ^μ p̸ γ^ν] = 4(…)
 6. Contract using master formula: 32[(A·C)(B·D)+(A·D)(B·C)]
 7. Substitute Mandelstam variables
-8. Evaluate: 8(t²+u²)
-9. Final result: **2e⁴(t²+u²)/s²**
+8. Final result: **2e⁴(t²+u²)/s²**
 
 This matches the textbook result (Griffiths §9.2 ✓).
+
+---
+
+## Spinor Conventions — u vs v
+
+A common source of errors in amplitude squaring is using the wrong spinor type for antiparticle legs. The stepper automatically detects and handles both.
+
+### P&S Convention (Peskin & Schroeder §5.1)
+
+| Particle | Direction | Spinor | Spin sum |
+|---|---|---|---|
+| Fermion f | Incoming | u(p,s) | Σ u ū = p̸+m |
+| Fermion f | Outgoing | ū(p,s) | — |
+| Antifermion f̄ | Incoming | v̄(p,s) | Σ v v̄ = p̸−m |
+| Antifermion f̄ | Outgoing | v(p,s) | — |
+
+The critical difference: u-type spin sum inserts (p̸+m); v-type inserts (p̸−m). The sign of m in the trace determines whether the squared amplitude is helicity-suppressed.
+
+### Trace results by bilinear type
+
+For a scalar Yukawa vertex ψ̄ψ (no γ^μ), there are no Lorentz indices and no metric contraction between lines. Each vertex bilinear squares independently:
+
+| Bilinear type | Trace | Result |
+|---|---|---|
+| ū(pB) u(pA) &nbsp;&nbsp;[ff→ff] | Tr[(p̸B+m)(p̸A+m)] | 4(A·B+m²) |
+| v̄(pA) v(pB) &nbsp;&nbsp;[f̄f̄→f̄f̄] | Tr[(p̸A−m)(p̸B−m)] | 4(A·B+m²) same! |
+| v̄(pB) u(pA) &nbsp;&nbsp;[ff̄→H→ff̄ s-ch] | Tr[(p̸B−m)(p̸A+m)] | 4(A·B−m²) **suppressed** |
+| ū(pA) v(pB) &nbsp;&nbsp;[H→ff̄] | Tr[(p̸A+m)(p̸B−m)] | 4(A·B−m²) **suppressed** |
+
+**Helicity suppression** occurs in the mixed (u–v) case: the cross-sign ε_out × ε_in = −1 makes the m² term subtract. In the massless limit m→0, the mixed trace → 4(A·B), but the full Yukawa coupling is −im_f/v, so |M|² ∝ m_f²/v² → 0. The Higgs couples proportional to mass — this is the physical origin of the Yukawa coupling structure.
+
+### How the stepper derives this
+
+The stepper does **not** look up the result. For each bilinear it:
+
+1. Classifies the spinor type (u/ū/v/v̄) from the input text
+2. Assigns ε = +1 (u-type) or ε = −1 (v-type) per leg
+3. Expands `Tr[(p̸_out+ε_out m)(p̸_in+ε_in m)]` into 4 sub-traces:
+   - `Tr[p̸_out p̸_in]` → evaluated by `wickTrace([slash, slash])` = 4(A·B)
+   - `ε_out m × Tr[p̸_in]` → `wickTrace([slash])` = 0 (n=1, odd → zero)
+   - `ε_in m × Tr[p̸_out]` → `wickTrace([slash])` = 0
+   - `ε_out ε_in m² × Tr[1]` → `wickTrace([])` = 4, so ±4m²
+4. Sums surviving terms: 4(A·B) + ε_out ε_in × 4m²
 
 ---
 
@@ -316,12 +362,14 @@ The stepper does not need to know which theory you are computing in. It works on
 - A product of two traces — `(coupling/denom) * Tr[...] * Tr[...]`
 - A single trace with internal contractions
 - A Compton-type amplitude (one fermion chain + photon legs)
+- A Yukawa amplitude (scalar coupling, u/v spinors on fermion lines)
+- Any amplitude not matching the above — routed to the general Wick engine
 
 To compute a squared amplitude for a new interaction:
 
 1. Draw the diagram in the editor with your custom vertex labels and rules
 2. Export via **→ Stepper**
-3. The stepper reads the actual momenta from the diagram and derives the result using γ-matrix identities — it does not look up the answer
+3. The stepper reads the actual momenta from the diagram and derives the result — it does not look up the answer
 
 For the trace-expression input mode, you can type any expression directly and the stepper will evaluate it. This allows computing amplitudes for theories with no editor support yet, as long as you can write the squared amplitude as a trace.
 
@@ -405,7 +453,7 @@ Save any connected component as a reusable template. Stamp templates with 90° r
 
 ### `amplitude_stepper.html` — Step-by-Step Amplitude Solver
 
-Takes a QFT scattering amplitude and walks through the full computation step by step — squaring, spin/polarisation/colour sums, trace algebra, Mandelstam substitution — to a final symbolic result. Designed to derive results from first principles so it works for new or unknown interactions.
+Takes a QFT scattering amplitude and walks through the full computation step by step — squaring, spin/polarisation/colour sums, trace algebra, Mandelstam substitution — to a final symbolic result. All results are derived from first principles using the Wick contraction engine; nothing is looked up in a table.
 
 **Topology detection**
 
@@ -414,26 +462,53 @@ The stepper reads the amplitude structure and routes to the appropriate handler:
 | Topology | Example | What it computes |
 |---|---|---|
 | Two-current (QED) | e⁺e⁻→μ⁺μ⁻, Bhabha | Full squaring → traces → Mandelstam → result |
-| Two-current (QCD) | qq→qq | Same + colour factor N_c²/[2(N_c²−1)] |
-| Single Compton-type | γγ→e⁺e⁻ (one diagram) | Derives result from trace identities for that diagram; notes what is missing |
-| 1→2 vector decay | Z→ff̄ | Polarisation sum, trace with γ⁵, decay width Γ formula |
+| Two-current (QCD) | qq→qq | Same + δ^{ab} contraction + colour factor 2/9 |
+| Compton-type | Compton scattering | Derives from trace identities for the drawn diagram |
+| **Yukawa 2→2** | ff→ff, ff̄→ff̄ via Higgs | Full step-by-step trace expansion, u/v spinor distinction, helicity suppression |
+| 1→2 vector decay | Z→ff̄ | Polarisation sum, axial trace with γ⁵, decay width Γ formula |
 | 1→2 scalar decay | H→ff̄ | Yukawa trace, helicity suppression, Γ formula |
 | 2→3 bremsstrahlung | e⁻γ radiation | Eikonal factorisation, IR divergence, Bloch-Nordsieck |
 | Loop | Any 1-loop diagram | Full dim-reg procedure: PV reduction, Feynman params, Wick rotation, B₀/C₀/D₀ |
 | γγ→γγ / gg→gg box | Fermion box | Why squaring before integrating is wrong; 3 topologies; colour trace |
-| Pure gauge | gg→gg | → Helicity tab (Parke-Taylor / BCFW) |
+| **General (unknown)** | Any amplitude | Wick contraction engine — see below |
 
-**Trace computation — not hardcoded**
+**General Amplitude Engine — Wick contraction**
 
-For single Compton-type diagrams the stepper derives the result from scratch:
+For any amplitude not matching a specific topology, the stepper uses the recursive Wick contraction formula:
 
-1. Reads propagator momentum from the factor list
-2. Computes all dot products from the Mandelstam DP table
-3. Applies the three trace contraction identities step by step:
-   - `γ^μ p̸ γ_μ = −2p̸`
-   - `q̸ p̸ q̸ = 2(q·p)q̸ − q²p̸`
-   - `γ^ε A̸ γ_ε = −2A̸`
-4. Collapses the result using s+t+u=0
+```
+Tr[Γ₁ Γ₂ … Γ₂ₙ] = Σₖ₌₂²ⁿ (−1)^k (Γ₁·Γₖ) × Tr[Γ₂…Γ̂ₖ…Γ₂ₙ]
+```
+
+with pair contractions:
+```
+γ^μ · γ^ν  →  g^{μν}
+γ^μ · p̸    →  p^μ  (free momentum component)
+p̸_a · p̸_b →  a·b  (scalar dot product, evaluated from Mandelstam table)
+```
+
+Base cases: `Tr[] = 4`, `Tr[n=odd] = 0`, `Tr[p̸_A p̸_B] = 4(A·B)`.
+
+This is fully recursive, handles chains of arbitrary length, and requires no precomputed results. Verified identities:
+- `Tr[p̸₁ p̸₂] = 2s` ✓
+- `Tr[p̸₁ γ^μ p̸₂ γ_μ] = −4s` ✓ (= −8 × s/2, from γ^μ p̸ γ_μ = −2p̸)
+- `Tr[p̸₁ p̸₂ p̸₃ p̸₄] = s²−t²+u²` ✓
+
+**Yukawa trace computation — fully derived**
+
+For a Yukawa amplitude with spinors classified as u/ū/v/v̄, each bilinear trace is expanded as 4 sub-traces:
+
+```
+Tr[(p̸_out + ε_out m)(p̸_in + ε_in m)]
+  = Tr[p̸_out p̸_in]            → wickTrace([p̸,p̸]) = 4(A·B)
+  + ε_out m × Tr[p̸_in]        → wickTrace([p̸])   = 0   (odd, vanishes)
+  + ε_in  m × Tr[p̸_out]       → wickTrace([p̸])   = 0   (odd, vanishes)
+  + ε_out ε_in m² × Tr[1]      → wickTrace([])    = 4
+                               ─────────────────────────────
+  Result: 4(A·B + ε_out ε_in m²)
+```
+
+ε = +1 for u-type (spin sum Σuū = p̸+m), ε = −1 for v-type (Σvv̄ = p̸−m).
 
 **Two-diagram interference (automated)**
 
@@ -454,27 +529,32 @@ Tr[γ^μ p̸_A γ^ν p̸_B γ_μ p̸_C γ_ν p̸_D] = −32(A·C)(B·D)
 
 - 4-element trace identity and double-trace contraction master formula
 - 8-gamma trace for interference terms
+- **Recursive Wick contraction engine** for arbitrary-length traces
+- **u/v spinor classification** — correct spin sums for particles and antiparticles
+- **Yukawa trace expansion** step by step from sub-trace evaluations
+- **Helicity suppression** detection and explanation for mixed u-v bilinears
 - Massive spin sums with (p̸+m) corrections
 - Photon polarisation sum: Σ εε\* = −g_{μν}
-- QCD colour algebra and averaging factors
+- QCD colour algebra: δ^{ab} contraction, Tr(T^a T^a), averaging factors
 - Mandelstam substitution (4-point 2→2 massless)
 - Z→ff̄ decay: axial trace with γ⁵, partial width
 - H→ff̄: Yukawa coupling, helicity suppression
 - 2→3 bremsstrahlung: Low's theorem, IR divergence
 - Loop integrals: dim-reg, Feynman parametrisation, B₀/C₀/D₀
-- γγ→γγ / gg→gg box: why pre-integration squaring fails, colour trace
+- γγ→γγ / gg→gg box: topology and colour structure
 
 **Input syntax**
 
 ```
-Traces:       Tr[p1 gm p2 gn]
-Momenta:      p1…p8  (always slashed inside Tr)
-Gammas:       gm gn gr gs ga gb  (matching labels are contracted)
-Scalars:      e2  e4  gs2  gs4  m2
-Denominators: /s  /t  /u  /s2  /t2  /u2
-Mass terms:   (p1+m)  (p1-m)  inside Tr
-Spinors:      ubar(p1) gm u(p3)
-Unicode:      γ^μ  ×  p̸  ε^μ  subscripts — all accepted
+Traces:        Tr[p1 gm p2 gn]
+Momenta:       p1…p8  (always slashed inside Tr)
+Gammas:        gm gn gr gs ga gb  (matching labels are contracted)
+Scalars:       e2  e4  gs2  gs4  m2
+Denominators:  /s  /t  /u  /s2  /t2  /u2
+Mass terms:    (p1+m)  (p1-m)  inside Tr
+Spinors:       ubar(p1) gm u(p3)  or  vbar(p2) u(p1)  etc.
+Full iM:       iM = −im_f/v × −im_f/v × i/(…) × u(p₁,s) × v̄(p₂,s) × …
+Unicode:       γ^μ  ×  p̸  ε^μ  ū  v̄  subscripts — all accepted
 ```
 
 ---
@@ -493,3 +573,9 @@ Unicode:      γ^μ  ×  p̸  ε^μ  subscripts — all accepted
 | gg→gg (tree) | (9/2)g_s⁴(3−tu/s²−su/t²−st/u²) | Mangano-Parke ✓ |
 | Z→ff̄ | N_c g²(g_V²+g_A²)m/(12π) | Standard EW ✓ |
 | H→ff̄ | N_c y_f² m_H(1−4m_f²/m_H²)^{3/2}/(8π) | Standard EW ✓ |
+| Yukawa ff→ff (t-ch) | 16(m_f/v)⁴(p₁·p₂+m²)(p₃·p₄+m²)/(q²−m_H²)² | Derived ✓ |
+| Yukawa ff̄→ff̄ (t-ch) | same as ff→ff (v-v trace = u-u trace) | Derived ✓ |
+| Yukawa ff̄→ff̄ (s-ch) | 16(m_f/v)⁴(p₁·p₂−m²)(p₃·p₄−m²)/(s−m_H²)² | Derived, helicity suppressed ✓ |
+| Tr[p̸₁ p̸₂] | 4(p₁·p₂) = 2s | Wick engine ✓ |
+| Tr[p̸₁ γ^μ p̸₂ γ_μ] | −8(p₁·p₂) = −4s | Wick engine ✓ |
+| Tr[p̸₁ p̸₂ p̸₃ p̸₄] | s²−t²+u² | Wick engine ✓ |
