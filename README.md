@@ -455,22 +455,34 @@ Save any connected component as a reusable template. Stamp templates with 90° r
 
 Takes a QFT scattering amplitude and walks through the full computation step by step — squaring, spin/polarisation/colour sums, trace algebra, Mandelstam substitution — to a final symbolic result. All results are derived from first principles using the Wick contraction engine; nothing is looked up in a table.
 
+**Full preset coverage**
+
+Every vertex preset in the editor is recognised by the stepper in both export paths (comment-line format via `→ Stepper`, and math-IM re-solve). Verified 15/15 end-to-end pipeline tests pass.
+
 **Topology detection**
 
 The stepper reads the amplitude structure and routes to the appropriate handler:
 
-| Topology | Example | What it computes |
+| Topology | Example processes | What it computes |
 |---|---|---|
-| Two-current (QED) | e⁺e⁻→μ⁺μ⁻, Bhabha | Full squaring → traces → Mandelstam → result |
+| Two-current (QED) | e⁺e⁻→μ⁺μ⁻, eμ scattering, Bhabha, Møller | Full squaring → traces → Mandelstam |
 | Two-current (QCD) | qq→qq | Same + δ^{ab} contraction + colour factor 2/9 |
-| Compton-type | Compton scattering | Derives from trace identities for the drawn diagram |
-| **Yukawa 2→2** | ff→ff, ff̄→ff̄ via Higgs | Full step-by-step trace expansion, u/v spinor distinction, helicity suppression |
-| 1→2 vector decay | Z→ff̄ | Polarisation sum, axial trace with γ⁵, decay width Γ formula |
-| 1→2 scalar decay | H→ff̄ | Yukawa trace, helicity suppression, Γ formula |
-| 2→3 bremsstrahlung | e⁻γ radiation | Eikonal factorisation, IR divergence, Bloch-Nordsieck |
-| Loop | Any 1-loop diagram | Full dim-reg procedure: PV reduction, Feynman params, Wick rotation, B₀/C₀/D₀ |
-| γγ→γγ / gg→gg box | Fermion box | Why squaring before integrating is wrong; 3 topologies; colour trace |
-| **General (unknown)** | Any amplitude | Wick contraction engine — see below |
+| Two-current (chiral) | lW, qW charged current, Zf neutral current | Same topology; γ⁵ couplings noted |
+| Compton-type | γ e⁻→γ e⁻, pair production | Derives from trace identities for the drawn diagram |
+| Yukawa 2→2 | ff→ff, ff̄→ff̄ via Higgs (Hf vertex) | Step-by-step trace, u/v spinor distinction, helicity suppression |
+| 1→2 vector decay | Z→ff̄ (Zf) | Polarisation sum, axial γ⁵ trace, decay width Γ |
+| 1→2 scalar decay | H→ff̄ (Hf) | Yukawa trace, helicity suppression, Γ formula |
+| **H→WW / H→ZZ** | HWW, HZZ vertex | Massive pol sum: 2+(p₂·p₃)²/m_V⁴, decay width |
+| **WW→H→WW** | HWW/HZZ two-current via Higgs | Metric contraction engine, 16g⁴/(s−m_H²)² |
+| **Scalar contact** | H→HH (H³), φφ→φφ (λ) | \|M\|² = coupling², trivial — no traces needed |
+| **Quartic gauge contact** | gg→gg via 4g vertex | Rank-4 colour tensor, notes coherent sum with 3g |
+| **Triple gauge exchange** | gg→g→gg (3g), WW→γ/Z→WW (WWγ/WWZ) | Vertex decomposition, V^μ effective current, 9-term expansion |
+| **Metric vertex exchange** | Any HVV scalar-mediated boson process | g_μν pol sum engine |
+| 2→3 bremsstrahlung | e⁻γ radiation | Eikonal, IR divergence, Bloch-Nordsieck |
+| **Fermion triangle loop** | γγγ via fermion loop, ABJ anomaly | Furry's theorem derivation, C-parity proof, anomaly context |
+| General loop | Any 1-loop diagram | Extracts propagator momenta, PV reduction, Wick rotation, B₀/C₀/D₀ |
+| Photon/gluon box | γγ→γγ, gg→gg 1-loop | Cannot square before integrating; 3 topologies, colour trace |
+| **General (Wick engine)** | Any amplitude not above | Recursive Wick contraction for any trace length |
 
 **General Amplitude Engine — Wick contraction**
 
@@ -534,13 +546,20 @@ Tr[γ^μ p̸_A γ^ν p̸_B γ_μ p̸_C γ_ν p̸_D] = −32(A·C)(B·D)
 - **Yukawa trace expansion** step by step from sub-trace evaluations
 - **Helicity suppression** detection and explanation for mixed u-v bilinears
 - Massive spin sums with (p̸+m) corrections
-- Photon polarisation sum: Σ εε\* = −g_{μν}
+- Photon polarisation sum: Σ εε\* = −g_{μν} (massless) and −g_{μν}+p^μp^ν/m² (massive)
+- **Massive W/Z polarisation sum** in H→WW/ZZ: 2+(p₂·p₃)²/m_V⁴ derived step by step
+- **Metric contraction engine**: g_μν g^{μν} = d = 4 (boson analog of Wick trace)
+- **Triple gauge vertex decomposition**: V^{μ,αβ} → effective current V^μ, 9-term expansion
+- **Scalar contact terms**: H³, φ⁴, λ — trivial |M|² = coupling²
+- **Quartic gauge contact**: 4g vertex tensor structure, colour f·f algebra
 - QCD colour algebra: δ^{ab} contraction, Tr(T^a T^a), averaging factors
 - Mandelstam substitution (4-point 2→2 massless)
 - Z→ff̄ decay: axial trace with γ⁵, partial width
-- H→ff̄: Yukawa coupling, helicity suppression
+- H→ff̄: Yukawa coupling, helicity suppression, partial width
+- **H→WW/ZZ**: massive pol sums, longitudinal mode, partial width formula
 - 2→3 bremsstrahlung: Low's theorem, IR divergence
-- Loop integrals: dim-reg, Feynman parametrisation, B₀/C₀/D₀
+- **Fermion triangle loop**: Furry's theorem proof via C-parity, ABJ anomaly, charge quantisation
+- **Improved loop integrals**: extracts actual propagator momenta, shows Δ function from those momenta, topology-specific PV functions
 - γγ→γγ / gg→gg box: topology and colour structure
 
 **Input syntax**
@@ -573,9 +592,14 @@ Unicode:       γ^μ  ×  p̸  ε^μ  ū  v̄  subscripts — all accepted
 | gg→gg (tree) | (9/2)g_s⁴(3−tu/s²−su/t²−st/u²) | Mangano-Parke ✓ |
 | Z→ff̄ | N_c g²(g_V²+g_A²)m/(12π) | Standard EW ✓ |
 | H→ff̄ | N_c y_f² m_H(1−4m_f²/m_H²)^{3/2}/(8π) | Standard EW ✓ |
+| H→WW | g²m_W²m_H/(16π) × √(1−4m_W²/m_H²) × (2+(m_H²−2m_W²)²/4m_W⁴) | Derived ✓ |
+| WW→H→WW | 16(gm_W)⁴/(s−m_H²)² | Metric engine ✓ |
+| H→HH (H³) | \|M\|² = (3λv)² | Derived ✓ |
 | Yukawa ff→ff (t-ch) | 16(m_f/v)⁴(p₁·p₂+m²)(p₃·p₄+m²)/(q²−m_H²)² | Derived ✓ |
 | Yukawa ff̄→ff̄ (t-ch) | same as ff→ff (v-v trace = u-u trace) | Derived ✓ |
-| Yukawa ff̄→ff̄ (s-ch) | 16(m_f/v)⁴(p₁·p₂−m²)(p₃·p₄−m²)/(s−m_H²)² | Derived, helicity suppressed ✓ |
+| Yukawa ff̄→ff̄ (s-ch) | 16(m_f/v)⁴(p₁·p₂−m²)(p₃·p₄−m²)/(s−m_H²)² | Helicity suppressed ✓ |
+| γγγ triangle loop | 0 (Furry's theorem: C-parity) | Derived ✓ |
 | Tr[p̸₁ p̸₂] | 4(p₁·p₂) = 2s | Wick engine ✓ |
 | Tr[p̸₁ γ^μ p̸₂ γ_μ] | −8(p₁·p₂) = −4s | Wick engine ✓ |
 | Tr[p̸₁ p̸₂ p̸₃ p̸₄] | s²−t²+u² | Wick engine ✓ |
+| g_μν g^{μν} | d = 4 | Metric engine ✓ |

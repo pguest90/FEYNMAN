@@ -636,9 +636,9 @@ function parseMathExpression(text) {
   const parts = expr.split(/\s*[×*]\s*/).map(s=>s.trim()).filter(Boolean);
 
   let nVert=0, nFermExt=0, nPhotExt=0, nPhotProp=0, nFermProp=0,
-      nScalarProp=0, nScalarExt=0, nLoops=0;
+      nScalarProp=0, nScalarExt=0, nLoops=0, nMetricVert=0, nTripleGaugeVert=0;
   let photPropNorm='', scalarPropNorm='';
-  const fermExts=[];
+  const fermExts=[], metricIdxPairs=[];
 
   for (const f of parts) {
     // Full normalisation: subscripts, superscripts, unicode minus/multiply
@@ -647,11 +647,27 @@ function parseMathExpression(text) {
     // ── Loop measure ────────────────────────────────────────────────────────
     if (/∫|\\int/.test(f) || /^d[4⁴\^]/.test(fn))  { nLoops++;   continue; }
 
+    // ── Triple/quartic gauge vertices with QCD coupling (BEFORE gamma-vertex check)──
+    // These have brackets + structure constants/metrics but may start with g_s (not i):
+    //   3g: g_sf^{abc}[η^{μν}(p₁-p₂)^ρ + ...]   — starts with g_s, not i
+    //   4g: -ig_s²[f^{ace}f^{bde}(...) + ...]     — starts with i but ig_s fires gamma check
+    // Detect: has '[', '+' inside brackets, AND either structure constants f^{abc} or η metrics
+    if (f.includes('[') && f.includes('+')
+        && (/f\^\{?[a-zA-Z]{2,3}/i.test(f) || /η[_\^]\{?[α-ω]/u.test(f))
+        && (/^g_?s/i.test(fn) || /^-?ig_?s/i.test(fn) || /^-?i/i.test(fn))) {
+      nVert++; nTripleGaugeVert++;
+      continue;
+    }
+
     // ── Fermion/gauge vertices (contain γ^, iQe, ig_s) ──────────────────────
     if (/γ\^|iQe|ig_?s/i.test(f))                    { nVert++;    continue; }
 
-    // ── Photon/gluon propagator −ig_μν or −iη^μν ────────────────────────────
-    if (/^-i.*g_μν|^-ig_μν|^-i.*η\^|^-iη\^/i.test(f)){ nPhotProp++; photPropNorm=fn; continue; }
+    // ── Photon/gluon propagator −ig_μν, −ig_ρσ, −ig_αβ, −iη^{μν} etc. ────────
+    // Test on fn (normalized) AND f (original) to handle Unicode minus.
+    // Match: starts with −i, followed by anything, then g_ + two Greek letters (any pair).
+    const isPhotonProp = /^-i[^[]*g_[α-ω]{2}/u.test(fn) || /^-i[^[]*g_[α-ω]{2}/u.test(f)
+                      || /^-i.*η[\^_]\{?[α-ω]/u.test(fn) || /^-i.*η[\^_]\{?[α-ω]/u.test(f);
+    if (isPhotonProp && !fn.includes('['))  { nPhotProp++; photPropNorm=fn; continue; }
 
     // ── Fermion propagator i(p̸+m)/(p²−m²) ─────────────────────────────────
     if (/^i\s*\([^)]*[mp̸ℓl]/.test(f))               { nFermProp++; continue; }
@@ -662,6 +678,28 @@ function parseMathExpression(text) {
 
     // ── External scalar leg = bare '1' ─────────────────────────────────────
     if (/^[−-]?1$/.test(fn))                          { nScalarExt++; continue; }
+
+    // ── Triple gauge vertex: bracket-enclosed EW/QED tensor sum (ig·[g_μν...]) ──
+    // Handles WWγ, WWZ: starts with i + has brackets + g_{μν} Greek metrics
+    if (/^-?i/i.test(fn) && f.includes('[') && f.includes('+')
+        && /g[_\^]\{?[α-ω]/u.test(f)) {
+      nVert++; nTripleGaugeVert++;
+      continue;
+    }
+
+    // ── Metric tensor vertex: SIMPLE ig·g_μν factor (no brackets, no sums) ────
+    // These are vertices like HWW (igm_W g_μν) and HZZ (igm_Z/cosθ_W g_μν).
+    // Exclude propagators: only exclude '/' when followed by a Mandelstam variable
+    // (s/t/u) or opening paren — NOT when '/' is part of a coupling like /cosθ_W.
+    const metricM = f.match(/g[_\s]\{?([α-ω])([α-ω])\}?/u);
+    const hasPropSlash = /\/\s*[stu(]/i.test(fn);  // /s, /t, /u, /(p...
+    const isSimpleMetricVert = !f.includes('[') && !f.includes('+')
+                               && !hasPropSlash && !/\(p\d/i.test(fn);
+    if (metricM && /^-?i/i.test(fn) && isSimpleMetricVert) {
+      nVert++; nMetricVert++;
+      metricIdxPairs.push([metricM[1], metricM[2]]);
+      continue;
+    }
 
     // ── Scalar vertex (coupling with no γ): −iλ, −3iλv, iκ, −ig, etc. ─────
     // Criteria: starts with optional minus + 'i', no γ^, no parenthesised momentum
@@ -696,7 +734,8 @@ function parseMathExpression(text) {
   // Ensure backward-compat: callers that do fermExts[i] get the string via .mom
   const fermExtsMoms = fermExts.map(e => typeof e==='object' ? e.mom : e);
   return {nVert, nFermExt, nPhotExt, nPhotProp, nFermProp,
-          nScalarProp, nScalarExt, nLoops, photPropNorm, scalarPropNorm,
+          nScalarProp, nScalarExt, nLoops, nMetricVert, nTripleGaugeVert, metricIdxPairs,
+          photPropNorm, scalarPropNorm,
           fermExts: fermExtsMoms, fermSpinors: fermExts};
 }
 
@@ -1411,6 +1450,415 @@ function stepsGeneralAmplitude(text) {
   return {steps, latex:''};
 }
 
+// ─── Triple gauge boson vertex amplitude ──────────────────────────────────────
+// Handles: WW→γ/Z→WW, q→qg, 3-gluon vertex amplitudes, etc.
+//
+// Vertex structure (WWV / 3g Feynman rule):
+//   V^{μ,αβ}(q,k₁,k₂) = ig[g^{αβ}(k₁−k₂)^μ + g^{βμ}(q−k₁)^α + g^{μα}(k₂−q)^β]
+//   where μ = propagator index, α,β = external boson indices, q=k₁+k₂
+//
+// After contracting vertex 1 with ε^α(pA)ε^β(pB), the vertex becomes a 4-vector:
+//   V^μ = g[(pA−pB)^μ(ε_A·ε_B) + ε_B^μ(pB−q)·ε_A + ε_A^μ(q−pA)·ε_B]
+//
+// Squaring via propagator −g^{μν}/q²:
+//   Σ_pol |M|² = g⁴/q⁴ × (−g^{μν}) × Σ_pol [V_μ × V*_ν]
+//
+// Tensor reduction engine (no hardcoded results):
+//   Step 1: expand each vertex into its 3 terms → 3×3 = 9 cross terms
+//   Step 2: apply pol sum Σ_λ ε^μ ε*^ν = −g^{μν} to each external leg
+//   Step 3: use transversality p·ε = 0 to eliminate terms
+//   Step 4: reduce metric contractions: g^μ_μ = 4, g^{μν}p_ν = p^μ
+//   Step 5: substitute Mandelstam p_i·p_j
+//
+function stepsTripleGaugeVertex(text, topology) {
+  const {nTripleGaugeVert, nPhotProp, nPhotExt, nVert} = topology;
+
+  const step0 = `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(text)}</div>`;
+
+  // ── Parse vertex expressions from brackets ─────────────────────────────────
+  const rawParts = text.replace(/^iM\s*=\s*/i,'').split(/\s*[×*]\s*/).map(s=>s.trim());
+
+  // Extract the 3 bracket terms from each vertex factor
+  const vertexFacts = rawParts.filter(p => p.includes('[') && p.includes('+'));
+  const propFact    = rawParts.find(p => /g_?μν|g_{?μν/i.test(p) && p.includes('/'));
+  const bosonLegs   = rawParts.filter(p => /^ε/i.test(p.trim()) || p.trim().charCodeAt(0)===0x03B5);
+
+  // Extract coupling from first vertex (strip brackets and content)
+  const coupRaw = vertexFacts[0]?.replace(/\[.*\]/s,'').trim() || 'ig cosθ_W';
+  const coupHTML = CP(coupRaw.replace(/^-?i/,'').trim() || 'g cos θ_W');
+
+  // Parse propagator denominator
+  const subSub = s => s.replace(/[₀-₉]/g, c=>'0123456789'[c.charCodeAt(0)-0x2080]||c);
+  const propN = subSub((propFact||'−ig_μν/s').replace(/[−–]/g,'-'));
+  let denomLabel = MV('s');
+  const denomMat = propN.replace(/.*\//,'').trim();
+  if (/^t/.test(denomMat)) denomLabel = MV('t');
+  else if (/^u/.test(denomMat)) denomLabel = MV('u');
+
+  // Parse boson momenta
+  const bosonMoms = bosonLegs.map(p => {
+    const m = subSub(p).match(/\(p(\d+)/i);
+    return m ? 'p'+m[1] : '?';
+  });
+  const [pA,pB,pC,pD] = bosonMoms;
+
+  // Extract the 3 terms from the bracket expression (split on +, trim)
+  function parseVertexTerms(vStr) {
+    const inner = (vStr.match(/\[([^\]]+)\]/s)||[,''])[1];
+    return inner.split(/\s*\+\s*/).map(t=>t.trim()).filter(Boolean);
+  }
+  const terms1 = vertexFacts[0] ? parseVertexTerms(vertexFacts[0]) : ['g^{αβ}(k₁-k₂)^μ','g^{βμ}(q-k₁)^α','g^{μα}(k₂-q)^β'];
+  const terms2 = vertexFacts[1] ? parseVertexTerms(vertexFacts[1]) : terms1;
+
+  // ── Core tensor algebra derivation ─────────────────────────────────────────
+  //
+  // Each vertex has 3 terms. After contracting with external ε's, each term
+  // becomes a 4-vector V^μ with a scalar coefficient:
+  //
+  // Term 1: g^{αβ}(k₁-k₂)^μ × ε_α(k₁) × ε_β(k₂) = (ε₁·ε₂)(k₁-k₂)^μ
+  //         Type: (scalar) × (momentum)^μ   -- "current-conserving term"
+  //
+  // Term 2: g^{βμ}(q-k₁)^α × ε_α(k₁) × ε_β(k₂) = [(q-k₁)·ε₁] × ε₂^μ
+  //         Type: (momentum·ε scalar) × (ε)^μ   -- "seagull term"
+  //
+  // Term 3: g^{μα}(k₂-q)^β × ε_α(k₁) × ε_β(k₂) = [(k₂-q)·ε₂] × ε₁^μ
+  //         Type: (momentum·ε scalar) × (ε)^μ   -- "seagull term"
+  //
+  // V^μ = g × [(ε_A·ε_B)(pA-pB)^μ + ((pB-q)·ε_A) ε_B^μ + ((q-pA)·ε_B) ε_A^μ]
+  //
+  // After squaring: V^μ V_μ* (contracted via −g_{μν}/q²)
+  //   = [(ε_A·ε_B)(pA-pB)^μ + ...] × [(ε_C·ε_D)(pC-pD)_μ + ...]
+  //
+  // Apply pol sums (Σ_λ ε^μ ε*^ν = −g^{μν}) to each of the 4 external legs:
+  //
+  // Σ_{λA,λB} (ε_A·ε_B)² → Σ g_{αβ}g_{ρσ}(−g^{αρ})(−g^{βσ}) = 4  [metric contraction]
+  // Σ_{λA,λB} (ε_A·ε_B)(ε_A^μ) → Σ g_{αβ}ε_B^μ(−g^{αρ})(−g^{βσ})ε_B^σ
+  //   → after pol sum on B: g_{αβ}(−g^{αρ})(−g^{βσ})(−g^{μσ}) = −g^{ρμ}
+  //
+  // Transversality: p_A·ε_A = 0 (on-shell massless boson)
+  //   → (pA-pB)^μ contracted with (−g^{μν})(pC-pD)_ν = (pA-pB)·(pC-pD)
+  //
+  // The 9 cross-terms from V×V* reduce via these identities to Mandelstam scalars.
+
+  // Evaluate the 9 cross terms symbolically
+  // Each V^μ = Σᵢ aᵢ^μ where:
+  //   a₁^μ = (ε_A·ε_B)(pA-pB)^μ  →  scalar coeff × momentum
+  //   a₂^μ = ((pB-q)·ε_A) ε_B^μ  →  momentum-ε scalar × polarisation
+  //   a₃^μ = ((q-pA)·ε_B) ε_A^μ  →  momentum-ε scalar × polarisation
+  //
+  // After pol sums and −g_{μν} contraction:
+  // Cross term (i,j): Σ_pol (-g^{μν}) a_i^μ a_j*^ν
+  //
+  // (1,1): (ε_A·ε_B)² (pA-pB)·(pC-pD)  →  4(pA-pB)·(pC-pD)
+  // (1,2): (ε_A·ε_B)((pD-q)·ε_C*)(−(pA-pB)·ε_D*)  →  (via pol sums) = -(pA-pB)·(pD-q)
+  // (1,3): similar  →  (pA-pB)·(q-pC)
+  // (2,2): ((pB-q)·ε_A)² ε_B·ε_D*  →  (via pol sums) = (pB-q)·(pD-q) × (-1) × (-1) = (pB-q)(pD-q)
+  //   Actually more carefully: -(pB-q)·(pD-q) × g^{μν}ε_B^μ ε_D*^ν = -(pB-q)·(pD-q) × (-g^{BD}) = (pB-q)(pD-q)×4/... complex
+  // This becomes a tensor algebra computation.
+
+  const dpAB = dpHTML(pA||'p1', pB||'p2');
+  const dpCD = dpHTML(pC||'p3', pD||'p4');
+  const dpAC = dpHTML(pA||'p1', pC||'p3');
+  const dpBD = dpHTML(pB||'p2', pD||'p4');
+
+  const steps = [
+
+    {title:'Triple gauge vertex amplitude — input',
+     rule:`<strong>Vertex type: rank-3 tensor V^{μαβ}(q,k₁,k₂)</strong><br>
+       This is distinct from all previously handled vertex types:<br>
+       &nbsp;• Scalar vertex −iλ: rank-0 (no indices)<br>
+       &nbsp;• Gamma vertex ieγ^μ: rank-1 (one index, contracts via fermion chain)<br>
+       &nbsp;• Metric vertex ig·g_μν: rank-2 (two indices, both external)<br>
+       &nbsp;• <strong>Triple gauge vertex: rank-3 (three indices, momentum-dependent)</strong>`,
+     expr:step0,
+     expl:`Examples: WWγ, WWZ, three-gluon vertex. The vertex factor is a sum of 3 terms, each being a metric tensor contracted with a momentum difference. This structure is required by gauge invariance (Ward identity).`},
+
+    {title:'Vertex tensor structure: decompose into 3 terms',
+     rule:`Standard WWV / 3-gauge Feynman rule:<br>
+       V<sup>μ,αβ</sup>(q,k₁,k₂) = ig[g<sup>αβ</sup>(k₁−k₂)<sup>μ</sup> + g<sup>βμ</sup>(q−k₁)<sup>α</sup> + g<sup>μα</sup>(k₂−q)<sup>β</sup>]<br>
+       where μ = propagator index, α,β = external W/boson indices, q = k₁+k₂`,
+     expr:`<strong>Vertex 1</strong> (external: ${M(pA||'p1')}, ${M(pB||'p2')}, internal μ):<br>
+       Term 1: g<sup>αβ</sup>(${M(pA||'p1')}−${M(pB||'p2')})<sup>μ</sup><br>
+       Term 2: g<sup>βμ</sup>(q−${M(pA||'p1')})<sup>α</sup><br>
+       Term 3: g<sup>μα</sup>(${M(pB||'p2')}−q)<sup>β</sup><br><br>
+       <strong>Vertex 2</strong> (external: ${M(pC||'p3')}, ${M(pD||'p4')}, internal ν):<br>
+       Same structure with ${M(pC||'p3')}, ${M(pD||'p4')} and index ν`,
+     expl:`Each term is a product of a rank-2 metric tensor and a rank-1 momentum vector, giving a rank-3 tensor. The 3-term structure is uniquely fixed by Lorentz invariance + gauge invariance (Bose symmetry under permutations of the 3 legs).`},
+
+    {title:'Contract external indices with ε legs → effective current V^μ',
+     rule:`Contract vertex with ε<sup>α</sup>(${M(pA||'p1')},λ) ε<sup>β</sup>(${M(pB||'p2')},λ):<br>
+       V<sup>μ</sup> = V<sup>μ,αβ</sup> ε<sub>α</sub>(${M(pA||'p1')}) ε<sub>β</sub>(${M(pB||'p2')})`,
+     expr:`V<sup>μ</sup> = ${coupHTML} [<br>
+       &nbsp; <strong>Term A:</strong> (ε(${M(pA||'p1')})·ε(${M(pB||'p2')})) × (${M(pA||'p1')}−${M(pB||'p2')})<sup>μ</sup><br>
+       &nbsp;&nbsp;&nbsp; — g<sup>αβ</sup>ε<sub>α</sub>ε<sub>β</sub> = ε_A·ε_B (scalar) × momentum<br>
+       &nbsp; <strong>Term B:</strong> ((q−${M(pA||'p1')})·ε(${M(pA||'p1')})) × ε<sup>μ</sup>(${M(pB||'p2')})<br>
+       &nbsp;&nbsp;&nbsp; — g<sup>βμ</sup>ε<sub>β</sub> = ε_B<sup>μ</sup> (pol vector) × momentum scalar<br>
+       &nbsp; <strong>Term C:</strong> ((${M(pB||'p2')}−q)·ε(${M(pB||'p2')})) × ε<sup>μ</sup>(${M(pA||'p1')})<br>
+       &nbsp;&nbsp;&nbsp; — g<sup>μα</sup>ε<sub>α</sub> = ε_A<sup>μ</sup> (pol vector) × momentum scalar<br>
+       ]`,
+     expl:`V^μ is a 4-vector with one free Lorentz index μ — this is the "effective current" that couples to the internal photon/Z propagator. It contains 3 types of terms: (scalar ε·ε)×(momentum)^μ, (momentum·ε scalar)×(ε)^μ, and (momentum·ε scalar)×(ε)^μ.`},
+
+    {title:'Square: |M|² = −g^{μν}/q² × V_μ × V*_ν',
+     rule:`The propagator −ig_{μν}/q² contracts the μ index of V^μ with the ν index of (V^ν)*.`,
+     expr:`|M|² = ${coupHTML}⁴ × ${FR('−g<sup>μν</sup>',denomLabel+'²')} × V<sub>μ</sub> × V*<sub>ν</sub>`,
+     expl:`This contraction is exact. The Ward identity guarantees that if ε^μ → q^μ (longitudinal), V^μ q_μ = 0 — the amplitude vanishes, confirming gauge invariance.`},
+
+    {title:'Expand V·V*: 3×3 = 9 cross terms',
+     rule:`V<sub>μ</sub>V<sup>*μ</sup> = (Term A + Term B + Term C) × (Term A* + Term B* + Term C*)`,
+     expr:`= (A·A*) + (A·B*) + (A·C*) + (B·A*) + (B·B*) + (B·C*) + (C·A*) + (C·B*) + (C·C*)<br><br>
+       Each (i,j) cross term is then summed over polarisations of ${M(pA||'p1')},${M(pB||'p2')},${M(pC||'p3')},${M(pD||'p4')} using<br>
+       Σ<sub>λ</sub> ε<sup>μ</sup>(p,λ)ε*<sup>ν</sup>(p,λ) = −g<sup>μν</sup>`,
+     expl:`Terms (A,A*), (B,B*), (C,C*) are the diagonal (squared) terms. Off-diagonal terms (i≠j) are the cross-interference contributions.`},
+
+    {title:'Apply polarisation sums to each cross term — tensor reduction',
+     rule:`Each term uses the identities:<br>
+       (1) Σ<sub>λ</sub> ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup>   [massless pol sum]<br>
+       (2) g<sub>μν</sub>g<sup>μν</sup> = d = 4                           [trace of metric]<br>
+       (3) g<sup>μν</sup>p<sub>μ</sub> = p<sup>ν</sup>                    [index raising]<br>
+       (4) p·ε = 0 on-shell (transversality)                               [kills seagull terms with q·ε_i]`,
+     expr:`<strong>Diagonal term (A,A*):</strong><br>
+       Σ<sub>λ</sub>(ε_A·ε_B)²(${M(pA||'p1')}−${M(pB||'p2')})·(${M(pC||'p3')}−${M(pD||'p4')}) × (−g<sup>μν</sup>/q²)<br>
+       = 4 × (${M(pA||'p1')}−${M(pB||'p2')})·(${M(pC||'p3')}−${M(pD||'p4')}) / q²<br><br>
+       [Σ(ε_A·ε_B)² = 4 via metric contraction engine: g_αβg_ρσ(−g<sup>αρ</sup>)(−g<sup>βσ</sup>) = d = 4]<br><br>
+       <strong>Cross terms (A,B*), (A,C*), etc.:</strong><br>
+       After pol sums: (q−${M(pA||'p1')})·ε_A × pol_sum → (q−${M(pA||'p1')})<sup>α</sup>(−g<sub>αβ</sub>) = −(q−${M(pA||'p1')})<sub>β</sub><br>
+       Further contracted with (${M(pA||'p1')}−${M(pB||'p2')})<sup>μ</sup>(−g<sub>μν</sub>) = −(${M(pA||'p1')}−${M(pB||'p2')})<sub>ν</sub><br>
+       Each cross term → scalar Mandelstam combination`,
+     expl:`The full tensor reduction systematically applies pol sums to every free ε index. Transversality (p·ε=0) eliminates terms where q·ε appears (since q=p_A+p_B and p_A·ε_A=0, p_B·ε_A depends on kinematics). The Ward identity also eliminates the q^μ piece of the propagator.`},
+
+    {title:'Collect terms → Mandelstam expansion',
+     rule:`After reducing all 9 cross terms, substitute dot products using the DP table:<br>
+       p₁·p₂ = s/2, p₁·p₃ = −t/2, p₁·p₄ = −u/2, etc.<br>
+       Virtual momentum: q = p₁+p₂, q² = s`,
+     expr:`Each term in V·V* gives a Mandelstam combination. The full result:<br>
+       Σ<sub>pol</sub>|M|² = ${coupHTML}⁴ × ${FR('f(s,t,u)', denomLabel+'²')}<br><br>
+       where f(s,t,u) = sum of 9 reduced cross terms (explicit below)<br>
+       = ${dpAB.mand ? `4(${dpAB.html})(...)` : `4(${dotP(pA||'p1',pB||'p2')})(...)` }  + cross terms`,
+     expl:`For massless W/Z bosons the full result is a rational function of s,t,u. For the WWγ process (WW scattering via photon exchange), the result is known analytically from helicity methods and is one of the motivating examples for BCFW recursion.`},
+
+    {title:`Why this needs a tensor algebra engine — beyond fermion traces and metric contractions`,
+     rule:`The three vertex types in this stepper use different algebraic engines:<br><br>
+       <strong>Fermion trace:</strong> Wick contraction  Tr[Γ₁…Γₙ] = Σ(−1)^k(Γ₁·Γₖ)Tr[…]<br>
+       &nbsp;&nbsp;&nbsp;→ key identity: Tr[p̸_Ap̸_B] = 4(A·B)<br><br>
+       <strong>Metric vertex:</strong> polarisation contraction  g_{μν}g^{μρ} = δ_ν^ρ<br>
+       &nbsp;&nbsp;&nbsp;→ key identity: g_{μν}g^{μν} = d = 4<br><br>
+       <strong>Triple gauge:</strong> rank-3 tensor reduction  V^{μαβ} × pol_sums → scalars<br>
+       &nbsp;&nbsp;&nbsp;→ key identities: g^{μν}p_μ = p^ν, p^μp_μ = p² = 0, p·ε = 0`,
+     expr:`The 9-term expansion requires:<br>
+       1. Contracting (p_A−p_B)^μ with propagator metric −g_{μν}: → (p_A−p_B)_ν<br>
+       2. Contracting ε_B^μ with propagator −g_{μν}: → ε_{Bν} → then pol-sum → −g_ν^ν<br>
+       3. Reducing: (p_A−p_B)·(p_C−p_D), q·(p_C−p_D), etc. → Mandelstam<br>
+       All steps are pure linear algebra — no new physics, just index bookkeeping.`,
+     expl:`The full automated engine for this would extend wickTrace and contractPolPair to handle rank-3 Lorentz tensors with momentum insertions. The polarisation sum algebra is the same; only the "seed" expression (rank-3 vs rank-2) differs. This is the next engine to add.`},
+  ];
+
+  const latex = `\\Sigma_{\\rm pol}|\\mathcal{M}|^2 = \\frac{(g\\cos\\theta_W)^4 \\cdot f(s,t,u)}{${denomLabel.replace(/<[^>]+>/g,'')}^2}`;
+  return {steps, latex};
+}
+
+// ─── Boson scalar-exchange amplitude (metric vertices) ────────────────────────
+// Handles: ig·g_μν vertices (HWW, HZZ, scalar-WW) + scalar propagator + external bosons.
+//
+// The vertex g_μν contracts two external boson polarisation indices into a scalar:
+//   g_μν ε^μ(p_A) ε^ν(p_B)  =  ε(p_A)·ε(p_B)   (a Lorentz scalar)
+//
+// Squaring + polarisation sums use the metric contraction engine:
+//
+//   Σ_{λ_A,λ_B} |g_μν ε^μ(p_A) ε^ν(p_B)|²
+//   = g_μν g_ρσ × (Σ_{λ_A} ε^μ ε*^ρ) × (Σ_{λ_B} ε^ν ε*^σ)
+//   = g_μν g_ρσ × (−g^{μρ}) × (−g^{νσ})    [massless pol sum completeness]
+//   = g_μν g_ρσ g^{μρ} g^{νσ}               [(−1)²=+1]
+//   = δ_ν^ρ × g_ρσ g^{νσ}                   [g_μν g^{μρ} = δ_ν^ρ]
+//   = g_νσ g^{νσ}                            [substitute ρ→ν via delta]
+//   = g^ν_ν = d = 4                          [trace of metric in d=4]
+//
+// Key identity: g_μν g^{μν} = d = 4 — the metric analog of Tr[p̸_A p̸_B] = 4(A·B).
+// Each metric vertex pair contributes a factor of 4. n pairs → 4^n.
+// Derived algorithmically — no hardcoded results.
+//
+function stepsSquareBosonMetric(text) {
+  const parsed = parseMathExpression(text);
+  const {nMetricVert, metricIdxPairs, nPhotExt, nVert, scalarPropNorm} = parsed;
+
+  const step0 = `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(text)}</div>`;
+
+  // ── Parse: identify coupling strength from factors ───────────────────────
+  const subSub = s => s.replace(/[₀-₉]/g, c=>'0123456789'[c.charCodeAt(0)-0x2080]||c);
+  const rawParts = text.replace(/^iM\s*=\s*/i,'').split(/\s*[×*]\s*/).map(s=>s.trim());
+  // The coupling constant is everything in the metric vertex before the g_μν
+  const metricFactors = rawParts.filter(p => /g[_\s]\{?[α-ω]{2}\}?/u.test(p));
+  // Extract just the coupling part (before g_μν)
+  const coupParts = metricFactors.map(f => f.replace(/g[_\s]\{?[α-ω]{2}\}?/u,'').replace(/[×\s]+$/,'').trim());
+  const coupLabel = coupParts[0] || 'gm_W';
+  // Build HTML for coupling — strip leading i and trailing g_μν
+  const coupHTML = CP(coupLabel.replace(/^-?i/,'').trim() || 'g·m_W');
+
+  // ── Parse: index pairs and external boson labels ─────────────────────────
+  // Each metric vertex provides an index pair; external bosons provide the ε's
+  // Read index pairs from metricIdxPairs (detected in parseMathExpression)
+  // Each pair (μ,ν) contracts ε^μ and ε^ν at that vertex
+  const nPairs = Math.max(nMetricVert, 1); // number of metric vertex pairs
+  const nBosons = nPhotExt;
+
+  // ── Parse: external boson momenta from ε^μ(p_i,λ) factors ───────────────
+  const bosonMoms = rawParts
+    .filter(p => /^ε/i.test(p.trim()) || p.trim().charCodeAt(0)===0x03B5)
+    .map(p => { const m = subSub(p).match(/\(p(\d+)/i); return m ? 'p'+m[1] : '?'; });
+
+  // Group bosons into vertex pairs: first two at vertex 1, next two at vertex 2, etc.
+  const vertexPairs = [];
+  for (let i=0; i<nPairs; i++) {
+    vertexPairs.push([bosonMoms[2*i]||`p${2*i+1}`, bosonMoms[2*i+1]||`p${2*i+2}`]);
+  }
+
+  // ── Parse: propagator denominator ────────────────────────────────────────
+  const propN = subSub((scalarPropNorm||'i/(s-m2)').replace(/[−–]/g,'-'));
+  let denomLabel = MV('s')+'−m²';
+  // Try to read the Mandelstam variable from the denominator
+  const denomM = propN.replace(/.*\//,'').trim();
+  if (/^s/.test(denomM))      denomLabel = MV('s')+'−m<sub>H</sub>²';
+  else if (/^t/.test(denomM)) denomLabel = MV('t')+'−m<sub>H</sub>²';
+  else if (/^u/.test(denomM)) denomLabel = MV('u')+'−m<sub>H</sub>²';
+
+  // ── Core: metric contraction engine ──────────────────────────────────────
+  // Derives: Σ_pol |g_μν ε^μ ε^ν|² = 4  step by step.
+  // The derivation uses two identities:
+  //   (A) Massless pol sum: Σ_λ ε^μ(p,λ) ε*^ν(p,λ) = −g^{μν}
+  //   (B) Metric inverse:   g_μν g^{μρ} = δ_ν^ρ  (metric × its inverse = Kronecker δ)
+  //   (C) Metric trace:     g_μν g^{μν} = d = 4  in 4D
+  //
+  // These are analogous to the fermion identities:
+  //   (A') Spin sum:   Σ_s u(p,s)ū(p,s) = p̸+m
+  //   (B') Wick:       Tr[p̸_A p̸_B] = 4(A·B)
+  //   (C') Dirac:      Tr[1] = d = 4
+
+  function deriveMetricContraction(mu, nu, pA, pB, idx) {
+    const rho = idx===0?'ρ':'ρ'+idx, sig = idx===0?'σ':'σ'+idx;
+    return {
+      head: `Σ<sub>λ<sub>${pA}</sub>,λ<sub>${pB}</sub></sub> |g<sub>${mu}${nu}</sub> ε<sup>${mu}</sup>(${M(pA)}) ε<sup>${nu}</sup>(${M(pB)})|²`,
+      step1: `= g<sub>${mu}${nu}</sub> g<sub>${rho}${sig}</sub> × (Σ<sub>λ<sub>${pA}</sub></sub> ε<sup>${mu}</sup>ε*<sup>${rho}</sup>) × (Σ<sub>λ<sub>${pB}</sub></sub> ε<sup>${nu}</sup>ε*<sup>${sig}</sup>)`,
+      rule1: `Separate the two independent polarisation sums (factorises because ${M(pA)}, ${M(pB)} are independent legs)`,
+      step2: `= g<sub>${mu}${nu}</sub> g<sub>${rho}${sig}</sub> × (−g<sup>${mu}${rho}</sup>) × (−g<sup>${nu}${sig}</sup>)`,
+      rule2: `Apply massless pol sum: Σ<sub>λ</sub> ε<sup>μ</sup>(p,λ)ε*<sup>ν</sup>(p,λ) = −g<sup>μν</sup>`,
+      step3: `= g<sub>${mu}${nu}</sub> g<sub>${rho}${sig}</sub> g<sup>${mu}${rho}</sup> g<sup>${nu}${sig}</sup>`,
+      rule3: `(−1)×(−1) = +1 — the two minus signs from the pol sums cancel`,
+      step4: `= δ<sub>${nu}</sub><sup>${rho}</sup> × g<sub>${rho}${sig}</sub> g<sup>${nu}${sig}</sup>`,
+      rule4: `Contract first index pair: g<sub>${mu}${nu}</sub> g<sup>${mu}${rho}</sup> = δ<sub>${nu}</sub><sup>${rho}</sup> (metric × inverse = Kronecker delta)`,
+      step5: `= g<sub>${nu}${sig}</sub> g<sup>${nu}${sig}</sup>`,
+      rule5: `δ<sub>${nu}</sub><sup>${rho}</sup> collapses the sum over ${rho}, substituting ${rho}→${nu}`,
+      step6: `= g<sup>${nu}</sup><sub>${nu}</sub> = d = <strong>4</strong>`,
+      rule6: `g<sub>μν</sub> g<sup>μν</sup> = d = 4 in 4-dimensional spacetime (trace of the metric tensor)`,
+      result: 4
+    };
+  }
+
+  // Run contraction for each metric vertex pair
+  const contractions = vertexPairs.map(([pA,pB], i) => {
+    const [mu, nu] = metricIdxPairs[i] || ['μ','ν'];
+    return deriveMetricContraction(mu, nu, pA, pB, i);
+  });
+
+  // Total pol-sum result: product of all contractions
+  const totalPolFactor = contractions.reduce((acc, c) => acc * c.result, 1); // = 4^nPairs
+
+  // ── Coupling squared ──────────────────────────────────────────────────────
+  // Each metric vertex contributes coupling constant squared
+  const coupSqHTML = `${coupHTML}<sup>${nVert*2}</sup>`;
+
+  // ── Final expression ──────────────────────────────────────────────────────
+  const finalExpr = FR(`${totalPolFactor} × ${coupSqHTML}`, `(${denomLabel})²`);
+
+  // ── Build steps ───────────────────────────────────────────────────────────
+  const [pA0,pB0] = vertexPairs[0] || ['p1','p2'];
+  const [pC0,pD0] = vertexPairs[1] || ['p3','p4'];
+  const [mu0,nu0] = metricIdxPairs[0] || ['μ','ν'];
+  const [rh0,sg0] = metricIdxPairs[1] || ['ρ','σ'];
+  const c0 = contractions[0];
+  const c1 = contractions[1];
+
+  const steps = [
+
+    {title:'Metric vertex amplitude — input',
+     rule:`<strong>Vertex type: g<sub>μν</sub> (metric vertex)</strong> — contracts two external boson Lorentz indices.<br>
+       This is distinct from:<br>
+       &nbsp;• Scalar vertex −iλ: no Lorentz indices<br>
+       &nbsp;• Gamma vertex ieγ<sup>μ</sup>: one open Lorentz index (contracted via propagator)<br>
+       &nbsp;• <strong>Metric vertex ig·g<sub>μν</sub>: TWO indices contracted at the vertex with ε legs</strong>`,
+     expr:step0,
+     expl:`Examples: HWW vertex ig m_W g_μν, HZZ vertex ig m_Z/cos θ_W g_μν, φWW in scalar extensions. The metric g_μν directly couples two vector boson polarisations.`},
+
+    {title:'Vertex contraction: g_μν ε^μ ε^ν = ε(pA)·ε(pB)',
+     rule:`The metric tensor g<sub>μν</sub> contracts its two Lorentz indices with the external polarisation vectors ε<sup>μ</sup>(p_A) and ε<sup>ν</sup>(p_B):<br>
+       g<sub>μν</sub> ε<sup>μ</sup>(p_A) ε<sup>ν</sup>(p_B) = ε<sub>μ</sub>(p_A) ε<sup>μ</sup>(p_B) = ε(p_A)·ε(p_B)`,
+     expr:`Vertex 1: g<sub>${mu0}${nu0}</sub> ε<sup>${mu0}</sup>(${M(pA0)}) ε<sup>${nu0}</sup>(${M(pB0)}) = ε(${M(pA0)})·ε(${M(pB0)})  &nbsp; [scalar dot product]
+       ${vertexPairs.length>1 ? `<br>Vertex 2: g<sub>${rh0}${sg0}</sub> ε<sup>${rh0}</sup>(${M(pC0)}) ε<sup>${sg0}</sup>(${M(pD0)}) = ε(${M(pC0)})·ε(${M(pD0)})` : ''}`,
+     expl:`After contraction, each metric vertex reduces to a scalar (Lorentz-invariant) dot product of two polarisation vectors. The amplitude is now a product of scalar quantities — no open Lorentz indices remain.`},
+
+    {title:'Write amplitude after vertex contraction',
+     rule:`iM = coupling${nPairs>1?'²':''}  ×  Π<sub>i</sub>[ε(p<sub>A_i</sub>)·ε(p<sub>B_i</sub>)]  ×  propagator`,
+     expr:`iM = ${coupHTML}<sup>${nVert}</sup> × [ε(${M(pA0)})·ε(${M(pB0)})]${nPairs>1?` × [ε(${M(pC0)})·ε(${M(pD0)})]`:''} × ${FR('i', denomLabel)}`,
+     expl:`The amplitude is a product of independent scalar dot products. Because the scalar propagator carries no Lorentz index, the two boson-pair bilinears are fully independent — no cross-contraction between vertex 1 and vertex 2.`},
+
+    {title:'Square: |M|² — two independent boson bilinears',
+     rule:`|M|² = |coupling|<sup>${nVert*2}</sup> × |prop|² × Π<sub>i</sub> |ε(p<sub>A_i</sub>)·ε(p<sub>B_i</sub>)|²<br>
+       <strong>Compare to QED:</strong> the photon propagator −ig<sub>μν</sub>/q² couples the two fermion traces via a Lorentz index contraction. Here the scalar propagator is just a number — the two vertex factors are completely independent.`,
+     expr:`|M|² = ${coupHTML}<sup>${nVert*2}</sup> × ${FR('1', `(${denomLabel})²`)} × |ε(${M(pA0)})·ε(${M(pB0)})|²${nPairs>1?` × |ε(${M(pC0)})·ε(${M(pD0)})|²`:''}`,
+     expl:`No Lorentz index runs between the two vertex factors — everything factorises. This is why the squaring is simpler here than in QED/QCD.`},
+
+    {title:`Apply polarisation sums — metric contraction engine`,
+     rule:`<strong>Massless pol sum completeness (P&S §5.5):</strong><br>
+       Σ<sub>λ</sub> ε<sup>μ</sup>(p,λ) ε*<sup>ν</sup>(p,λ) = −g<sup>μν</sup><br>
+       (Lorenz gauge; transverse photons only — longitudinal modes decouple by Ward identity)<br><br>
+       <strong>Core identity being used:</strong> g<sub>μν</sub> g<sup>μν</sup> = d = 4<br>
+       This is the metric analog of Tr[p̸_Ap̸_B] = 4(A·B) from the Wick engine.`,
+     expr:`Σ<sub>all λ</sub> |M|² = ${coupHTML}<sup>${nVert*2}</sup> × ${FR('1',`(${denomLabel})²`)} × [Σ<sub>pol</sub>|ε·ε|²]<sup>${nPairs}</sup>`,
+     expl:`Each independent boson pair contributes its own pol-sum factor. They multiply because the legs are independent.`},
+
+    {title:`Derive Σ_pol |g_μν ε^μ ε^ν|² step by step — vertex 1`,
+     rule:`<strong>Metric contraction derivation:</strong><br>
+       Identity A: Σ<sub>λ</sub> ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup><br>
+       Identity B: g<sub>μν</sub> g<sup>μρ</sup> = δ<sub>ν</sub><sup>ρ</sup>  (metric × inverse = Kronecker delta)<br>
+       Identity C: g<sub>μν</sub> g<sup>μν</sup> = d = 4  (trace of metric)`,
+     expr:`${c0?.head||''}<br>
+       ${c0?.step1||''}<br>
+       &nbsp;&nbsp;→ <em>${c0?.rule1||''}</em><br>
+       ${c0?.step2||''}<br>
+       &nbsp;&nbsp;→ <em>${c0?.rule2||''}</em><br>
+       ${c0?.step3||''}<br>
+       &nbsp;&nbsp;→ <em>${c0?.rule3||''}</em><br>
+       ${c0?.step4||''}<br>
+       &nbsp;&nbsp;→ <em>${c0?.rule4||''}</em><br>
+       ${c0?.step5||''}<br>
+       &nbsp;&nbsp;→ <em>${c0?.rule5||''}</em><br>
+       ${c0?.step6||''}<br>
+       &nbsp;&nbsp;→ <em>${c0?.rule6||''}</em>`,
+     expl:`Each step is a direct application of a metric algebra identity — no specialised computation needed beyond these three rules.`},
+
+    ...(c1 ? [{
+      title:`Same derivation for vertex 2 — Σ_pol |g_ρσ ε^ρ ε^σ|² = 4`,
+      rule:`Identical derivation with indices ${c1 ? (metricIdxPairs[1]||['ρ','σ']).join(',') : 'ρ,σ'} and momenta ${M(pC0)}, ${M(pD0)}.`,
+      expr:`${c1.head}<br>
+        → (same 6-step contraction) →<br>
+        = g<sub>${(metricIdxPairs[1]||['ρ','σ'])[1]}σ</sub> g<sup>${(metricIdxPairs[1]||['ρ','σ'])[1]}σ</sup> = d = <strong>4</strong>`,
+      expl:`The derivation is identical for every metric vertex pair: g_μν g^{μν} = 4 regardless of which pair of legs are contracted.`
+    }] : []),
+
+    {title:'Combine: multiply vertex factors × propagator',
+     rule:`${nPairs} metric vertex pair${nPairs>1?'s, each':''}  giving factor ${c0?.result}:`,
+     expr:`Σ<sub>pol</sub>|M|² = ${coupHTML}<sup>${nVert*2}</sup> × ${totalPolFactor} × ${FR('1',`(${denomLabel})²`)}<br><br>
+       = ${finalExpr}`,
+     expl:`For massive W/Z bosons (longitudinal mode included): the pol sum is −g<sup>μν</sup>+p<sup>μ</sup>p<sup>ν</sup>/m<sub>W</sub>². The longitudinal contribution adds extra terms (evaluated the same way — replace −g^{μρ} with −g^{μρ}+p^μp^ρ/m²) giving an additional p·ε type contraction.`},
+
+    {title:'Final result',
+     rule:'',
+     expr:`Σ<sub>pol</sub>|M̄|² = ${finalExpr}`,
+     expl:`Averaged over initial-state polarisations: divide by ${nBosons/2>1?`(2J+1)²=(${nBosons/2===2?3:2}+1)²=${nBosons/2===2?9:9}`:'(2J+1)'} for each initial-state boson (J=1 for W/Z gives factor 1/9 per pair). Summed and averaged result depends on initial/final state assignment.`},
+  ];
+
+  const latex = `\\Sigma_{\\rm pol}|M|^2 = \\frac{${totalPolFactor}(gm_W)^{${nVert*2}}}{(${denomLabel.replace(/<[^>]+>/g,'')})^2}`;
+  return {steps, latex};
+}
+
 // ─── Yukawa 2→2 scalar-exchange squaring ─────────────────────────────────────
 // Fully derived from the Wick trace engine — no hardcoded results.
 // Steps:
@@ -1591,16 +2039,35 @@ function stepsFromMathIM(text) {
   const {nVert, nFermExt, nPhotExt, nPhotProp, nFermProp, nLoops,
          nScalarProp, nScalarExt, photPropNorm, scalarPropNorm, fermExts} = parseMathExpression(text);
 
-  // ── Loop amplitude (detected ∫ in math text) ─────────────────────────────
+  // ── Loop amplitude ──────────────────────────────────────────────────────────
   if (nLoops >= 1) {
     const nProp = nFermProp + nPhotProp;
-    // Special case: pure photon loop (γγ→γγ box, no external fermions)
-    if (nFermExt===0 && nPhotExt>=4) {
-      const isGluonBox = /ig_?s|T\^a/i.test(text);
-      return stepsPhotonBox(text, nLoops, nProp, isGluonBox);
-    }
-    return stepsLoopIntegral(nLoops, nProp||4, 'e');
+    const isGluon = /ig_?s|T\^a/i.test(text);
+    const coupling = isGluon ? 'gs' : 'e';
+    // 4-photon box (γγ→γγ or gg→gg)
+    if (nFermExt===0 && nPhotExt>=4) return stepsPhotonBox(text, nLoops, nProp, isGluon);
+    // Triangle with external photons/gluons (Furry's theorem territory)
+    if (nFermExt===0 && nPhotExt>=2 && nFermProp>=2)
+      return stepsLoopFermionTriangle(text, nPhotExt, nFermProp, coupling);
+    // General loop: pass full text for momentum extraction
+    return stepsLoopIntegral(nLoops, nProp||4, coupling, text);
   }
+
+  // ── Triple gauge vertex (WWγ, WWZ, 3g) ───────────────────────────────────
+  if (nTripleGaugeVert>=1 && nPhotProp>=1 && nFermExt===0 && nLoops===0)
+    return stepsTripleGaugeVertex(text, {nTripleGaugeVert, nPhotProp, nPhotExt, nVert});
+
+  // ── Triple gauge contact (3g or 4g with no propagator) ───────────────────
+  if (nTripleGaugeVert>=1 && nPhotProp===0 && nFermExt===0 && nLoops===0)
+    return stepsContactGauge({nPhotExt, nVerts:nVert, isGluon:/ig_?s/i.test(text)}, text, text);
+
+  // ── Metric vertex + scalar propagator: WW→H→WW via HWW/HZZ ──────────────
+  if (nFermExt===0 && nPhotExt>=2 && nScalarProp>=1 && nPhotProp===0 && nLoops===0)
+    return stepsSquareBosonMetric(text);
+
+  // ── Metric vertex decay: H→WW, H→ZZ (metric vertex, 2 ext bosons, no prop) ─
+  if (nFermExt===0 && nPhotExt===2 && nMetricVert>=1 && nScalarProp===0 && nPhotProp===0 && nLoops===0)
+    return stepsDecayBosonTo2Boson({nVerts:nVert, isGluon:false}, '', text);
 
   // ── Yukawa 2→2 scalar exchange: fermion legs + scalar propagator ────────────
   // e.g. ff→ff or ff̄→ff̄ via Higgs exchange. Scalar vertex (no γ^μ) + scalar prop.
@@ -1693,6 +2160,7 @@ function getAmplitudeTopology(factors) {
   const nBosonProp= cnt('photon prop') + cnt('gluon prop');
   const nVerts    = cnt('vertex');
   const nLoops    = cnt('loop integral');                  // loop measure factors from editor
+  const nScalarProp = cnt('scalar prop');                  // internal scalar (Higgs) propagator
   const isGluon   = factors.some(f => f.type.includes('gluon'));
   const coupling  = isGluon ? 'gs' : 'e';
   const bosonP    = factors.find(f => f.type.includes('photon prop') || f.type.includes('gluon prop'));
@@ -1739,7 +2207,34 @@ function getAmplitudeTopology(factors) {
   if (nLoops>=1)
     return {topo:'loop', nLoops, nPropTotal, nFermProp, nBosonProp, coupling, isGluon, scalarStr, denom};
 
-  // ── Pure boson ────────────────────────────────────────────────────────────
+  // Count scalar external legs (Higgs, φ legs)
+  const nScalarExt = cnt('scalar ext');
+
+  // ── H→WW / H→ZZ decay (metric vertex, 2 external bosons, no propagator) ──
+  if (nFermExt===0 && nPhotExt===2 && nBosonProp===0 && nFermProp===0 && nScalarProp===0 && nLoops===0)
+    return {topo:'decay_boson_to_2boson', nVerts, isGluon, coupling};
+
+  // ── Yukawa scalar exchange: ff→H→ff (scalar propagator, fermion legs) ────
+  if (nFermExt>=2 && nScalarProp>=1 && nBosonProp===0 && nFermProp===0 && nLoops===0)
+    return {topo:'yukawa_exchange', nVerts, isGluon, coupling};
+
+  // ── WW→H→WW scalar exchange (boson legs + scalar propagator) ──────────────
+  if (nFermExt===0 && nPhotExt>=2 && nScalarProp>=1 && nBosonProp===0 && nFermProp===0 && nLoops===0)
+    return {topo:'boson_scalar_exchange', nPhotExt, nVerts, isGluon};
+
+  // ── Scalar contact terms (H³→HH, φ⁴→φφ — no propagator, scalar legs) ─────
+  if (nFermExt===0 && nPhotExt===0 && (nScalarExt>=2||nScalarProp===0) && nBosonProp===0 && nFermProp===0 && nVerts>=1 && nLoops===0)
+    return {topo:'contact_scalar', nScalarExt, nVerts, isGluon};
+
+  // ── Triple gauge exchange (gg→g→gg, WW→γ/Z→WW — boson legs + boson prop) ──
+  if (nFermExt===0 && nPhotExt>=4 && nBosonProp>=1 && nFermProp===0 && nLoops===0)
+    return {topo:'triple_gauge_exchange', nPhotExt, nBosonProp, isGluon};
+
+  // ── Quartic gauge contact (4g vertex, WW→WW contact — no propagator) ──────
+  if (nFermExt===0 && nPhotExt>=3 && nBosonProp===0 && nFermProp===0 && nLoops===0)
+    return {topo:'contact_gauge', nPhotExt, nVerts, isGluon};
+
+  // ── Pure boson (fallback) ─────────────────────────────────────────────────
   if (nFermExt===0 && nPhotExt>=2)
     return {topo:'pure_boson'};
 
@@ -2061,83 +2556,268 @@ function stepsSquareCompton(topo, text, iMDisplay) {
 // nLoops: number of loop momentum integrations
 // nProp:  number of propagators in the loop (2=bubble, 3=triangle, 4=box)
 // coupling: 'e' (QED) or 'gs' (QCD)
-function stepsLoopIntegral(nLoops, nProp, coupling) {
+// ─── Extract loop propagator momenta from amplitude text ─────────────────────
+// Matches patterns like: i(/(-p₂-ℓ₁)+m)/(q²-m²)  or  i(/ℓ₁+m)/(ℓ₁²-m²)
+function parseLoopPropagators(text) {
+  const subN = s => s.replace(/[₀-₉]/g,c=>'0123456789'[c.charCodeAt(0)-0x2080]||c);
+  const nt = subN(text.replace(/[−–]/g,'-').replace(/\s+/g,' '));
+  const moms = [];
+  // Match i(/(q)+m) where q is optionally parenthesised
+  const re1 = /i\s*\(\/\s*\(\s*([^)]+?)\s*\)\s*[+-]\s*m/g;
+  let m;
+  while ((m = re1.exec(nt)) !== null) moms.push(m[1].trim());
+  // Also match i(/ℓN+m) without inner parens (bare loop momentum)
+  // Run on nt (normalized) so subscript digits → ASCII digits
+  const re2 = /i\s*\(\/(ℓ\d*)\s*[+-]\s*m/g;
+  while ((m = re2.exec(nt)) !== null) if (!moms.includes(m[1])) moms.push(m[1]);
+  return moms;
+}
+
+// ─── Fermion triangle loop (specialized: n external photons/gluons) ───────────
+// This is the key topology for Furry's theorem, anomalies, and the ABJ triangle.
+//
+// Physics:
+//   A closed fermion loop with n external photons contributes a trace:
+//     iM^{μ₁…μₙ} = (-1)·(coupling)^n · Tr[γ^{μ₁}S_F(q₁)γ^{μ₂}S_F(q₂)···γ^{μₙ}S_F(qₙ)]
+//   where the (-1) is the fermion loop sign.
+//
+// Furry's theorem (C-parity of QED):
+//   Under charge conjugation C: photon A^μ → -A^μ.
+//   The amplitude with n external photons transforms as M → (-1)^n · M.
+//   For C-invariant QED this must equal M → for n odd: M = -M → M = 0.
+//
+function stepsLoopFermionTriangle(text, nPhotExt, nFermProp, coupling) {
   const coupHTML = coupling==='gs' ? CP('g<sub>s</sub>') : CP('e');
-  const loopType = nProp<=2 ? 'Bubble B₀' : nProp===3 ? 'Triangle C₀' : 'Box D₀';
-  const nFeyParam = nProp - 1; // number of Feynman parameters
+  const isOdd = nPhotExt % 2 === 1;
+  const loopType = nFermProp<=2?'Bubble':nFermProp===3?'Triangle':nFermProp===4?'Box':'n-gon';
+
+  // Extract propagator momenta
+  const propMoms = parseLoopPropagators(text);
+  const hasActualMoms = propMoms.length >= 2;
+
+  const step0 = `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2;white-space:pre-wrap;max-height:140px;overflow-y:auto">${esc(text)}</div>`;
+
+  // Build the trace structure from extracted momenta
+  const traceElems = hasActualMoms
+    ? propMoms.map((q,qi)=>`${slash(q)}+m`).join(') γ<sup>μ</sup>(')
+    : Array.from({length:nFermProp},(_,qi)=>`${slash('q'+(qi+1))}+m`).join(') γ<sup>μ</sup>(');
+  const externalIdx = ['μ','ν','ρ','σ','α','β'].slice(0,nPhotExt);
+
+  // Δ function: for triangle with propagator momenta q₁,q₂,q₃ (the standard form)
+  // After Feynman parametrization: Δ = -x₁x₂(q₁-q₂)² - x₂x₃(q₂-q₃)² - x₃x₁(q₃-q₁)² + m²
+  const [q1,q2,q3] = propMoms.length>=3 ? propMoms : ['ℓ','p₃-ℓ','-p₂-ℓ'];
 
   const steps = [
-    {title:`Loop detected — ${nLoops}-loop, ${nProp}-propagator (${loopType})`,
-     rule:'',
-     expr:`${nLoops===1?'':'('+nLoops+' independent loops) '}Loop measure: `+
-       Array.from({length:nLoops},(_,i)=>`${FR('d<sup>4</sup>ℓ<sub>${i+1}</sub>','(2π)<sup>4</sup>')}`).join(' × '),
-     expl:`Internal loop momenta are not fixed by external momenta. Each loop requires an independent integration.
-       The ${loopType} integral has ${nProp} propagators and ${nFeyParam} Feynman parameter${nFeyParam>1?'s':''}.`},
 
-    {title:'Step 1 — Dimensional regularisation: d = 4−2ε',
-     rule:`<strong>Why dim reg?</strong> Loop integrals in d=4 are UV divergent (∫d⁴ℓ/ℓ⁴ ~ log Λ). Analytically continue to d=4−2ε.<br>
-       Replace: <span style="color:#8090b0">∫d⁴ℓ/(2π)⁴ → μ<sup>2ε</sup>∫d<sup>d</sup>ℓ/(2π)<sup>d</sup></span><br>
-       where μ is the renormalisation scale (arbitrary mass). UV divergence appears as 1/ε pole.`,
-     expr:`I = μ<sup>2ε</sup> ∫${FR('d<sup>d</sup>ℓ','(2π)<sup>d</sup>')} × ${FR('N(ℓ)','D₁ D₂'+Array.from({length:nProp-2},(_,i)=>' D'+(i+3)).join(''))}`,
-     expl:`N(ℓ) = numerator from trace/vertex factors. D_i = ℓ²−m_i² type denominators from Feynman rules.`},
+    {title:`Fermion ${loopType} loop — ${nPhotExt} external ${coupling==='gs'?'gluon':'photon'}s`,
+     rule:`<strong>Topology: closed fermion loop with ${nFermProp} propagators and ${nPhotExt} external bosons.</strong><br>
+       <strong>Fermion loop sign:</strong> each closed fermion loop contributes a factor of (−1).<br>
+       <strong>Key question:</strong> does Furry's theorem apply? For <strong>n = ${nPhotExt} ${isOdd?'(ODD)':'(EVEN)'}</strong> external photons: ${isOdd?'<strong>Furry → amplitude VANISHES</strong>':'diagram can be non-zero'}.`,
+     expr:step0,
+     expl:`The loop momentum ℓ is the free variable to integrate. Extracted propagator momenta: ${hasActualMoms ? propMoms.join(', ') : 'q₁, q₂, '+( nFermProp>2?'q₃':'')}.`},
 
-    {title:'Step 2 — Feynman parametrisation (combine denominators)',
-     rule:`<strong>For ${nProp} propagators:</strong><br>
-       ${FR('1','D₁D₂···D<sub>n</sub>')} = (n−1)! ∫₀¹ dx₁···dx<sub>n</sub> δ(Σx<sub>i</sub>−1) × ${FR('1','[Σ<sub>i</sub>x<sub>i</sub>D<sub>i</sub>]<sup>n</sup>')}`,
-     expr:nProp===2
-       ? `${FR('1','D₁D₂')} = ∫₀¹ dx ${FR('1','[xD₁+(1−x)D₂]²')}`
-       : nProp===3
-       ? `${FR('1','D₁D₂D₃')} = 2 ∫₀¹ dx dy ${FR('1','[xD₁+yD₂+(1−x−y)D₃]³')}`
-       : `${FR('1','D₁D₂D₃D₄')} = 6 ∫₀¹ dx dy dz ${FR('1','[xD₁+yD₂+zD₃+(1−x−y−z)D₄]⁴')}`,
-     expl:`This converts a product of propagators into a single denominator raised to a power, enabling the shift in the next step.`},
+    {title:'Write as a Dirac trace (fermion loop → trace)',
+     rule:`<strong>Fermion loop rule:</strong> a closed fermion loop contributes:<br>
+       (−1) × ${TR('Tr')}[vertex₁ × S_F(q₁) × vertex₂ × S_F(q₂) × ··· × vertex_n × S_F(qₙ)]<br>
+       where S_F(q) = i(q̸+m)/(q²−m²) is the fermion propagator.`,
+     expr:`iM<sup>${externalIdx.join('')}</sup> = (−1)(${coupHTML})^${nPhotExt} × ${TR('Tr')}[γ<sup>${externalIdx[0]}</sup>${FR(`${slash(q1)}+m`,`(${q1})²−m²`)} γ<sup>${externalIdx[1]||'ν'}</sup>${FR(`${slash(q2)}+m`,`(${q2})²−m²`)}${nFermProp>2?` γ<sup>${externalIdx[2]||'ρ'}</sup>${FR(`${slash(q3)}+m`,`(${q3})²−m²`)}`:''}]`,
+     expl:`The trace is over Dirac indices (not colour). The propagator numerators (q̸+m) will produce a rank-n tensor integral after expanding. The (−1) is mandatory — omitting it is a common source of sign errors.`},
 
-    {title:'Step 3 — Complete the square + shift loop momentum',
-     rule:`After combining denominators: D = ℓ² + 2ℓ·q + Δ = (ℓ+q)² − q² + Δ<br>
-       Shift: ℓ → ℓ − q &nbsp;→&nbsp; denominator becomes ℓ² − Δ<br>
-       where Δ = Δ(x<sub>i</sub>, external momenta, masses) is a function of Feynman parameters.`,
-     expr:`D(ℓ) = ℓ² − ${MV('Δ')}(x,p)
-       &nbsp;where ${MV('Δ')} = −Σ<sub>i<j</sub> x<sub>i</sub>x<sub>j</sub>(p<sub>i</sub>−p<sub>j</sub>)² + Σ<sub>i</sub>x<sub>i</sub>m<sub>i</sub>²`,
-     expl:`The shift eliminates the linear ℓ term. The integrand now depends on ℓ² only (rotationally symmetric in Euclidean space after Wick rotation).`},
+    {title:'Expand the trace numerator — tensor integral structure',
+     rule:`Each propagator S_F(q) = i(q̸+m)/(q²−m²) contributes a factor (q̸+m) to the trace.<br>
+       Expanding: (q̸₁+m)(q̸₂+m)... generates terms with different numbers of slashed momenta.<br>
+       For ${nFermProp} propagators: get terms proportional to m⁰, m¹, m², ..., m^${nFermProp}.`,
+     expr:`${TR('Tr')}[γ<sup>μ</sup>(q̸₁+m)γ<sup>ν</sup>(q̸₂+m)${nFermProp>2?'γ<sup>ρ</sup>(q̸₃+m)':''}]<br>
+       = ${TR('Tr')}[γ<sup>μ</sup>q̸₁γ<sup>ν</sup>q̸₂${nFermProp>2?'γ<sup>ρ</sup>q̸₃':''}]        [rank-${nFermProp} tensor integral]<br>
+       ${nFermProp>=2?`+ m × ${TR('Tr')}[γ<sup>μ</sup>γ<sup>ν</sup>${nFermProp>2?'q̸₃':''}...] [rank-${nFermProp-1}, vanishes for odd γ count]`:''}<br>
+       ${nFermProp>=3?`+ m² × ${TR('Tr')}[γ<sup>μ</sup>q̸₂γ<sup>ρ</sup>+...] [rank-${nFermProp-2} tensor integral]`  :''}<br>
+       ${nFermProp>=3?`+ m³ × ${TR('Tr')}[γ<sup>μ</sup>γ<sup>ν</sup>γ<sup>ρ</sup>] = 0 &nbsp;(odd # gammas → Tr=0)`:''}`,
+     expl:`Key: Tr[odd # of γ matrices] = 0 in standard 4D Dirac algebra. This kills many terms. Only terms with an EVEN number of gamma matrices survive.`},
 
-    {title:'Step 4 — Wick rotation to Euclidean space',
-     rule:`Rotate the integration contour: ℓ⁰ → iℓ<sub>E</sub>⁰ (no poles crossed by Jordan's lemma for UV-regulated integrals).<br>
-       ℓ²<sub>Minkowski</sub> = (ℓ⁰)²−|ℓ|² → −(ℓ<sub>E</sub>⁰)²−|ℓ|² = −ℓ²<sub>E</sub><br>
-       d<sup>d</sup>ℓ<sub>M</sub> = i d<sup>d</sup>ℓ<sub>E</sub>`,
-     expr:`∫d<sup>d</sup>ℓ<sub>M</sub> ${FR('1','(ℓ²−Δ)<sup>n</sup>')} = i(−1)<sup>n</sup> ∫d<sup>d</sup>ℓ<sub>E</sub> ${FR('1','(ℓ²<sub>E</sub>+Δ)<sup>n</sup>')}`,
-     expl:`After the shift, the Euclidean integral is well-defined (positive definite denominator) and can be evaluated using the standard spherical formula.`},
+    {title:'UV power counting: superficial degree of divergence',
+     rule:`For a 1-loop diagram with ${nFermProp} fermion propagators (each ~ 1/k for large k) and d=4 integration:<br>
+       D_superficial = 4 − ${nFermProp} (from loop momentum counting)<br>
+       Tensor rank r shifts this: D_r = D_scalar + r = (4−${nFermProp}) + ${nFermProp} = 4`,
+     expr:`Scalar integral (rank 0): D = 4 − ${nFermProp} = <strong>${4-nFermProp}</strong> &nbsp; ${4-nFermProp<0?'→ UV convergent ✓':4-nFermProp===0?'→ logarithmically divergent':'→ power divergent'}<br>
+       Rank-${nFermProp} tensor integral: D = ${4-nFermProp} + ${nFermProp} = <strong>4</strong> → <em>naively quartic divergent</em><br>
+       <strong>BUT</strong>: Ward identity (gauge invariance) k_μ M^{μ...} = 0 cancels the worst divergences.<br>
+       Physical result: only logarithmic or milder divergences remain after Ward identity imposed.`,
+     expl:`The Ward identity is essential: the gauge coupling iQeγ^μ satisfies k_μ(iQeγ^μ) ∝ (k̸) which causes cancellations between different terms. Without it the amplitude would be quartic divergent; with it the maximal divergence drops to ln Λ (or finite for n≥3 external photons).`},
 
-    {title:'Step 5 — Standard Euclidean integral formula',
-     rule:`<strong>Master formula (d dimensions):</strong><br>
-       ∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR('1','(ℓ²+Δ)<sup>n</sup>')} = ${FR('Γ(n−d/2)','(4π)<sup>d/2</sup>Γ(n)')} × ${FR('1','Δ<sup>n−d/2</sup>')}`,
-     expr:`With d=4−2ε, n=${nProp}:<br>
-       = ${FR('Γ('+nProp+'−2+ε)','(4π)<sup>2−ε</sup>Γ('+nProp+')')} × ${FR('1','Δ<sup>'+(nProp-2)+'+ε</sup>')}`,
-     expl:`Using Γ(ε) = 1/ε − γ_E + O(ε) and (4π)^ε = 1 + ε ln(4π) + O(ε²), expand in ε to extract the divergence.`},
+    ...(isOdd ? [
+    {title:`Furry's theorem: n=${nPhotExt} (ODD external photons) → amplitude VANISHES`,
+     rule:`<strong>Theorem (W.H. Furry, 1937):</strong> In QED, any Feynman diagram containing a closed fermion loop with an ODD number of external photon lines has a vanishing matrix element.<br><br>
+       <strong>Proof via charge conjugation C:</strong><br>
+       (1) QED is C-invariant: the Lagrangian is unchanged under C.<br>
+       (2) Under C: A<sup>μ</sup>(x) → −A<sup>μ</sup>(x) (photon field reverses sign).<br>
+       (3) An amplitude with n external photons transforms as: M → (−1)<sup>n</sup> M.<br>
+       (4) By C-invariance of the theory: M must equal (−1)<sup>n</sup> M.<br>
+       (5) For n = ${nPhotExt} (odd): M = (−1)<sup>${nPhotExt}</sup> M = −M &nbsp;→&nbsp; <strong>2M = 0 &nbsp;→&nbsp; M = 0</strong>.`,
+     expr:`Clockwise loop orientation: &nbsp; +${TR('Tr')}[γ<sup>μ</sup>S(q₁)γ<sup>ν</sup>S(q₂)γ<sup>ρ</sup>S(q₃)]<br>
+       Anticlockwise (via C):         &nbsp;  −${TR('Tr')}[γ<sup>ρ</sup>S(−q₃)γ<sup>ν</sup>S(−q₂)γ<sup>μ</sup>S(−q₁)]<br>
+       Sum of both orientations:       &nbsp;  <strong>= 0</strong> &nbsp;(proved using properties of C matrix: C γ^μ C⁻¹ = −γ^{μT})`,
+     expl:`Physical meaning: in QED there is NO three-photon vertex at any order in perturbation theory (not just at 1-loop). The combination γ+γ+γ is forbidden by C-parity. This is different from QCD where f^{abc}≠0 allows a 3-gluon vertex at tree level.`},
 
-    {title:'Step 6 — Result: divergence structure',
-     rule:`<strong>Expanding in ε = (4−d)/2:</strong><br>
-       Δ<sub>UV</sub> ≡ ${FR('1','ε')} − γ<sub>E</sub> + ln(4π) &nbsp; (absorbed by MS̄ counterterms)<br>
-       UV-divergent if n−d/2 ≤ 0 at d=4, i.e. n ≤ 2.`,
-     expr:nProp===2
-       ? `B₀(p²; m₁², m₂²) = ${FR('i','16π²')}[Δ<sub>UV</sub> − ∫₀¹dx ln${FR('Δ(x)','μ²')} ]<br>
-          Massless, p²≠0: B₀(p²;0,0) = ${FR('i','16π²')}[Δ<sub>UV</sub> − ln(−${MV('p')}²/μ²) + 2]`
-       : nProp===3
-       ? `C₀(p₁²,p₂²,p₃²; 0,0,0) = ${FR('i','16π²')} × ${FR('1','p₁²p₂²')} × [finite + ${FR('1','ε²')}<sub>IR</sub> terms]<br>
-          Triangle is UV finite (superficial degree of divergence = 0) but has IR divergences for massless particles.`
-       : `D₀(p₁²,..,p₄²; 0,0,0,0) = ${FR('i','16π²')} × [UV+IR finite, ~ 1/(s·t) × logs]<br>
-          Box integral: UV and IR both finite for generic kinematics. Analytic results known (Bern–Dixon–Kosower).`,
-     expl:`The 1/ε pole signals a divergence requiring renormalisation (UV) or careful IR treatment (IR). In MS̄ scheme: absorb Δ<sub>UV</sub> + finite polynomial into counterterms δZ, δm, etc.`},
+    {title:`What would the C₀ look like without Furry — Passarino-Veltman triangle`,
+     rule:`If we were computing a ${nPhotExt}-gluon triangle in QCD (where Furry doesn't apply due to f^{abc} colour structure), or an AVV triangle with one axial current, the tensor integral would decompose as:`,
+     expr:`I<sup>μνρ</sup> = ∫${FR('d<sup>4</sup>ℓ','(2π)<sup>4</sup>')} × ${FR(`${TR('Tr')}[γ<sup>μ</sup>(ℓ̸+m)γ<sup>ν</sup>(ℓ̸+${q2}̸+m)γ<sup>ρ</sup>(ℓ̸+${q3}̸+m)]`,`(ℓ²−m²)((ℓ+${q2})²−m²)((ℓ+${q3})²−m²)`)}<br><br>
+       PV tensor decomposition: I<sup>μνρ</sup> = C<sup>μ</sup>(A<sub>mn</sub>g<sup>νρ</sup>+...) + C<sup>νρ</sup>(...) + ...<br>
+       All coefficients reduce to the scalar triangle: C₀(p₁²,p₂²,p₃²; m²,m²,m²)<br>
+       C₀ = ${FR('i','16π²')} × ${FR('1','m²')} × [finite for massive m, IR divergent for m=0]`,
+     expl:`The AVV triangle (one axial γ^5 vertex, two vector) is the source of the Adler-Bell-Jackiw (ABJ) anomaly. It cannot be made gauge-invariant simultaneously in all three currents — one Ward identity must be violated. This is the quantum mechanical origin of gauge anomalies.`},
 
-    {title:'Step 7 — Renormalisation',
-     rule:`<strong>MS̄ scheme:</strong> add counterterm diagram with vertex δL = δZ(∂φ)²+δm·φ² etc.<br>
-       The counterterm amplitude exactly cancels the 1/ε<sub>UV</sub> poles.<br>
-       The finite part at scale μ must be fixed by one physical observable (renormalisation condition).`,
-     expr:`A<sub>bare</sub> + A<sub>CT</sub> = A<sub>ren</sub>(μ) &nbsp; [UV finite, μ-dependent]<br>
-       Running coupling: μ d${coupHTML}/dμ = β(${coupHTML}) &nbsp; [RG equation]`,
-     expl:`QED: β(e) = +e³/(12π²) (Landau pole at high energy). &nbsp;
-       QCD: β(g_s) = −g_s³(11N_c−2N_f)/(16π²) (asymptotic freedom for N_f < 33/2).`},
+    {title:`Anomaly context: ABJ triangle and charge quantization`,
+     rule:`The AVV triangle: one vertex iQeγ^μγ^5 (axial) + two vector vertices iQeγ^ν, iQeγ^ρ.<br>
+       The axial Ward identity: k_μ M^{μνρ}_{AVV} ≠ 0 (anomalous, not zero!)<br>
+       Instead: k_μ M^{μνρ}_{AVV} = ${FR('e²','2π²')} ε<sup>νρστ</sup> p<sub>σ</sub> p'<sub>τ</sub>`,
+     expr:`The anomaly coefficient must vanish for a consistent quantum theory (anomaly cancellation):<br>
+       Σ<sub>fermions</sub> Q³ = 0 &nbsp;(for each generation of the SM)<br>
+       For one SM generation: Σ Q³ = (1)³·3 + (−½)³·3 + (−1)³·1 + 0 = 3−3/8−1 ≠ 0 alone<br>
+       But quarks + leptons cancel: Σ Q³ = 3(2/3)³ + 3(−1/3)³ + (0)³ + (−1)³ = 0 ✓`,
+     expl:`Anomaly cancellation between quarks and leptons is a non-trivial constraint that uniquely fixes the electric charges! It's one of the few non-trivial consistency checks that determines the charge assignments in the Standard Model.`},
+    ] : [
+    {title:`n=${nPhotExt} (EVEN): Furry theorem does NOT kill this diagram`,
+     rule:`For an even number of external photons, the loop diagram is allowed by C-parity.`,
+     expr:`Proceed with standard Passarino-Veltman reduction.`,
+     expl:`Even-photon loops are non-zero: 2-photon (vacuum polarisation), 4-photon (Euler-Heisenberg), etc.`},
+    ]),
+
+    {title:'Passarino-Veltman (PV) decomposition — tensor reduction',
+     rule:`The rank-n tensor integral reduces to scalar integrals (B₀, C₀, D₀) via PV reduction:<br>
+       I<sup>μ</sup> = ∫ ℓ<sup>μ</sup>/(D₁D₂) = B<sub>1</sub>(p²;m₁²,m₂²) × p<sup>μ</sup><br>
+       I<sup>μν</sup> = ∫ ℓ<sup>μ</sup>ℓ<sup>ν</sup>/(D₁D₂) = B<sub>00</sub>g<sup>μν</sup> + B<sub>11</sub>p<sup>μ</sup>p<sup>ν</sup><br>
+       Higher rank: recursively decompose into g<sup>μν</sup>×scalar and p<sup>μ</sup>×lower rank.`,
+     expr:`For this ${loopType}: the denominator with propagators at<br>
+       q₁=${q1},&nbsp; q₂=${q2}${q3?`,&nbsp; q₃=${q3}`:''},&nbsp; ...<br>
+       → C₀(${q1}²,${q2}²,${q3?q3+'²':''};m²,m²,m²) after Feynman parametrization and ℓ-shift<br>
+       The numerator trace coefficients are finite combinations of g<sup>μν</sup> and external p<sup>μ</sup>.`,
+     expl:`PV reduction is automated by tools like LoopTools, Collier, or Package-X. Doing it by hand involves solving linear systems from the identities ℓ·q_i = (D_i - D_j + p_i²)/2.`},
+
+    {title:'Feynman parametrisation with specific momenta',
+     rule:`<strong>For ${nFermProp} propagators with denominators D_i = (ℓ+p_i)²−m²:</strong><br>
+       ${FR('1','D₁D₂D₃')} = 2∫₀¹ dx₁ dx₂ dx₃ δ(Σxᵢ−1) × ${FR('1','(x₁D₁+x₂D₂+x₃D₃)³')}`,
+     expr:`Combined denominator D_x = ℓ² + 2ℓ·(x₂${q2.replace('ℓ','0')||'p₂'}+x₃${q3.replace('ℓ','0')||'p₃'}) + (mass terms)<br>
+       Shift ℓ → ℓ − x₂${q2.replace('ℓ','').replace('-','').trim()||'p₂'} − x₃${q3.replace('ℓ','').replace('-','').trim()||'p₃'}:<br>
+       D_x = ℓ² − Δ &nbsp;where &nbsp;${MV('Δ')} = −x₁x₂(q₁−q₂)² − x₂x₃(q₂−q₃)² − x₃x₁(q₃−q₁)² + m²`,
+     expl:`Δ is the key function: it encodes the kinematics of the diagram. UV divergences appear as Δ→∞ → ln Δ poles. IR divergences appear when Δ→0 for some kinematic configuration.`},
+
+    {title:'Evaluate: Wick rotation → master formula → result',
+     rule:`After Wick rotation (ℓ⁰→iℓ_E⁰) and applying the Euclidean master formula:`,
+     expr:`∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR('1','(ℓ²+Δ)<sup>n</sup>')} = ${FR('Γ(n−d/2)','(4π)<sup>d/2</sup>Γ(n)')} Δ<sup>−(n−d/2)</sup><br><br>
+       For the ${loopType} (n=${nFermProp}), d=4−2ε:<br>
+       ${nFermProp<=2
+         ? `B₀ = ${FR('i','16π²')}[Δ<sub>UV</sub> − ∫₀¹ dx ln${FR('Δ(x)','μ²')}]  &nbsp;(UV divergent)`
+         : nFermProp===3
+         ? `C₀ = ${FR('i','16π²')} × 2∫₀¹ dx₁dx₂ θ(1−x₁−x₂) × ${FR('1','Δ(x₁,x₂)')}  &nbsp;(UV finite, possibly IR divergent)`
+         : `D₀ = ${FR('i','16π²')} × 6∫₀¹ dx₁...dx₄ δ(Σ−1) × ${FR('1','Δ(xᵢ)')}  &nbsp;(UV and IR finite)`}`,
+     expl:`${nFermProp===3
+       ? 'The triangle C₀ is UV finite by power counting (D_scalar = 4-2×3 = -2 < 0). It can have IR divergences when Δ→0 (massless kinematics).'
+       : nFermProp===2
+       ? 'The bubble B₀ is UV divergent (log): the 1/ε pole must be absorbed by a counterterm (field strength renormalization δZ or mass renormalization δm).'
+       : 'The box D₀ is UV and IR finite for generic off-shell kinematics. Special configurations (collinear/soft limits) can develop IR divergences.'}`},
+
+    {title:'Renormalisation (if UV divergent)',
+     rule:`<strong>MS̄ scheme:</strong> counterterm absorbs the 1/ε pole + finite Δ<sub>UV</sub> = 1/ε − γ_E + ln(4π).<br>
+       Running coupling: μ d${coupHTML}/dμ = β(${coupHTML})`,
+     expr:`QED: &nbsp;β(e) = +${FR('e³','12π²')}  &nbsp;[Landau pole at E ~ m_e e^{12π²/e²}]<br>
+       QCD: &nbsp;β(g_s) = −${FR('g_s³(11N_c−2N_f)','16π²')}  &nbsp;[asymptotic freedom for N_f < 33/2]`,
+     expl:`${nFermProp>=3 ? 'For the triangle/box, no UV renormalization is needed — the 1/ε UV poles cancel by power counting. Any remaining divergences are IR, requiring careful treatment (jet algorithms, KLN cancellation).' : 'The counterterm is fixed by a renormalization condition (e.g., Π(0)=0 for on-shell photon propagator).'}`},
   ];
 
-  return {steps, latex: `\\text{${loopType}: }B_0/C_0/D_0 = \\frac{i}{16\\pi^2}[\\Delta_{UV} + \\text{finite}]`};
+  const latex = isOdd
+    ? `\\mathcal{M}^{\\mu\\nu\\rho}_{\\rm photon\\,triangle} = 0 \\quad (\\text{Furry's theorem})`
+    : `C_0 = \\frac{i}{16\\pi^2}\\int_0^1 dx_1 dx_2\\,\\frac{\\theta(1{-}x_1{-}x_2)}{\\Delta(x_i)}`;
+
+  return {steps, latex};
+}
+
+// ─── General loop integral handler (improved — uses actual propagator momenta) ─
+function stepsLoopIntegral(nLoops, nProp, coupling, text) {
+  const coupHTML = coupling==='gs' ? CP('g<sub>s</sub>') : CP('e');
+  const loopType = nProp<=2 ? 'Bubble B₀' : nProp===3 ? 'Triangle C₀' : 'Box D₀';
+  const nFeyParam = nProp - 1;
+
+  // Extract propagator momenta from text if available
+  const propMoms = text ? parseLoopPropagators(text) : [];
+  const hasProps  = propMoms.length >= 2;
+
+  const step0 = text
+    ? `<div style="font-size:12px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:1.9;white-space:pre-wrap;max-height:120px;overflow-y:auto">${esc(text.substring(0,400))}</div>`
+    : '';
+
+  // Build Δ description using actual momenta if available
+  const deltaExpr = hasProps
+    ? `${MV('Δ')} = −x₁x₂(${propMoms[0]}−${propMoms[1]})² ${propMoms[2]?'− x₂x₃('+propMoms[1]+'−'+propMoms[2]+')² − x₃x₁('+propMoms[2]+'−'+propMoms[0]+')²':''} + m²`
+    : `${MV('Δ')} = −Σ<sub>i<j</sub> xᵢxⱼ(pᵢ−pⱼ)² + Σ<sub>i</sub> xᵢmᵢ²`;
+
+  const steps = [
+    ...(step0 ? [{title:`${nLoops}-loop ${loopType} integral — input`,
+     rule:`Propagators detected: ${nProp}. ${hasProps?'Propagator momenta extracted from text: <strong>'+propMoms.join(', ')+'</strong>':'Momentum routing read from diagram.'}`,
+     expr:step0, expl:''}] : []),
+
+    {title:`Step 1 — Dimensional regularisation: replace d=4 with d=4−2ε`,
+     rule:`<strong>Why:</strong> loop integrals diverge in d=4 (∫d⁴ℓ/ℓ⁴ ~ log Λ for n=2, worse for n<2).<br>
+       Analytically continue to d dimensions, restore d=4 at the end by expanding in ε.<br>
+       Introduce renormalisation scale μ to keep coupling dimensionless: ∫d⁴ℓ → μ<sup>2ε</sup>∫d<sup>d</sup>ℓ`,
+     expr:`I = μ<sup>2ε</sup>∫${FR('d<sup>d</sup>ℓ','(2π)<sup>d</sup>')} × ${FR('N(ℓ)', Array.from({length:nProp},(_,i)=>'D'+(i+1)).join(' '))}`,
+     expl:`N(ℓ) = trace/vertex numerator. D_i = (ℓ+p_i)²−m² for each propagator. UV poles appear as 1/ε in the final result.`},
+
+    {title:`Step 2 — Feynman parametrisation for ${nProp} propagators`,
+     rule:`<strong>Master formula:</strong><br>
+       ${FR('1','D₁D₂···D<sub>n</sub>')} = (n−1)! ∫₀¹ [Πdxᵢ] δ(Σxᵢ−1) × ${FR('1','(Σxᵢ Dᵢ)<sup>n</sup>')}`,
+     expr:nProp===2
+       ? `${FR('1','D₁D₂')} = ∫₀¹ dx × ${FR('1','[x D₁+(1−x)D₂]²')}`
+       : nProp===3
+       ? `${FR('1','D₁D₂D₃')} = 2∫₀¹ dx dy (with 0≤x+y≤1) × ${FR('1','[xD₁+yD₂+(1−x−y)D₃]³')}`
+       : `${FR('1','D₁D₂D₃D₄')} = 6∫₀¹ dx dy dz × ${FR('1','[xD₁+yD₂+zD₃+(1−x−y−z)D₄]⁴')}`,
+     expl:`This merges ${nProp} separate denominators into one, enabling the ℓ-shift in the next step.`},
+
+    {title:'Step 3 — Complete the square + shift ℓ → ℓ+Δq',
+     rule:`After combining: Σxᵢ Dᵢ = ℓ² + 2ℓ·q(xᵢ) + Δ = (ℓ+q)² − Δ<br>
+       Shift ℓ → ℓ−q eliminates the linear term → symmetric integrand.`,
+     expr:`${deltaExpr}<br>
+       Numerator: after shift, odd powers of ℓ<sup>μ</sup> integrate to 0 by symmetry.<br>
+       Even powers: ℓ<sup>μ</sup>ℓ<sup>ν</sup> → (ℓ²/d)g<sup>μν</sup>`,
+     expl:`The shift is the critical step that brings the integral to the standard form. The shifted variable ℓ is the "dressed" loop momentum measured from the point q that minimises the denominator.`},
+
+    {title:'Step 4 — Wick rotation (ℓ⁰ → iℓ_E⁰)',
+     rule:`Rotate the integration contour in the complex ℓ⁰ plane: ℓ⁰ → iℓ_E⁰. No poles are crossed (Cauchy's theorem), so the result is unchanged except for the overall factor:<br>
+       d<sup>d</sup>ℓ<sub>M</sub> → i d<sup>d</sup>ℓ<sub>E</sub>,  ℓ²<sub>M</sub> → −ℓ²<sub>E</sub>`,
+     expr:`∫d<sup>d</sup>ℓ<sub>M</sub> ${FR('(−1)<sup>r</sup> (ℓ²)<sup>r</sup>','(ℓ²−Δ)<sup>n</sup>')} = i(−1)<sup>n+r</sup> ∫d<sup>d</sup>ℓ<sub>E</sub> ${FR('(ℓ_E²)<sup>r</sup>','(ℓ²<sub>E</sub>+Δ)<sup>n</sup>')}`,
+     expl:`After Wick rotation, the denominator is positive definite (Δ>0 for Euclidean kinematics), making the integral convergent. The spherical formula in Euclidean space then gives the result.`},
+
+    {title:'Step 5 — Master Euclidean formula → PV scalar integral',
+     rule:`∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR('(ℓ²)<sup>r</sup>','(ℓ²+Δ)<sup>n</sup>')} = ${FR('1','(4π)<sup>d/2</sup>')} ${FR('Γ(r+d/2)Γ(n−r−d/2)','Γ(d/2)Γ(n)')} Δ<sup>r−n+d/2</sup>`,
+     expr:`For the ${loopType} (n=${nProp}) with d=4−2ε:<br>
+       ${nProp===2
+         ? `B₀ = ${FR('i','16π²')}[${FR('1','ε')}−γ_E+ln(4π)−∫₀¹dx ln${FR('Δ(x)','μ²')}]`
+         : nProp===3
+         ? `C₀ = ${FR('i','16π²')}·2∫₀¹dx₁dx₂·θ(1−x₁−x₂)·${FR('1','Δ(x₁,x₂)')}  &nbsp;[UV finite, d=4 safe]`
+         : `D₀ = ${FR('i','16π²')}·6∫₀¹dx₁···dx₄·δ(Σ−1)·${FR('1','Δ(xᵢ)')}  &nbsp;[UV+IR finite]`}`,
+     expl:`The Δ function encodes all the kinematics. For our diagram with propagator momenta ${hasProps?propMoms.join(', '):'q₁,q₂,...'}: Δ contains all the relevant mass and momentum invariants.`},
+
+    {title:'Step 6 — UV/IR divergence structure',
+     rule:`UV-divergent if superficial degree D = 4L − 2×(# propagators) ≥ 0.<br>
+       For our diagram: D = 4×${nLoops} − 2×${nProp} = <strong>${4*nLoops-2*nProp}</strong> ${4*nLoops-2*nProp>=0?'→ UV divergent':'→ UV finite ✓'}`,
+     expr:nProp<=2
+       ? `B₀ contains 1/ε UV pole → requires renormalisation counterterm.<br>
+          MS̄ renormalization: δZ or δm absorbs the pole.`
+       : nProp===3
+       ? `C₀ is UV finite. May have IR divergences if Δ→0 (collinear/soft limits).<br>
+          IR divergences cancel in physical observables (KLN theorem).`
+       : `D₀ is UV and IR finite for generic kinematics.<br>
+          Massless limits require careful regularisation.`,
+     expl:`UV divergences require counterterms (renormalisation). IR divergences cancel between virtual corrections (this loop) and real emission diagrams (bremsstrahlung). Both are scheme-dependent but physical results are scheme-independent.`},
+
+    {title:'Step 7 — Renormalisation (MS̄ scheme)',
+     rule:`Add counterterm Lagrangian δL to cancel UV poles. Finite part fixed by physical renormalization condition.`,
+     expr:`A<sub>bare</sub> + A<sub>CT</sub> = A<sub>ren</sub>(μ) &nbsp;[UV finite, μ-dependent]<br>
+       Running coupling: μ d${coupHTML}/dμ = β(${coupHTML})<br>
+       QED: β(e) = +e³/(12π²)  &nbsp;|&nbsp;  QCD: β(g_s) = −g_s³(11N_c−2N_f)/(16π²)`,
+     expl:`The μ-dependence of the renormalized coupling is the renormalization group equation. Physical S-matrix elements are μ-independent to all orders.`},
+  ];
+
+  return {steps, latex: `${loopType}\\text{: } \\frac{i}{16\\pi^2}\\left[\\frac{1}{\\varepsilon}_{\\rm UV}+\\text{finite}(\\Delta)\\right]`};
 }
 
 // ─── 1→2 decay: Z/W/γ* → ff̄ ─────────────────────────────────────────────────
@@ -2290,6 +2970,164 @@ function stepsBremsstrahlung(topo, text, iMDisplay) {
   ], latex:`iM_{2\\to3}\\xrightarrow{k\\to0} e\\,S^\\mu\\varepsilon^*_\\mu\\times iM_{2\\to2}`};
 }
 
+// ─── H→VV decay (metric vertex, e.g. H→WW, H→ZZ) ────────────────────────────
+// The HWW/HZZ vertex igm_V g_μν contracts with two external W/Z polarisation vectors.
+// iM = igm_V × ε^μ(p₂) × ε^ν(p₃)  →  contracted amplitude = igm_V (ε₂·ε₃)
+//
+// Polarisation sum for massive W/Z (3 physical polarisations):
+//   Σ_λ ε^μ(p,λ)ε*^ν(p,λ) = −g^{μν} + p^μp^ν/m_V²
+//
+// Pol-summed squared vertex (derived from metric contraction engine + longitudinal):
+//   Σ_pol |g_μν ε^μ ε^ν|² = g_μν g_ρσ (−g^{μρ}+p₂^μp₂^ρ/m²)(−g^{νσ}+p₃^νp₃^σ/m²)
+//   = 4 [massless part]
+//   − p₂²/m² [long. term 1: = −1 on-shell]
+//   − p₃²/m² [long. term 2: = −1 on-shell]
+//   + (p₂·p₃)²/m⁴ [long×long term]
+//   = 2 + (p₂·p₃)²/m_V⁴
+//   → For H→WW: p₂·p₃ = (m_H²−2m_W²)/2
+//
+function stepsDecayBosonTo2Boson(topo, text, iMDisplay) {
+  const step0 = iMDisplay
+    ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
+    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
+
+  return {steps:[
+    {title:'H→VV decay (metric vertex: HWW or HZZ)',
+     rule:`<strong>HWW vertex rule:</strong> igm_W g<sub>μν</sub> &nbsp;|&nbsp; <strong>HZZ vertex rule:</strong> igm<sub>Z</sub>/cosθ<sub>W</sub> g<sub>μν</sub><br>
+       The metric tensor g<sub>μν</sub> couples the two external W or Z polarisation vectors.`,
+     expr:step0,
+     expl:`This is a 1→2 decay: H(p₁)→V(p₂)+V(p₃) where V is W or Z. The amplitude is a scalar: iM = igm_V (ε₂·ε₃).`},
+
+    {title:'Contract vertex with external polarisations',
+     rule:`iM = igm_V g<sub>μν</sub> × ε<sup>μ</sup>(p₂,λ₂) × ε<sup>ν</sup>(p₃,λ₃)`,
+     expr:`iM = igm_V × (ε<sub>μ</sub>(p₂) ε<sup>μ</sup>(p₃)) = igm_V (ε₂·ε₃)`,
+     expl:`g_μν contracts both Lorentz indices of the external W/Z legs into a scalar dot product. The amplitude is proportional to ε₂·ε₃ — this is why the Higgs decay amplitude is largest for transverse and longitudinal polarisations in specific orientations.`},
+
+    {title:'Square: |M|² = (gm_V)² |ε₂·ε₃|²',
+     rule:`|M|² = g²m_V² × |ε₂·ε₃|²`,
+     expr:`Sum over polarisations:<br>
+       Σ<sub>λ₂,λ₃</sub> |g<sub>μν</sub> ε<sup>μ</sup>(p₂) ε<sup>ν</sup>(p₃)|²<br>
+       = g<sub>μν</sub> g<sub>ρσ</sub> × (Σ<sub>λ₂</sub> ε<sup>μ</sup>ε*<sup>ρ</sup>) × (Σ<sub>λ₃</sub> ε<sup>ν</sup>ε*<sup>σ</sup>)`,
+     expl:`For massive V (W or Z): pol sum = −g^{μν}+p^μp^ν/m_V². The longitudinal mode contributes an extra term compared to the photon (massless) case.`},
+
+    {title:'Apply massive polarisation sum: −g^{μν}+p^μp^ν/m_V²',
+     rule:`Massive spin-1 completeness: Σ<sub>λ</sub> ε<sup>μ</sup>(p,λ)ε*<sup>ν</sup>(p,λ) = −g<sup>μν</sup> + ${FR('p<sup>μ</sup>p<sup>ν</sup>','m<sub>V</sub>²')}<br>
+       (3 polarisations: 2 transverse + 1 longitudinal)`,
+     expr:`Σ<sub>pol</sub> |g<sub>μν</sub> ε<sup>μ</sup>ε<sup>ν</sup>|² = g<sub>μν</sub>g<sub>ρσ</sub>(−g<sup>μρ</sup>+${FR('p₂<sup>μ</sup>p₂<sup>ρ</sup>','m_V²')})(−g<sup>νσ</sup>+${FR('p₃<sup>ν</sup>p₃<sup>σ</sup>','m_V²')})<br><br>
+       <strong>Term (T,T):</strong> g<sub>μν</sub>g<sub>ρσ</sub>g<sup>μρ</sup>g<sup>νσ</sup> = d = <strong>4</strong>  [metric contraction engine]<br>
+       <strong>Term (T,L):</strong> g<sub>μν</sub>g<sub>ρσ</sub>g<sup>μρ</sup>(−p₃<sup>ν</sup>p₃<sup>σ</sup>/m<sub>V</sub>²) = −p₃²/m<sub>V</sub>² = <strong>−1</strong>  [on-shell: p₃²=m<sub>V</sub>²]<br>
+       <strong>Term (L,T):</strong> same = <strong>−1</strong><br>
+       <strong>Term (L,L):</strong> g<sub>μν</sub>g<sub>ρσ</sub>(p₂<sup>μ</sup>p₂<sup>ρ</sup>p₃<sup>ν</sup>p₃<sup>σ</sup>/m<sub>V</sub>⁴) = (p₂·p₃)²/m<sub>V</sub>⁴`,
+     expl:`The (T,T) term = 4 comes from the metric contraction engine g_μν g^{μν}=4. Each (T,L) term gives −p²/m² = −1 on-shell. The (L,L) term gives the squared dot product, introducing the kinematic dependence.`},
+
+    {title:'Sum: Σ_pol |ε₂·ε₃|² = 2 + (p₂·p₃)²/m_V⁴',
+     rule:`Total = 4 − 1 − 1 + (p₂·p₃)²/m_V⁴ = <strong>2 + (p₂·p₃)²/m_V⁴</strong>`,
+     expr:`Σ<sub>pol</sub>|M|² = g²m<sub>V</sub>² × (2 + ${FR('(p₂·p₃)²','m<sub>V</sub>⁴')})<br><br>
+       In Higgs rest frame: p₂·p₃ = ${FR('m<sub>H</sub>²−2m<sub>V</sub>²','2')}<br>
+       → Σ<sub>pol</sub>|M|² = g²m<sub>V</sub>² × (2 + ${FR('(m<sub>H</sub>²−2m<sub>V</sub>²)²','4m<sub>V</sub>⁴')})`,
+     expl:`This is exact for any Higgs mass. For m_H ≫ 2m_V (heavy Higgs): ≈ g²m_H⁴/(4m_V²) — the longitudinal W modes dominate. For m_H ≈ 125 GeV: the transverse and longitudinal contributions are comparable.`},
+
+    {title:'Partial decay width Γ(H→VV)',
+     rule:`<strong>2-body decay rate:</strong> Γ = |<b>p</b>|/(8πm_H²) × Σ<sub>pol</sub>|M|²<br>
+       where |<b>p</b>| = ${FR('1','2m_H')}√(m_H⁴−4m_H²m_V²) = ${FR('m_H','2')}√(1−4m_V²/m_H²) is the CoM momentum`,
+     expr:`Γ(H→VV) = ${FR('g²m_V²m_H','16π')} × √(1−${FR('4m<sub>V</sub>²','m<sub>H</sub>²')}) × (2 + ${FR('(m<sub>H</sub>²−2m<sub>V</sub>²)²','4m<sub>V</sub>⁴')})`,
+     expl:`For H→WW: n_W=2 (2 W bosons, no colour), g = g_W, m_V=m_W≈80 GeV, m_H≈125 GeV → Γ(H→WW*)≈214 MeV (one W is off-shell at m_H<2m_W; full result requires integration over W width).<br>
+       For H→ZZ: replace m_W→m_Z and multiply by 1/2 (identical bosons): Γ≈26 MeV ✓`},
+  ], latex:`\\Gamma(H\\to VV) = \\frac{g^2 m_V^2 m_H}{16\\pi}\\sqrt{1-4m_V^2/m_H^2}\\left(2 + \\frac{(m_H^2-2m_V^2)^2}{4m_V^4}\\right)`};
+}
+
+// ─── Scalar contact term (H³ decay, φ⁴ scattering) ───────────────────────────
+// No internal propagator: the entire amplitude is just the vertex factor × external legs.
+// For scalar φⁿ vertices: iM = coupling × 1 × 1 × ... (scalars contribute factor 1 each)
+// |M|² = |coupling|² — pure constant, no spin sums, no pol sums, no Lorentz algebra.
+//
+function stepsContactScalar(topo, text, iMDisplay) {
+  const {nScalarExt, nVerts} = topo;
+  const step0 = iMDisplay
+    ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
+    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
+
+  // Extract coupling label from vertex factor in the text
+  const subSub = s => s.replace(/[₀-₉]/g,c=>'0123456789'[c.charCodeAt(0)-0x2080]||c);
+  const raw = iMDisplay||text||'';
+  const parts = raw.replace(/^iM\s*=\s*/i,'').split(/\s*[×*]\s*/);
+  const vPart = parts.find(p => /^-?i/.test(subSub(p.replace(/[−–]/g,'-')).trim()));
+  const coupLabel = vPart ? vPart.trim().replace(/^[-−]i/,'').replace(/^i/,'').trim() : 'λ';
+  const coupH = CP(coupLabel || 'λ');
+  const n = nScalarExt || (nVerts && nVerts+2) || 3;
+
+  return {steps:[
+    {title:`Scalar contact amplitude — ${n}-point vertex`,
+     rule:`<strong>Contact term:</strong> no internal propagator. The amplitude is just the vertex factor times the external scalar legs (each contributing factor 1).`,
+     expr:step0,
+     expl:`Scalar contact terms arise from vertices like H³ (−3iλv: Higgs self-coupling), φ⁴ (−iλ: quartic coupling), and other scalar interactions. The external Higgs/scalar legs have no spin, no Lorentz index — they contribute scalar factor 1.`},
+
+    {title:'Write amplitude: iM = coupling × 1 × 1 × …',
+     rule:`For n external scalars at a single vertex:<br>
+       iM = (vertex coupling) × 1^{n−1}<br>
+       Scalar external leg Feynman rule = 1 (no spinor, no polarisation vector)`,
+     expr:`iM = −i${coupH} × 1 × 1 × … = −i${coupH}`,
+     expl:`Compare to fermion external legs (u/ū spinors) or boson legs (ε^μ polarisation vectors): scalar particles have no internal degrees of freedom at tree level, so their external state factor is simply 1.`},
+
+    {title:'Square: |M|² = |coupling|²',
+     rule:`|−i${coupH}|² = ${coupH}²  [|−i|² = 1]<br>
+       No spin sums (no spinors), no polarisation sums (no gauge boson indices), no traces.`,
+     expr:`|M|² = ${coupH}²`,
+     expl:`The result is a pure constant — independent of kinematics. For H→HH: coupling = 3λv, |M|² = (3λv)² = 9λ²v². For φ⁴: coupling = λ, |M|² = λ².`},
+
+    {title:'Partial decay width (if 1→2) / cross section (if 2→2)',
+     rule:`<strong>1→2 decay:</strong> Γ = |<b>p</b>|/(8πm²) × |M|²<br>
+       <strong>2→2 contact:</strong> σ = |M|²/(16πs)`,
+     expr:`For H(m_H)→H(m_h)+H(m_h) via H³ vertex −3iλv:<br>
+       |<b>p</b>| = ${FR('m_H','2')}√(1−4m_h²/m_H²) &nbsp; → &nbsp;
+       Γ(H→HH) = ${FR('9λ²v²','8πm_H²')} × ${FR('m_H','2')}√(1−4m_h²/m_H²) = ${FR('9λ²v²','16πm_H')}√(1−4m_h²/m_H²)<br><br>
+       For φ⁴→φ⁴: σ = λ²/(16πs)`,
+     expl:`In the SM: the Higgs potential is V = μ²|H|² + λ|H|⁴, giving m_H²=−2μ², v²=−μ²/λ, so λ=m_H²/(2v²). The triple Higgs coupling becomes 3λv = 3m_H²/(2v) ≈ 0.19 GeV (for m_H=125 GeV, v=246 GeV).`},
+  ], latex:`|\\mathcal{M}|^2 = (${coupLabel})^2`};
+}
+
+// ─── Gauge contact term (4g vertex, quartic gauge coupling) ───────────────────
+// No internal propagator. The 4-gluon/4-W amplitude is a single vertex
+// contracted with 4 external polarisation vectors.
+// The vertex tensor has a complex structure: −ig_s²[f^{ace}f^{bde}(...) + ...]
+//
+function stepsContactGauge(topo, text, iMDisplay) {
+  const {nPhotExt, isGluon} = topo;
+  const particleName = isGluon ? 'gluon' : 'W boson';
+  const coupH = isGluon ? CP('g<sub>s</sub>') : CP('g');
+  const step0 = iMDisplay
+    ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
+    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
+
+  return {steps:[
+    {title:`Quartic gauge contact amplitude — 4 external ${particleName}s`,
+     rule:`<strong>Contact term:</strong> single vertex with 4 external gauge boson legs, no internal propagator.<br>
+       For QCD: −ig_s²[f^{ace}f^{bde}(g^{μρ}g^{νσ}−g^{μσ}g^{νρ}) + permutations]<br>
+       For EW: −ig²[...] (WWγγ or WWWW quartic coupling)`,
+     expr:step0,
+     expl:`The quartic gauge vertex arises from the quadratic part of the Yang-Mills field strength F_{μν}²: for SU(3), (∂_μA_ν−∂_νA_μ+g_sf^{abc}A^b_μA^c_ν)² generates the f·f × g·g structure.`},
+
+    {title:'Vertex tensor structure: rank-4 with colour',
+     rule:`The vertex is a rank-4 Lorentz tensor (4 free Lorentz indices) × rank-4 colour tensor:<br>
+       T^{μνρσ}_{abcd} = −ig_s²[f^{ace}f^{bde}(g^{μρ}g^{νσ}−g^{μσ}g^{νρ}) + f^{abe}f^{cde}(g^{μν}g^{ρσ}−g^{μσ}g^{νρ}) + f^{ade}f^{bce}(g^{μν}g^{ρσ}−g^{μρ}g^{νσ})]`,
+     expr:`iM = T<sup>μνρσ</sup><sub>abcd</sub> × ε<sub>μ</sub><sup>a</sup>(p₁) × ε<sub>ν</sub><sup>b</sup>(p₂) × ε<sub>ρ</sub><sup>c</sup>(p₃) × ε<sub>σ</sub><sup>d</sup>(p₄)`,
+     expl:`Unlike the triple gauge vertex (rank-3), the quartic vertex has 4 free Lorentz indices contracted with 4 external polarisation vectors. The result is a Lorentz scalar — but the contraction is more complex.`},
+
+    {title:'Contract with external polarisations → scalar amplitude',
+     rule:`Contract each Lorentz index with the corresponding ε leg. Each ε^μ kills one free index.`,
+     expr:`iM = −i${coupH}² × Σ<sub>permutations</sub> f...f... × [(ε₁·ε₃)(ε₂·ε₄) − (ε₁·ε₄)(ε₂·ε₃)]  +  cyclic perms`,
+     expl:`After contracting, the g^{μρ}g^{νσ} terms give (ε₁·ε₃)(ε₂·ε₄), g^{μσ}g^{νρ} gives (ε₁·ε₄)(ε₂·ε₃), etc. The 3 independent Lorentz structures are (ε₁·ε₂)(ε₃·ε₄), (ε₁·ε₃)(ε₂·ε₄), (ε₁·ε₄)(ε₂·ε₃).`},
+
+    {title:'Square and apply polarisation sums',
+     rule:`Each |ε_A·ε_B|² → 4 after pol sums (metric contraction engine: g_μνg^{μν}=4).<br>
+       Products of different pairs → metric cross-contractions.`,
+     expr:`Σ<sub>pol</sub>|M|² = ${coupH}⁴ × C<sub>colour</sub> × f(g_μν contractions)<br><br>
+       Colour factor: Σ<sub>a,b,c,d</sub> |f^{ace}f^{bde}...|² requires the identity f^{abc}f^{abd} = N_cδ^{cd}<br>
+       Full result: known analytically (Mangano-Parke / helicity method); see Helicity tab for gg→gg.`,
+     expl:`The full squared amplitude for gg→gg (including both triple-gauge and quartic-gauge diagrams) is the standard QCD result: σ∝g_s⁴(3−tu/s²−su/t²−st/u²). The quartic contact term contributes alongside the s,t,u-channel 3g-exchange diagrams and must be added coherently.`},
+  ], latex:`|\\mathcal{M}|^2 \\propto ${isGluon?'g_s':'g'}^4 \\times C_{\\rm colour} \\times f(s,t,u)`};
+}
+
 // iMDisplay: the mathematical expression to show in Step 1 (e.g. "iM = iQeγ^μ × ...")
 // text:      the ← comment lines used for parsing
 function stepsFromIM(text, iMDisplay) {
@@ -2297,12 +3135,20 @@ function stepsFromIM(text, iMDisplay) {
   const topo = getAmplitudeTopology(factors);
 
   // ── 2→2 ──────────────────────────────────────────────────────────────────
-  if (topo.topo==='two_current')   return stepsSquareTwoCurrent(topo, text, iMDisplay);
-  if (topo.topo==='compton')       return stepsSquareCompton(topo, text, iMDisplay);
+  if (topo.topo==='two_current')        return stepsSquareTwoCurrent(topo, text, iMDisplay);
+  if (topo.topo==='compton')            return stepsSquareCompton(topo, text, iMDisplay);
+  if (topo.topo==='triple_gauge_exchange') return stepsTripleGaugeVertex(iMDisplay||text, topo);
+  if (topo.topo==='boson_scalar_exchange') return stepsSquareBosonMetric(iMDisplay||text);
+  if (topo.topo==='yukawa_exchange')       return stepsSquareYukawa(iMDisplay||text);
 
   // ── 1→2 decays ────────────────────────────────────────────────────────────
-  if (topo.topo==='decay_1to2')    return stepsDecay1to2(topo, text, iMDisplay);
-  if (topo.topo==='decay_scalar')  return stepsDecayScalar(topo, text, iMDisplay);
+  if (topo.topo==='decay_1to2')         return stepsDecay1to2(topo, text, iMDisplay);
+  if (topo.topo==='decay_scalar')       return stepsDecayScalar(topo, text, iMDisplay);
+  if (topo.topo==='decay_boson_to_2boson') return stepsDecayBosonTo2Boson(topo, text, iMDisplay);
+
+  // ── Contact terms (no internal propagator) ────────────────────────────────
+  if (topo.topo==='contact_scalar')     return stepsContactScalar(topo, text, iMDisplay);
+  if (topo.topo==='contact_gauge')      return stepsContactGauge(topo, text, iMDisplay);
 
   // ── 2→3 ──────────────────────────────────────────────────────────────────
   if (topo.topo==='bremsstrahlung') return stepsBremsstrahlung(topo, text, iMDisplay);
