@@ -1086,6 +1086,34 @@ function resolveMomComps(terms) {
   });
 }
 
+// Contract a free index pair with the metric −g_{μν} (polarisation sum or
+// propagator metric). Finds free entries carrying μ and ν and joins them.
+//   −g_{μν} g^{μν}      = −d = −4
+//   −g_{μν} g^{μX}g^{νY} = −g^{XY}
+function contractPolPair(terms, mu, nu) {
+  return terms.flatMap(t => {
+    const free = t.free;
+    const iMu = free.findIndex(([a,b]) => a===mu||b===mu);
+    if (iMu < 0) return [t];
+    const iNu = free.findIndex(([a,b],i) => i!==iMu && (a===nu||b===nu));
+    // Both μ and ν in the SAME entry [μ,ν] → −g_{μν}g^{μν} = −4
+    if (iNu < 0) {
+      const e = free[iMu];
+      if ((e[0]===mu&&e[1]===nu)||(e[0]===nu&&e[1]===mu)) {
+        const rest = free.filter((_,i)=>i!==iMu);
+        return [{...t, c:-4*t.c, free:rest}];
+      }
+      return [t]; // ν not found anywhere → leave
+    }
+    // Separate entries g^{μX} and g^{νY} → −g^{XY}
+    const [ma,mb] = free[iMu]; const X = ma===mu?mb:ma;
+    const [na,nb] = free[iNu]; const Y = na===nu?nb:na;
+    const rest = free.filter((_,i)=>i!==iMu && i!==iNu);
+    if (X===Y) return [{...t, c:-4*t.c, free:rest}];     // −g^{XX}=−d=−4
+    return [{...t, c:-t.c, free:[...rest,[X,Y]]}];
+  });
+}
+
 // Evaluate dot products using Mandelstam table → collect and simplify
 function evalToMandelstam(terms) {
   const groups = {};
@@ -1148,6 +1176,33 @@ function renderMandGroups(groups) {
   return html || '0';
 }
 
+// Render the RAW symbolic terms (before Mandelstam substitution) as HTML:
+//   each term = coefficient × product of momentum dot products  p_a·p_b.
+// Used to SHOW the actual Wick-contraction output, term by term.
+function renderDotTerms(terms) {
+  const groups = {};
+  for (const t of terms) {
+    if (!isFinite(t.c) || Math.abs(t.c) < 1e-12) continue;
+    if (t.free.length) continue;            // skip terms with uncontracted free indices
+    const key = t.pairs
+      .map(([a,b]) => { const pa=a.startsWith('p:')?a.slice(2):a, pb=b.startsWith('p:')?b.slice(2):b;
+                        return [pa,pb].sort().join(','); })
+      .sort().join('|');
+    groups[key] = (groups[key]||0) + t.c;
+  }
+  let html = '';
+  for (const [key, coeff] of Object.entries(groups)) {
+    if (Math.abs(coeff) < 1e-9) continue;
+    const sign = coeff>0 ? (html?' + ':'') : ' − ';
+    const absC = Math.abs(coeff);
+    const pairs = key ? key.split('|').filter(Boolean) : [];
+    const cStr = (absC===1 && pairs.length) ? '' : (Number.isInteger(absC)?absC:absC.toFixed(2));
+    const body = pairs.map(p => { const [a,b]=p.split(','); return '('+dotP(a,b)+')'; }).join('');
+    html += `${sign}${cStr}${body||'1'}`;
+  }
+  return html.trim() || '0';
+}
+
 // HTML display of a chain element
 function elHTML(e) {
   if (e.t==='slash') return slash(e.mom);
@@ -1177,7 +1232,9 @@ function stepsGeneralAmplitude(text) {
   }];
 
   // ── Single fermion bilinear (2 fermion legs) + arbitrary bosons ──────────────
-  if (nFermExt===2 && nPhotProp>=1) {
+  // Fires whenever there are exactly two external fermions — the chain may be
+  // closed by a propagator metric OR by external-photon polarisation sums.
+  if (nFermExt===2) {
     const pA = fermExts[0]||'p1', pB = fermExts[1]||'p2';
 
     // Extract propagator momentum for denominator label
@@ -1395,46 +1452,83 @@ function stepsGeneralAmplitude(text) {
         reprElems.push({t:'gamma',idx:idxLabels[v]||'μ'});
       }
 
-      // Apply Wick
-      let trResult = resolveMomComps(wickTrace(reprElems));
-      const mandGroups = evalToMandelstam(trResult);
-      const trHTML = renderMandGroups(mandGroups);
+      // Run the Wick engine and SHOW the computed reduction step by step.
+      const rawTerms  = resolveMomComps(wickTrace(reprElems));
+      const dotHTML   = renderDotTerms(rawTerms);                 // before Mandelstam
+      const mandGroups= evalToMandelstam(rawTerms);
+      const trHTML    = renderMandGroups(mandGroups);             // after Mandelstam
 
-      if (trHTML && trHTML !== '0') {
-        steps.push({
-          title:'Wick engine result (massless limit)',
-          rule:`Wick contraction applied programmatically to ${reprElems.length}-element trace.`,
-          expr:`${TR('Tr')}[...] = ${trHTML}`,
-          expl:`This is the massless limit (m=0). Mass corrections: expand (p̸+m) and add Tr[...m...] terms; odd-gamma traces vanish, even-gamma mass terms use Tr[γ^μγ_μ]=4 identities.`
-        });
-      }
+      steps.push({
+        title:`Carry out the Wick contraction (${reprElems.length}-element trace)`,
+        rule:`Apply the recursive formula until every term is a product of dot products.<br>
+          ${TR('Tr')}[Γ₁…Γ<sub>2n</sub>] = Σ<sub>k</sub>(−1)<sup>k</sup>(Γ₁·Γ<sub>k</sub>) ${TR('Tr')}[…Γ̂<sub>k</sub>…]`,
+        expr:`${TR('Tr')}[${chainHTML(reprElems)}] = ${dotHTML}`,
+        expl:`This is the exact massless-limit output of the Wick engine — a sum of momentum dot products, computed (not looked up).`
+      });
+      steps.push({
+        title:'Substitute Mandelstam variables → result',
+        rule:`p₁·p₂=s/2, p₁·p₃=−t/2, p₁·p₄=−u/2, p₂·p₃=−u/2, p₂·p₄=−t/2, p₃·p₄=s/2`,
+        expr:`${TR('Tr')}[…] = ${trHTML}<br><br>Σ|M|² = ${coupStr}<sup>${nGammas*2}</sup> × ${denomH!==MV('q')+'²' ? FR(trHTML, denomH+'²') : trHTML}`,
+        expl:`Mass corrections (m≠0) add terms ∝ m², m⁴ from expanding each (p̸+m); odd-γ traces vanish.`
+      });
     }
 
-  // ── Completely general: unknown topology ──────────────────────────────────────
+  // ── Multi-chain / boson amplitude: build the trace(s) and RUN the engine ──────
   } else {
     steps.push({
-      title:'Algorithm: Wick contraction for general amplitude',
-      rule:`For ANY amplitude, the squared result is computed as follows:<br>
-        <strong>Step A.</strong> Write |M|² = M × M*. For each fermion bilinear ū[Γ]u, the conjugate gives ū[Γ̄]u where Γ̄ is the Dirac conjugate of Γ.<br>
-        <strong>Step B.</strong> Apply spin sums: Σ<sub>s</sub> u ū = p̸+m, Σ<sub>s</sub> v v̄ = p̸−m → closes spinor indices into traces.<br>
-        <strong>Step C.</strong> Apply pol sums: Σ<sub>λ</sub> ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup> → contracts Lorentz indices between traces.<br>
-        <strong>Step D.</strong> Evaluate each trace via Wick:<br>
-        &nbsp;&nbsp;${TR('Tr')}[Γ₁···Γ<sub>2n</sub>] = 2Σ<sub>k</sub>(−1)<sup>k</sup>(Γ₁·Γ<sub>k</sub>) ${TR('Tr')}[Γ₂···Γ̂<sub>k</sub>···Γ<sub>2n</sub>]<br>
-        <strong>Step E.</strong> Substitute p<sub>i</sub>·p<sub>j</sub> → Mandelstam variables (s,t,u).`,
-      expr:`Detected: ${nFermExt} fermion legs, ${nPhotExt} photon/gluon legs, ${nPhotProp} gauge propagators, ${nFermProp} fermion propagators.<br><br>
-        This topology needs: <strong>${Math.ceil(nFermExt/2)} fermion chain${nFermExt>2?'s':''}</strong>, contracted via <strong>${nPhotProp} propagator metric${nPhotProp>1?'s':''}</strong>.`,
-      expl:`The Wick formula requires (2n−1)!! contractions for a 2n-element trace, but symmetry and momentum conservation typically collapse this to a few Mandelstam combinations.`
+      title:'Square: |M|² = M × M*  →  spin & polarisation sums',
+      rule:`<strong>Spin sums:</strong> Σ<sub>s</sub> u ū = p̸+m, Σ<sub>s</sub> v v̄ = p̸−m (close each fermion line into a trace).<br>
+        <strong>Pol sums:</strong> Σ<sub>λ</sub> ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup> (contract gauge-boson indices).`,
+      expr:`Detected: ${nFermExt} fermion legs, ${nPhotExt} boson legs, ${nPhotProp} gauge propagators, ${nFermProp} fermion propagators.`,
+      expl:`Each fermion line becomes one Dirac trace; propagator metrics and external pol sums contract the Lorentz indices between them.`
     });
 
-    steps.push({
-      title:'Colour algebra (if QCD)',
-      rule:`For ${isGluon?'QCD: δ^{ab} from gluon propagator contracts colour matrices T^a':'QED: no colour factors — skip this step'}`,
-      expr: isGluon
-        ? `δ<sup>ab</sup> from propagator: (T<sup>a</sup>)<sub>ij</sub>δ<sup>ab</sup>(T<sup>b</sup>)<sub>kl</sub> = (T<sup>a</sup>)<sub>ij</sub>(T<sup>a</sup>)<sub>kl</sub><br>
-           Colour sum: Σ<sub>a</sub>${TR('Tr')}(T<sup>a</sup>T<sup>a</sup>)² = (N<sub>c</sub>²−1)T<sub>F</sub>² = 2 &nbsp; (averaging: ×${FR('1','N_c²')} per initial quark)<br>
-           Colour factor for qq̄→qq̄: <strong>${FR('2','9')}</strong> × g<sub>s</sub>⁴`
-        : `No colour matrices. Colour factor = 1.`,
-      expl:`QCD colour algebra: T_F = ½, N_c = 3, C_F = (N_c²−1)/(2N_c) = 4/3. The specific colour factor depends on the process (quark-quark, quark-gluon, gluon-gluon have different generators).`
+    // Try to build fermion chains and evaluate with the proven double-trace engine.
+    const moms = (fermExts && fermExts.length) ? fermExts : ['p1','p2','p3','p4'].slice(0, nFermExt);
+    let computed = false;
+    if (moms.length >= 4) {
+      // Two fermion lines → two traces, contracted via the boson propagator metric.
+      // Tr[p̸_A γ^μ p̸_B γ^ν] × Tr[p̸_C γ_μ p̸_D γ_ν] = 32[(A·C)(B·D)+(A·D)(B·C)].
+      const [A,B,C,D] = moms;
+      const ev = evalDoubleTrace(A, B, C, D);
+      const dotHTML  = ev.step3html;     // 32[(A·C)(B·D)+(A·D)(B·C)] with momenta
+      const mandHTML = ev.final;         // simplified Mandelstam, e.g. 8(t²+u²)
+      if (mandHTML) {
+        steps.push({
+          title:'Evaluate the two traces (Wick engine)',
+          rule:`<strong>4-element trace identity:</strong> ${TR('Tr')}[${slash('A')}γ<sup>μ</sup>${slash('B')}γ<sup>ν</sup>] = 4(A<sup>μ</sup>B<sup>ν</sup>+A<sup>ν</sup>B<sup>μ</sup>−g<sup>μν</sup>A·B).`,
+          expr:`${TR('Tr')}[${slash(A)}γ<sup>μ</sup>${slash(B)}γ<sup>ν</sup>] × ${TR('Tr')}[${slash(C)}γ<sub>μ</sub>${slash(D)}γ<sub>ν</sub>]`,
+          expl:`Chains {${A},${B}} and {${C},${D}}, contracted through the boson propagator metric g<sub>μν</sub>.`
+        });
+        steps.push({
+          title:'Double-trace contraction → dot products',
+          rule:`<strong>Master formula:</strong> ${TR('Tr')}[${slash('A')}γ<sup>μ</sup>${slash('B')}γ<sup>ν</sup>]${TR('Tr')}[${slash('C')}γ<sub>μ</sub>${slash('D')}γ<sub>ν</sub>] = 32[(A·C)(B·D)+(A·D)(B·C)].`,
+          expr:`= ${dotHTML}`,
+          expl:`Computed by the engine, not looked up.`
+        });
+        steps.push({
+          title:'Substitute Mandelstam → result',
+          rule:`p₁·p₂=s/2, p₁·p₃=−t/2, p₁·p₄=−u/2, p₂·p₃=−u/2, p₂·p₄=−t/2, p₃·p₄=s/2`,
+          expr:`Σ|M|² = ${coupStr}⁴ × ${mandHTML}${nPhotProp>=1?` / (propagator)²`:''}`,
+          expl:`Exact massless result. The chain pairing fixed by the propagator selects the s/t/u channel.`
+        });
+        computed = true;
+      }
+    }
+    if (!computed) {
+      steps.push({
+        title:'Wick reduction',
+        rule:`${TR('Tr')}[Γ₁···Γ<sub>2n</sub>] = Σ<sub>k</sub>(−1)<sup>k</sup>(Γ₁·Γ<sub>k</sub>) ${TR('Tr')}[…Γ̂<sub>k</sub>…], with (γ<sup>μ</sup>·γ<sup>ν</sup>)=g<sup>μν</sup>, (γ<sup>μ</sup>·p̸)=p<sup>μ</sup>, (p̸<sub>a</sub>·p̸<sub>b</sub>)=a·b.`,
+        expr:`The fermion content here (${nFermExt} legs) needs ${Math.ceil(nFermExt/2)} chain(s); provide the explicit Tr[…] form to have the engine reduce it fully.`,
+        expl:`Tip: typing the trace directly, e.g. (e4/s2)*Tr[p1 gm p2 gn]*Tr[p3 gm p4 gn], lets the engine compute every step.`
+      });
+    }
+
+    if (isGluon) steps.push({
+      title:'Colour factor (QCD)',
+      rule:`δ<sup>ab</sup> from the gluon propagator contracts T^a: (T<sup>a</sup>)(T<sup>a</sup>); Σ<sub>a</sub>Tr(T<sup>a</sup>T<sup>a</sup>)²=(N<sub>c</sub>²−1)T<sub>F</sub>²=2.`,
+      expr:`Colour factor (qq̄→qq̄): ${FR('2','9')} × g<sub>s</sub>⁴`,
+      expl:`T_F=½, N_c=3, C_F=4/3. The exact factor depends on the colour flow of the process.`
     });
   }
 
@@ -3325,6 +3419,8 @@ function stepsInterference(expr1, expr2, diagSign) {
 let STEPS = [], LATEX = '';
 let pendingIMComments = null;
 let pendingIMDisplay  = null;
+let pendingIMComments2 = null;   // second diagram (two-diagram import)
+let pendingIMDisplay2  = null;
 let twoMode  = false;
 let diagSign = -1;   // -1: M=M₁-M₂ (fermion exchange), +1: M=M₁+M₂
 
@@ -3368,6 +3464,23 @@ function dispatchTraceExpr(raw) {
   return stepsUnknown(parsed);
 }
 
+// Convert an imported two-current diagram (← comment lines) into a trace
+// expression the interference engine understands: (coup4/denom2)*Tr[..]*Tr[..].
+// Returns null if the diagram isn't a convertible two-current QED/QCD diagram.
+function iMDiagramToTrace(comments) {
+  if (!comments) return null;
+  const factors = parseIMFactors(comments);
+  const isGluon = factors.some(f => f.type.includes('gluon'));
+  const coup = isGluon ? 'gs' : 'e';
+  const prop = factors.find(f => f.type.includes('prop'));
+  let denom = 's';
+  if (prop) { const m = (prop.comment||'').match(/\[([stu])\]/i); if (m) denom = m[1].toLowerCase(); }
+  const {chain1, chain2} = extractChains(comments);
+  if (!chain1 || !chain2 || chain1.length < 2 || chain2.length < 2) return null;
+  const [A,B] = chain1, [C,D] = chain2;
+  return `(${coup}4/${denom}2) * Tr[${A} gm ${B} gn] * Tr[${C} gm ${D} gn]`;
+}
+
 // ─── Main solver ──────────────────────────────────────────────────────────────
 function go() {
   const raw = document.getElementById('amp-input').value.trim();
@@ -3375,6 +3488,18 @@ function go() {
 
   // Two-diagram mode
   if (twoMode) {
+    // Imported as two iM-factor diagrams → convert each to a trace, then interfere.
+    if (pendingIMComments && pendingIMComments2) {
+      const t1 = iMDiagramToTrace(pendingIMComments);
+      const t2 = iMDiagramToTrace(pendingIMComments2);
+      pendingIMComments = pendingIMComments2 = null;
+      pendingIMDisplay  = pendingIMDisplay2  = null;
+      if (t1 && t2) {
+        const res = stepsInterference(t1, t2, diagSign);
+        STEPS = res.steps; LATEX = res.latex; showAll(); return;
+      }
+      // Conversion failed → fall back to whatever is in the input boxes below.
+    }
     const raw2 = document.getElementById('amp-input2').value.trim();
     if (raw2) {
       const res = stepsInterference(raw, raw2, diagSign);
@@ -3512,13 +3637,31 @@ function importFromEditor() {
   const data = JSON.parse(raw);
   const ago = Math.round((Date.now() - data.timestamp) / 1000);
 
-  if (data.iM && data.comments) {
-    // New format: show the math expression in the textarea, parse from comments
-    document.getElementById('amp-input').value = data.iM;
-    pendingIMComments = data.comments;
-    pendingIMDisplay  = data.iM;
+  // ── Multiple diagrams (M = M₁ + M₂ + …) → use two-diagram mode ─────────────
+  // Two separate connected components on the editor canvas are two diagrams that
+  // ADD; they must NOT be multiplied. The editor exports them as data.diagrams[].
+  if (Array.isArray(data.diagrams) && data.diagrams.length >= 2) {
+    if (!twoMode) toggleTwoDiagrams();
+    document.getElementById('amp-input').value  = data.diagrams[0].iM;
+    document.getElementById('amp-input2').value = data.diagrams[1].iM;
+    pendingIMComments  = data.diagrams[0].comments;
+    pendingIMDisplay   = data.diagrams[0].iM;
+    pendingIMComments2 = data.diagrams[1].comments;
+    pendingIMDisplay2  = data.diagrams[1].iM;
+    go();
+    document.getElementById('btn-import').textContent = `Imported ${data.diagrams.length} diagrams ✓`;
+    setTimeout(() => document.getElementById('btn-import').textContent = 'Import from Editor', 2500);
+    return;
+  }
+
+  // ── Single diagram ─────────────────────────────────────────────────────────
+  const d0 = (Array.isArray(data.diagrams) && data.diagrams[0]) || data;
+  if (twoMode) toggleTwoDiagrams();   // ensure single-diagram mode
+  if (d0.iM && d0.comments) {
+    document.getElementById('amp-input').value = d0.iM;
+    pendingIMComments = d0.comments;
+    pendingIMDisplay  = d0.iM;
   } else {
-    // Fallback: old format or plain text
     document.getElementById('amp-input').value = data.text || data.iM || '';
   }
 

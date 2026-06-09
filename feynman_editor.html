@@ -2072,6 +2072,7 @@ const FR_DEFAULTS = {
 let feynmanRules = JSON.parse(JSON.stringify(FR_DEFAULTS));
 let latexAmplitude = '';
 let lastAmplitudeFactors = [];   // saved on every iM ▶ build, used by → Stepper
+let lastAmplitudeComponents = []; // per-diagram factor lists (one entry per connected component)
 
 function saveFRules() {
   try { localStorage.setItem('feynman_rules', JSON.stringify(feynmanRules)); } catch(e) {}
@@ -2563,7 +2564,10 @@ function buildAmplitude() {
   // ── Render ───────────────────────────────────────────────────────────────────
   const COL = 36;
   const results = components.map(c => buildOneAmplitude(c.verts, c.edges));
-  lastAmplitudeFactors = results.flatMap(r => r.factors);  // save for → Stepper export
+  // Each connected component is a SEPARATE diagram. Keep them separate so the
+  // → Stepper export can ADD them (M = M₁ + M₂ + …) rather than multiply.
+  lastAmplitudeComponents = results.map(r => r.factors);
+  lastAmplitudeFactors = results.flatMap(r => r.factors);  // legacy: flat list (single-diagram use)
   const multi = results.length > 1;
   const allLines = [];
 
@@ -2642,15 +2646,27 @@ document.getElementById('btn-build-amp').addEventListener('click', buildAmplitud
 document.getElementById('btn-to-stepper').addEventListener('click', () => {
   buildAmplitude();
   if (!lastAmplitudeFactors.length) { alert('Build the amplitude first (iM ▶).'); return; }
-  // Export the mathematical expression for display + comment lines for parsing
-  const iMtext = 'iM = ' + lastAmplitudeFactors.map(f => f.text).join(' × ');
-  const comments = lastAmplitudeFactors.map(f => `← ${f.comment}`).join('\n');
+  // Build ONE export entry per diagram (connected component). Two diagrams ADD,
+  // they are NOT multiplied — so each is exported separately.
+  const comps = (lastAmplitudeComponents.length ? lastAmplitudeComponents
+                                                 : [lastAmplitudeFactors]);
+  const diagrams = comps.map(facs => ({
+    iM:       'iM = ' + facs.map(f => f.text).join(' × '),
+    comments: facs.map(f => `← ${f.comment}`).join('\n')
+  }));
+  // Combined display: M = (M₁) + (M₂) + …  (single diagram → just M₁)
+  const combinedIM = diagrams.length === 1
+    ? diagrams[0].iM
+    : 'iM = ' + diagrams.map(d => '(' + d.iM.replace(/^iM\s*=\s*/, '') + ')').join('  +  ');
   localStorage.setItem('feynman_iM_export', JSON.stringify({
-    iM: iMtext, comments, latex: latexAmplitude, timestamp: Date.now()
+    diagrams,                       // array — the stepper sums these
+    iM: combinedIM,                 // combined display string
+    comments: diagrams[0].comments, // first diagram's comments (legacy single-diagram path)
+    latex: latexAmplitude, timestamp: Date.now()
   }));
   const btn = document.getElementById('btn-to-stepper');
   const orig = btn.textContent;
-  btn.textContent = 'Exported ✓';
+  btn.textContent = diagrams.length > 1 ? `Exported ${diagrams.length} diagrams ✓` : 'Exported ✓';
   setTimeout(() => btn.textContent = orig, 2000);
 });
 document.getElementById('btn-copy-latex').addEventListener('click', () => {
