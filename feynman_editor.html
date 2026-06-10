@@ -477,6 +477,10 @@
       <span style="font-size:10px;color:#404060;text-transform:uppercase;letter-spacing:1px">Amplitude</span>
       <button id="btn-build-amp" style="font-size:11px">iM ▶</button>
       <button id="btn-copy-latex" style="font-size:11px">Copy LaTeX</button>
+      <span style="font-size:10px;color:#404060;margin-left:8px" title="Spacetime dimension d (3 space + 1 time = 4). Affects the mass-dimension formula.">dim&nbsp;d</span>
+      <input id="inp-dim" type="number" value="4" min="1" max="12" step="1"
+        style="width:42px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
+        title="Spacetime dimension d (default 4 = 3 space + 1 time)">
       <button id="btn-to-stepper" style="font-size:11px;margin-left:auto;border-color:#304070;color:#6080b0">→ Stepper</button>
     </div>
     <div id="amp-display">Draw a diagram, set your Feynman rules, then click Build ▶</div>
@@ -2073,6 +2077,22 @@ let feynmanRules = JSON.parse(JSON.stringify(FR_DEFAULTS));
 let latexAmplitude = '';
 let lastAmplitudeFactors = [];   // saved on every iM ▶ build, used by → Stepper
 let lastAmplitudeComponents = []; // per-diagram factor lists (one entry per connected component)
+let spacetimeDim = 4;            // d = number of spacetime dimensions (3 space + 1 time)
+
+// Mass dimension of an amplitude M with E external legs in d spacetime dimensions:
+//   [M] = d − E·(d−2)/2     (gives the familiar 4 − E in d=4)
+// Spin-independent: it is the physical dimension fixed by the external states.
+function amplitudeMassDim(E, d) { return d - E * (d - 2) / 2; }
+// Format a possibly-fractional mass dimension neatly (e.g. 1, 0, −2, ½, −3/2).
+function fmtDim(x) {
+  if (Number.isInteger(x)) return (x<0?'−':'') + Math.abs(x);
+  const sign = x<0?'−':''; const a = Math.abs(x);
+  const half = Math.round(a*2);                 // x is always a multiple of ½ here
+  if (half % 2 === 1) {                          // odd/2 → n/2 form
+    return sign + (half===1 ? '½' : half + '/2');
+  }
+  return sign + (half/2);
+}
 
 function saveFRules() {
   try { localStorage.setItem('feynman_rules', JSON.stringify(feynmanRules)); } catch(e) {}
@@ -2179,6 +2199,9 @@ function buildAmplitude() {
   const display = document.getElementById('amp-display');
   if (!verts.length) { display.textContent = 'No diagram drawn yet.'; latexAmplitude=''; return; }
   verts.forEach(v => { delete v.momLabel; }); // clear previous momentum labels
+  // Read the spacetime dimension d (default 4); used for the mass-dimension display.
+  const dInp = document.getElementById('inp-dim');
+  spacetimeDim = dInp ? (parseInt(dInp.value,10) || 4) : 4;
 
   const uSub = n => String(n).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]||c).join('');
 
@@ -2608,6 +2631,18 @@ function buildAmplitude() {
     }
     allLines.push('');
     allLines.push(`  ── ${intVerts.length} vertices  ${intEdges.length} int. lines  ${extEdges.length} ext. legs  ${numLoops} loop(s)`);
+
+    // ── Mass dimension of this diagram's amplitude ───────────────────────────
+    const d = spacetimeDim, E = extEdges.length;
+    const mdim = amplitudeMassDim(E, d);
+    allLines.push(`  ── Mass dimension [${lbl}] = ${d} − ${E}·(${d}−2)/2 = ${fmtDim(mdim)}   (d=${d} spacetime dims, E=${E} external legs)`);
+    // Superficial degree of UV divergence (loop diagrams):  D = dL − 2I_B − I_F
+    if (numLoops > 0) {
+      const IB = intEdges.filter(e => e.type==='photon'||e.type==='gluon'||e.type==='scalar'||e.type==='ghost').length;
+      const IF = intEdges.filter(e => e.type==='fermion').length;
+      const Dsup = d*numLoops - 2*IB - IF;
+      allLines.push(`  ── UV superficial degree of divergence D = ${d}·${numLoops} − 2·${IB} − ${IF} = ${Dsup}  → ${Dsup<0?'UV finite ✓':Dsup===0?'log divergent':'power divergent (D='+Dsup+')'}`);
+    }
     allLines.push('');
   });
 
@@ -2643,6 +2678,8 @@ document.getElementById('btn-toggle-rules').addEventListener('click', () => {
   resize();
 });
 document.getElementById('btn-build-amp').addEventListener('click', buildAmplitude);
+// Re-evaluate the mass dimension live when the spacetime dimension is changed.
+document.getElementById('inp-dim').addEventListener('input', () => { if (latexAmplitude) buildAmplitude(); });
 document.getElementById('btn-to-stepper').addEventListener('click', () => {
   buildAmplitude();
   if (!lastAmplitudeFactors.length) { alert('Build the amplitude first (iM ▶).'); return; }
