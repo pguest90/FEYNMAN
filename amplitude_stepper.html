@@ -54,11 +54,70 @@
   <div class="sep"></div>
   <button id="btn-copy">Copy LaTeX</button>
   <button onclick="toggleSyntax()" style="font-size:11px">Syntax ?</button>
+  <button id="btn-help" onclick="toggleHelp()" style="font-size:11px" title="Show all controls">Help ?</button>
   <div class="sep"></div>
   <span style="font-size:10px;color:#404060" title="Spacetime dimension d used in the trace algebra (g^μ_μ=d, γ^μγ_μ=d). Default 4.">dim&nbsp;d</span>
   <input id="inp-dim" type="number" value="4" min="1" max="12" step="1"
     style="width:42px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
     title="Spacetime dimension d. Changing it alters traces: γ^μγ_μ=d, the (d−4) dim-reg term, etc. Re-run to apply.">
+</div>
+
+<!-- ─── Help / controls overlay ─────────────────────────────────────────────── -->
+<style>
+  .help-overlay { position:fixed; inset:0; background:rgba(0,0,0,.66); z-index:9999; display:flex; align-items:center; justify-content:center; }
+  .help-box { background:#0e0e1a; border:1px solid #2a2a48; border-radius:8px; width:min(780px,93vw); max-height:88vh; display:flex; flex-direction:column; box-shadow:0 12px 44px rgba(0,0,0,.65); }
+  .help-hd { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #22223e; font-size:15px; color:#a0b0e0; font-weight:bold; }
+  .help-x { background:none; border:none; color:#8080a0; font-size:22px; cursor:pointer; line-height:1; padding:0 4px; }
+  .help-x:hover { color:#fff; }
+  .help-body { padding:10px 18px 20px; overflow-y:auto; font-size:12.5px; color:#b8c0d8; line-height:1.6; }
+  .help-body h3 { color:#7e94d0; font-size:13px; margin:15px 0 5px; border-bottom:1px solid #1c1c34; padding-bottom:3px; }
+  .help-body h3:first-child { margin-top:2px; }
+  .help-body table { width:100%; border-collapse:collapse; }
+  .help-body td { padding:3px 10px 3px 0; vertical-align:top; }
+  .help-body td:first-child { white-space:nowrap; color:#cdd6ee; width:1%; }
+  .help-body ul { margin:4px 0; padding-left:18px; }
+  .help-body li { margin:2px 0; }
+  .help-body code { background:#07070f; border:1px solid #20203a; border-radius:3px; padding:0 4px; color:#90c8f0; font-size:11.5px; }
+  .help-body .hk { background:#1a1a30; border:1px solid #2e2e50; border-radius:3px; padding:0 5px; font-size:11px; color:#90a0d0; font-family:monospace; }
+  .help-foot { font-size:11px; color:#56608a; margin-top:14px; border-top:1px solid #1c1c34; padding-top:8px; }
+</style>
+<div id="help-modal" class="help-overlay" style="display:none">
+  <div class="help-box">
+    <div class="help-hd"><span>⬡ Step Solver — Controls</span><button id="help-close" class="help-x" onclick="toggleHelp(false)">×</button></div>
+    <div class="help-body">
+      <h3>What it does</h3>
+      <p>Type a squared-amplitude expression (or import one from the editor) and it derives |M|² <b>step by step</b> — gamma-trace algebra via a Wick-contraction engine, contraction to Mandelstam variables (s, t, u), and the final result. No looked-up answers.</p>
+
+      <h3>Entering an amplitude</h3>
+      <ul>
+        <li>Type into the <b>Diagram 1</b> box, e.g. <code>(e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]</code>.</li>
+        <li><b>Solve ▶</b> or <span class="hk">Ctrl+Enter</span> to run.</li>
+        <li><b>Syntax ?</b> (top bar) lists the full grammar: traces <code>Tr[…]</code>, momenta p1…p8/k, gammas gm gn gr gs ga gb, scalars e4 gs2 m2, denominators /s /t /u, spinor bilinears.</li>
+      </ul>
+
+      <h3>Spacetime dimension <span class="hk">dim d</span></h3>
+      <ul>
+        <li>Sets d in the trace algebra: γ<sup>μ</sup>γ<sub>μ</sub> = d, the (d−4) dimensional-regularisation term, and the loop master integral Γ(n−d/2)/(4π)<sup>d/2</sup>.</li>
+        <li>Changing d <b>re-solves live</b> — coefficients and poles update (e.g. e⁺e⁻→μ⁺μ⁻ gives 8e⁴(t²+u²)/s² at d=4, 8e⁴(t²+u²+s²)/s² at d=6).</li>
+      </ul>
+
+      <h3>Two diagrams &amp; interference</h3>
+      <ul>
+        <li><b>+ Two Diagrams</b> reveals a second box and the <b>amplitude sign</b>: <b>M₁ − M₂</b> (identical-fermion exchange) or <b>M₁ + M₂</b> (boson / distinct). It computes |M₁ ± M₂|² = |M₁|² + |M₂|² ± 2Re(M₁M₂*).</li>
+      </ul>
+
+      <h3>Import from Editor</h3>
+      <ul>
+        <li>In the editor: draw → <b>iM ▶</b> → <b>→ Stepper</b>. Here: <b>Import from Editor</b> pulls it in, adopts the editor's dimension d, and solves. Multiple connected components import as separate diagrams that <b>add</b>.</li>
+        <li>Editing an input box switches it back to parsing your typed text.</li>
+      </ul>
+
+      <h3>Examples</h3>
+      <p><b>Examples ▾</b> loads ready-made cases (QED ee→μμ, eμ→eμ, Compton, QCD, Yukawa, Bhabha, Møller, single traces, spinor bilinears) — the fastest way to see the format.</p>
+
+      <div class="help-foot">Kinematics assumed: 4-point 2→2, p₁,p₂ incoming / p₃,p₄ outgoing, massless unless masses are written. <b>Copy LaTeX</b> exports the worked result.</div>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -798,6 +857,81 @@ function steps3PointVertex(text) {
   }], latex:''};
 }
 
+// ─── d-dependent loop-integral display helpers (read the global DIM) ─────────
+// In d spacetime dimensions the loop measure is dᵈℓ, the prefactor is (4π)^{d/2}
+// (= 16π² only at d=4), and the master integral carries Γ(n−d/2) Δ^{d/2−n}.
+function loopFact(n){ let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
+// Format a multiple-of-½ value: integers plainly, halves as a/2, with a unicode minus.
+function fmtHalf(x){
+  const n2 = Math.round(2*x);
+  if (n2 % 2 === 0) return String(n2/2).replace('-','−');
+  return (n2<0?'−':'')+Math.abs(n2)+'/2';
+}
+// Γ(x) for x = (half-)integer. Even-d ⇒ integer arg ⇒ pole when ≤0 (UV divergence);
+// odd-d ⇒ half-integer arg ⇒ always finite (a multiple of √π).
+function loopGamma(x){
+  const t2 = Math.round(2*x);
+  if (t2 % 2 === 0){                                  // integer argument
+    const n = t2/2;
+    if (n <= 0) return {pole:true, str:'∞', val:Infinity};
+    return {pole:false, str:String(loopFact(n-1)), val:loopFact(n-1)};
+  }
+  let z = x, c = 1;                                   // half-integer: Γ(x)=c·√π
+  while (z > 0.5+1e-9){ z -= 1; c *= z; }
+  while (z < 0.5-1e-9){ c /= z; z += 1; }
+  const cs = Math.abs(c-1)<1e-9 ? '' : (Number.isInteger(c)?c:+(c.toFixed(3)))+'·';
+  return {pole:false, str:cs+'√π', val:c*Math.sqrt(Math.PI)};
+}
+// Display bundle for the current spacetime dimension d = DIM.
+function dimDisp(){
+  const d = DIM, half = d/2;
+  return {
+    d, eps:(4-d)/2,                                   // d = 4 − 2ε  ⇒ ε = (4−d)/2
+    meas:`d<sup>${d}</sup>ℓ`,                          // integration measure dᵈℓ
+    fourPi:d===4 ? '16π²'
+          : Number.isInteger(half) ? `(4π)<sup>${half}</sup>` : `(4π)<sup>${d}/2</sup>`,
+    half, isEven:d%2===0
+  };
+}
+// Evaluate the scalar master integral ∫dᵈℓ_E/(2π)ᵈ /(ℓ²+Δ)ⁿ at the current d.
+// Returns an HTML string: symbolic form → d substituted → evaluated (or pole flag).
+// The single source of truth for the scalar master integral, derived for ANY d
+// from one identity (no per-dimension lookups):
+//   ∫dᵈℓ_E/(2π)ᵈ /(ℓ²+Δ)ⁿ = Γ(n−d/2)/[(4π)^{d/2} Γ(n)] · Δ^{d/2−n}.
+// • Γ(n−d/2) finite  → evaluate to a closed form (loopGamma).
+// • Γ(n−d/2) on a pole (n−d/2 = −k, k≥0 int) → the UV divergence: set d=d₀−2ε and
+//   Laurent-expand Γ(−k+ε)=(−1)^k/k!·[1/ε+ψ(k+1)+O(ε)], ψ(k+1)=−γ_E+H_k, combined
+//   with (4π)^ε Δ^{−ε} μ^{2ε} = 1+ε·ln(4πμ²/Δ). d=4 is just the k=0 special case.
+function masterIntegralHTML(n){
+  const {d,half,fourPi} = dimDisp();
+  const arg = n - half;                               // Γ argument: n − d/2
+  const exp = half - n;                               // Δ exponent: d/2 − n
+  const g   = loopGamma(arg);
+  const sym = `∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR('1','(ℓ²+Δ)<sup>n</sup>')} = ${FR('Γ(n−d/2)','(4π)<sup>d/2</sup>Γ(n)')} Δ<sup>d/2−n</sup>`;
+  const subFR = FR(`Γ(${n}−${fmtHalf(half)})`, `${fourPi}·Γ(${n})`);
+
+  if (!g.pole){
+    const gN    = loopFact(n-1);                       // Γ(n) = (n−1)!
+    const denom = `${fourPi}${gN>1?'·'+gN:''}`;
+    const dPow  = exp===0 ? '  (Δ-independent — log-type)' : ` Δ<sup>${fmtHalf(exp)}</sup>`;
+    return `${sym}<br>At d=${d}, n=${n}: = ${subFR} Δ<sup>${fmtHalf(exp)}</sup> = ${FR(g.str, denom)}${dPow}  (UV finite)`;
+  }
+
+  // UV-divergent: Γ(n−d/2) sits on a pole. Derive the ε-expansion.
+  const k    = half - n;                               // pole index ≥ 0  (n−d/2 = −k)
+  const d0   = 2*half;                                 // the even integer dimension we expand about
+  const sgn  = k % 2 === 0 ? 1 : -1;
+  const kf   = loopFact(k), nf = loopFact(n-1);         // k!  and  Γ(n)=(n−1)!
+  const coefDen = kf * nf;                             // combined integer denominator
+  const fourPi0 = d0===4 ? '16π²' : (Number.isInteger(d0/2) ? `(4π)<sup>${d0/2}</sup>` : `(4π)<sup>${d0}/2</sup>`);
+  const Hk   = k===0 ? '' : ' + ' + (k===1 ? '1' : '(' + Array.from({length:k},(_,j)=>'1/'+(j+1)).join('+') + ')');
+  const dPow = k===0 ? '' : (k===1 ? ' Δ' : ` Δ<sup>${k}</sup>`);
+  const finalCoef = coefDen>1 ? FR(`${sgn<0?'−':''}1`, `${fourPi0}·${coefDen}`) : FR(`${sgn<0?'−':''}1`, fourPi0);
+  return `${sym}<br>At d=${d}, n=${n}: Γ(${fmtHalf(arg)}) is a pole ⇒ set d=${d0}−2ε so n−d/2 = −${k}+ε.<br>`
+    + `Laurent: Γ(−${k}+ε) = ${sgn<0?'−':''}${kf>1?FR('1',kf+''):''}[${FR('1','ε')} − γ_E${Hk}] + O(ε);  (4π)<sup>ε</sup>Δ<sup>−ε</sup>μ<sup>2ε</sup> = 1 + ε·ln${FR('4πμ²','Δ')}<br>`
+    + `⇒ I = ${finalCoef} [${FR('1','ε')} − γ_E${Hk} + ln${FR('4πμ²','Δ')}]${dPow}  (1/ε = UV pole → counterterm)`;
+}
+
 // ─── 4-boson loop scattering (γγ→γγ or gg→gg via fermion box) ────────────────
 function stepsPhotonBox(text, nLoops, nProp, isGluon) {
   const proc   = isGluon ? 'gg→gg' : 'γγ→γγ';
@@ -805,6 +939,8 @@ function stepsPhotonBox(text, nLoops, nProp, isGluon) {
   const theory = isGluon ? 'QCD' : 'QED';
   const Coup   = isGluon ? CP('g<sub>s</sub>') : CP('e');
   const loopType = nProp<=2?'Bubble B₀':nProp===3?'Triangle C₀':'Box D₀';
+  const DD = dimDisp();   // spacetime-dimension display bundle
+  const boxScalarD = DD.d - 2*nProp;   // scalar superficial degree D = d − 2(#props)
   const step0 = `<div style="font-size:11px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:1.8;white-space:pre-wrap;max-height:120px;overflow-y:auto">${esc(text)}</div>`;
 
   const steps = [
@@ -815,8 +951,8 @@ function stepsPhotonBox(text, nLoops, nProp, isGluon) {
 
     {title:'Why you cannot square this amplitude directly',
      rule:`<strong>Tree level:</strong> iM is rational in momenta → |M|² = M·M* directly.<br>
-       <strong>Loop level:</strong> iM = ∫d⁴ℓ f(ℓ) — an unevaluated integral.<br>
-       <strong>|∫d⁴ℓ f(ℓ)|² ≠ ∫d⁴ℓ |f(ℓ)|²  — you cannot commute squaring with integration.</strong>`,
+       <strong>Loop level:</strong> iM = ∫${DD.meas} f(ℓ) — an unevaluated integral (d=${DD.d} spacetime dims).<br>
+       <strong>|∫${DD.meas} f(ℓ)|² ≠ ∫${DD.meas} |f(ℓ)|²  — you cannot commute squaring with integration.</strong>`,
      expr:`Correct procedure:<br>
        1. Evaluate the loop integral → iM(s,t,u) = closed-form function<br>
        2. Sum all diagram topologies<br>
@@ -862,8 +998,8 @@ function stepsPhotonBox(text, nLoops, nProp, isGluon) {
     steps.push({
       title:'Loop integral D₀ — same computation as γγ→γγ, different prefactor',
       rule:`The Lorentz/spinor structure of the quark box is identical to the electron box in γγ→γγ. Replace e→g_s and Q→1 (absorbed into T^a).`,
-      expr:`D₀(s,t; m<sub>q</sub>²) = ${FR('−i','16π²')} × F(s/4m<sub>q</sub>², t/4m<sub>q</sub>²) &nbsp; [same function as QED box]<br><br>
-        UV degree of divergence = 4 − 4×2 + 4 = <strong>−4 → UV finite ✓</strong><br>
+      expr:`D₀(s,t; m<sub>q</sub>²) = ${FR('−i',DD.fourPi)} × F(s/4m<sub>q</sub>², t/4m<sub>q</sub>²) &nbsp; [same function as QED box]<br><br>
+        Scalar UV degree of divergence = d − 2×${nProp} = ${DD.d} − ${2*nProp} = <strong>${boxScalarD} ${boxScalarD<0?'→ UV finite ✓':boxScalarD===0?'→ log divergent':'→ UV divergent (d≥8)'}</strong><br>
         IR: finite for massive quarks; massless quarks need IR regularisation.`,
       expl:`The quark box is UV finite by power counting. For massless quarks (u,d,s at high energy) there are IR/collinear divergences that cancel against the virtual corrections to the tree-level amplitude (KLN theorem).`
     });
@@ -887,8 +1023,8 @@ function stepsPhotonBox(text, nLoops, nProp, isGluon) {
 
     steps.push({
       title:'D₀ box integral and Euler-Heisenberg limit',
-      rule:`Box integral: UV finite (superficial divergence D = −4). IR finite for massive fermion.`,
-      expr:`D₀(s,t;m_f²) = ${FR('−i','16π²')} F(s/4m_f², t/4m_f²) &nbsp; (dilogarithms Li₂)<br><br>
+      rule:`Box integral: scalar superficial degree D = d − 2×${nProp} = ${boxScalarD} ${boxScalarD<0?'(UV finite ✓)':'(UV divergent at this d)'}. IR finite for massive fermion.`,
+      expr:`D₀(s,t;m_f²) = ${FR('−i',DD.fourPi)} F(s/4m_f², t/4m_f²) &nbsp; (dilogarithms Li₂)<br><br>
         Low-energy limit: L<sub>EH</sub> = ${FR('α²','180m_f⁴')}[5(F<sub>μν</sub>F<sup>μν</sup>)² + 14(F<sub>μν</sub>F̃<sup>μν</sup>)²]`,
       expl:`The Euler-Heisenberg Lagrangian (1936) comes from this calculation. It describes photon-photon scattering and photon splitting in strong fields.`
     });
@@ -900,7 +1036,7 @@ function stepsPhotonBox(text, nLoops, nProp, isGluon) {
     expr:`1. Passarino-Veltman reduction: reduce numerator N(ℓ) to scalar integrals A₀,B₀,C₀,D₀<br>
       2. Feynman parametrise D₀ (3 parameters x,y,z for 4 propagators)<br>
       3. Shift + Wick rotate → Euclidean<br>
-      4. Evaluate ∫d⁴ℓ<sub>E</sub>/(ℓ²+Δ)⁴ = ${FR('iπ²','6Δ²')} (standard formula)<br>
+      4. Evaluate the master integral at d=${DD.d}: ${masterIntegralHTML(nProp)} <br>
       5. Integrate x,y,z → express in Li₂ functions<br>
       ${isGluon?'6. Contract with colour trace Tr(T<sup>a</sup>T<sup>b</sup>T<sup>c</sup>T<sup>d</sup>)<br>7. Add tree-level + other loop diagrams<br>8.':'6.'} Square: |M(s,t,u)|²`,
     expl:`Use the Solve button on the loop measure expression to walk through the dimensional regularisation procedure. ${isGluon?'For full NLO gg→gg: use a dedicated tool (Madgraph, GoSam, OpenLoops) — the colour algebra and diagram counting are substantial.':''}`
@@ -2706,6 +2842,7 @@ function parseLoopPropagators(text) {
 //
 function stepsLoopFermionTriangle(text, nPhotExt, nFermProp, coupling) {
   const coupHTML = coupling==='gs' ? CP('g<sub>s</sub>') : CP('e');
+  const DD = dimDisp();   // spacetime-dimension display bundle
   const isOdd = nPhotExt % 2 === 1;
   const loopType = nFermProp<=2?'Bubble':nFermProp===3?'Triangle':nFermProp===4?'Box':'n-gon';
 
@@ -2753,11 +2890,11 @@ function stepsLoopFermionTriangle(text, nPhotExt, nFermProp, coupling) {
      expl:`Key: Tr[odd # of γ matrices] = 0 in standard 4D Dirac algebra. This kills many terms. Only terms with an EVEN number of gamma matrices survive.`},
 
     {title:'UV power counting: superficial degree of divergence',
-     rule:`For a 1-loop diagram with ${nFermProp} fermion propagators (each ~ 1/k for large k) and d=4 integration:<br>
-       D_superficial = 4 − ${nFermProp} (from loop momentum counting)<br>
-       Tensor rank r shifts this: D_r = D_scalar + r = (4−${nFermProp}) + ${nFermProp} = 4`,
-     expr:`Scalar integral (rank 0): D = 4 − ${nFermProp} = <strong>${4-nFermProp}</strong> &nbsp; ${4-nFermProp<0?'→ UV convergent ✓':4-nFermProp===0?'→ logarithmically divergent':'→ power divergent'}<br>
-       Rank-${nFermProp} tensor integral: D = ${4-nFermProp} + ${nFermProp} = <strong>4</strong> → <em>naively quartic divergent</em><br>
+     rule:`For a 1-loop diagram with ${nFermProp} fermion propagators (each ~ 1/k for large k) and d=${DD.d} integration:<br>
+       D_superficial = d − ${nFermProp} = ${DD.d} − ${nFermProp} (from loop momentum counting)<br>
+       Tensor rank r shifts this: D_r = D_scalar + r = (${DD.d}−${nFermProp}) + ${nFermProp} = ${DD.d}`,
+     expr:`Scalar integral (rank 0): D = ${DD.d} − ${nFermProp} = <strong>${DD.d-nFermProp}</strong> &nbsp; ${DD.d-nFermProp<0?'→ UV convergent ✓':DD.d-nFermProp===0?'→ logarithmically divergent':'→ power divergent'}<br>
+       Rank-${nFermProp} tensor integral: D = ${DD.d-nFermProp} + ${nFermProp} = <strong>${DD.d}</strong> → <em>naively degree-${DD.d} divergent</em><br>
        <strong>BUT</strong>: Ward identity (gauge invariance) k_μ M^{μ...} = 0 cancels the worst divergences.<br>
        Physical result: only logarithmic or milder divergences remain after Ward identity imposed.`,
      expl:`The Ward identity is essential: the gauge coupling iQeγ^μ satisfies k_μ(iQeγ^μ) ∝ (k̸) which causes cancellations between different terms. Without it the amplitude would be quartic divergent; with it the maximal divergence drops to ln Λ (or finite for n≥3 external photons).`},
@@ -2778,10 +2915,10 @@ function stepsLoopFermionTriangle(text, nPhotExt, nFermProp, coupling) {
 
     {title:`What would the C₀ look like without Furry — Passarino-Veltman triangle`,
      rule:`If we were computing a ${nPhotExt}-gluon triangle in QCD (where Furry doesn't apply due to f^{abc} colour structure), or an AVV triangle with one axial current, the tensor integral would decompose as:`,
-     expr:`I<sup>μνρ</sup> = ∫${FR('d<sup>4</sup>ℓ','(2π)<sup>4</sup>')} × ${FR(`${TR('Tr')}[γ<sup>μ</sup>(ℓ̸+m)γ<sup>ν</sup>(ℓ̸+${q2}̸+m)γ<sup>ρ</sup>(ℓ̸+${q3}̸+m)]`,`(ℓ²−m²)((ℓ+${q2})²−m²)((ℓ+${q3})²−m²)`)}<br><br>
+     expr:`I<sup>μνρ</sup> = ∫${FR(DD.meas,'(2π)<sup>'+DD.d+'</sup>')} × ${FR(`${TR('Tr')}[γ<sup>μ</sup>(ℓ̸+m)γ<sup>ν</sup>(ℓ̸+${q2}̸+m)γ<sup>ρ</sup>(ℓ̸+${q3}̸+m)]`,`(ℓ²−m²)((ℓ+${q2})²−m²)((ℓ+${q3})²−m²)`)}<br><br>
        PV tensor decomposition: I<sup>μνρ</sup> = C<sup>μ</sup>(A<sub>mn</sub>g<sup>νρ</sup>+...) + C<sup>νρ</sup>(...) + ...<br>
        All coefficients reduce to the scalar triangle: C₀(p₁²,p₂²,p₃²; m²,m²,m²)<br>
-       C₀ = ${FR('i','16π²')} × ${FR('1','m²')} × [finite for massive m, IR divergent for m=0]`,
+       C₀ = ${FR('i',DD.fourPi)} × ${FR('1','m²')} × [finite for massive m, IR divergent for m=0]`,
      expl:`The AVV triangle (one axial γ^5 vertex, two vector) is the source of the Adler-Bell-Jackiw (ABJ) anomaly. It cannot be made gauge-invariant simultaneously in all three currents — one Ward identity must be violated. This is the quantum mechanical origin of gauge anomalies.`},
 
     {title:`Anomaly context: ABJ triangle and charge quantization`,
@@ -2821,13 +2958,8 @@ function stepsLoopFermionTriangle(text, nPhotExt, nFermProp, coupling) {
 
     {title:'Evaluate: Wick rotation → master formula → result',
      rule:`After Wick rotation (ℓ⁰→iℓ_E⁰) and applying the Euclidean master formula:`,
-     expr:`∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR('1','(ℓ²+Δ)<sup>n</sup>')} = ${FR('Γ(n−d/2)','(4π)<sup>d/2</sup>Γ(n)')} Δ<sup>−(n−d/2)</sup><br><br>
-       For the ${loopType} (n=${nFermProp}), d=4−2ε:<br>
-       ${nFermProp<=2
-         ? `B₀ = ${FR('i','16π²')}[Δ<sub>UV</sub> − ∫₀¹ dx ln${FR('Δ(x)','μ²')}]  &nbsp;(UV divergent)`
-         : nFermProp===3
-         ? `C₀ = ${FR('i','16π²')} × 2∫₀¹ dx₁dx₂ θ(1−x₁−x₂) × ${FR('1','Δ(x₁,x₂)')}  &nbsp;(UV finite, possibly IR divergent)`
-         : `D₀ = ${FR('i','16π²')} × 6∫₀¹ dx₁...dx₄ δ(Σ−1) × ${FR('1','Δ(xᵢ)')}  &nbsp;(UV and IR finite)`}`,
+     expr:`For the ${loopType} (n=${nFermProp}) at d=${DD.d}:<br>${masterIntegralHTML(nFermProp)}<br><br>
+       The remaining Feynman-parameter integral over Δ(xᵢ) (from the earlier step) is then done to express the result in the external invariants.`,
      expl:`${nFermProp===3
        ? 'The triangle C₀ is UV finite by power counting (D_scalar = 4-2×3 = -2 < 0). It can have IR divergences when Δ→0 (massless kinematics).'
        : nFermProp===2
@@ -2854,6 +2986,7 @@ function stepsLoopIntegral(nLoops, nProp, coupling, text) {
   const coupHTML = coupling==='gs' ? CP('g<sub>s</sub>') : CP('e');
   const loopType = nProp<=2 ? 'Bubble B₀' : nProp===3 ? 'Triangle C₀' : 'Box D₀';
   const nFeyParam = nProp - 1;
+  const DD = dimDisp();   // spacetime-dimension display bundle (measure, (4π)^{d/2}, ε, …)
 
   // Extract propagator momenta from text if available
   const propMoms = text ? parseLoopPropagators(text) : [];
@@ -2873,12 +3006,18 @@ function stepsLoopIntegral(nLoops, nProp, coupling, text) {
      rule:`Propagators detected: ${nProp}. ${hasProps?'Propagator momenta extracted from text: <strong>'+propMoms.join(', ')+'</strong>':'Momentum routing read from diagram.'}`,
      expr:step0, expl:''}] : []),
 
-    {title:`Step 1 — Dimensional regularisation: replace d=4 with d=4−2ε`,
-     rule:`<strong>Why:</strong> loop integrals diverge in d=4 (∫d⁴ℓ/ℓ⁴ ~ log Λ for n=2, worse for n<2).<br>
-       Analytically continue to d dimensions, restore d=4 at the end by expanding in ε.<br>
-       Introduce renormalisation scale μ to keep coupling dimensionless: ∫d⁴ℓ → μ<sup>2ε</sup>∫d<sup>d</sup>ℓ`,
-     expr:`I = μ<sup>2ε</sup>∫${FR('d<sup>d</sup>ℓ','(2π)<sup>d</sup>')} × ${FR('N(ℓ)', Array.from({length:nProp},(_,i)=>'D'+(i+1)).join(' '))}`,
-     expl:`N(ℓ) = trace/vertex numerator. D_i = (ℓ+p_i)²−m² for each propagator. UV poles appear as 1/ε in the final result.`},
+    (DD.d===4
+     ? {title:`Step 1 — Dimensional regularisation: continue d=4 → d=4−2ε`,
+        rule:`<strong>Why:</strong> loop integrals diverge in d=4 (∫d⁴ℓ/ℓ⁴ ~ log Λ for n=2, worse for n<2).<br>
+          Analytically continue to d dimensions, restore d=4 at the end by expanding in ε.<br>
+          <strong>Coupling mass dimension:</strong> in d dims [${coupHTML}] = (4−d)/2 = ε, which vanishes only at d=4. Insert μ<sup>ε</sup> per vertex to keep the coupling dimensionless: ∫d⁴ℓ → μ<sup>2ε</sup>∫d<sup>d</sup>ℓ`,
+        expr:`I = μ<sup>2ε</sup>∫${FR('d<sup>d</sup>ℓ','(2π)<sup>d</sup>')} × ${FR('N(ℓ)', Array.from({length:nProp},(_,i)=>'D'+(i+1)).join(' '))}`,
+        expl:`N(ℓ) = trace/vertex numerator. D_i = (ℓ+p_i)²−m² for each propagator. UV poles appear as 1/ε in the final result.`}
+     : {title:`Step 1 — Work in d=${DD.d} dimensions: measure ∫${DD.meas}`,
+        rule:`<strong>Coupling mass dimension changes with d:</strong> [${coupHTML}] = (4−d)/2 = ${fmtHalf(DD.eps)} at d=${DD.d}, so the coupling is <em>not</em> dimensionless — each vertex carries μ<sup>${fmtHalf(DD.eps)}</sup> to keep the action dimensionless (μ<sup>${fmtHalf(4-DD.d)}</sup> total for the two-vertex loop).<br>
+          <strong>Measure:</strong> integrate over ∫${DD.meas}, not ∫d⁴ℓ; the master prefactor becomes (4π)<sup>d/2</sup> = ${DD.fourPi}.`,
+        expr:`I = μ<sup>${fmtHalf(4-DD.d)}</sup>∫${FR(DD.meas,'(2π)<sup>'+DD.d+'</sup>')} × ${FR('N(ℓ)', Array.from({length:nProp},(_,i)=>'D'+(i+1)).join(' '))}`,
+        expl:`N(ℓ) = trace/vertex numerator. D_i = (ℓ+p_i)²−m². The amplitude's overall mass dimension is fixed by the external legs (editor's [M] = d − E(d−2)/2 readout); the μ powers restore exactly that dimension once the loop is done.`}),
 
     {title:`Step 2 — Feynman parametrisation for ${nProp} propagators`,
      rule:`<strong>Master formula:</strong><br>
@@ -2906,17 +3045,14 @@ function stepsLoopIntegral(nLoops, nProp, coupling, text) {
 
     {title:'Step 5 — Master Euclidean formula → PV scalar integral',
      rule:`∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR('(ℓ²)<sup>r</sup>','(ℓ²+Δ)<sup>n</sup>')} = ${FR('1','(4π)<sup>d/2</sup>')} ${FR('Γ(r+d/2)Γ(n−r−d/2)','Γ(d/2)Γ(n)')} Δ<sup>r−n+d/2</sup>`,
-     expr:`For the ${loopType} (n=${nProp}) with d=4−2ε:<br>
-       ${nProp===2
-         ? `B₀ = ${FR('i','16π²')}[${FR('1','ε')}−γ_E+ln(4π)−∫₀¹dx ln${FR('Δ(x)','μ²')}]`
-         : nProp===3
-         ? `C₀ = ${FR('i','16π²')}·2∫₀¹dx₁dx₂·θ(1−x₁−x₂)·${FR('1','Δ(x₁,x₂)')}  &nbsp;[UV finite, d=4 safe]`
-         : `D₀ = ${FR('i','16π²')}·6∫₀¹dx₁···dx₄·δ(Σ−1)·${FR('1','Δ(xᵢ)')}  &nbsp;[UV+IR finite]`}`,
+     expr:`For the ${loopType} (n=${nProp}) at d=${DD.d}:<br>
+       ${masterIntegralHTML(nProp)}`,
      expl:`The Δ function encodes all the kinematics. For our diagram with propagator momenta ${hasProps?propMoms.join(', '):'q₁,q₂,...'}: Δ contains all the relevant mass and momentum invariants.`},
 
     {title:'Step 6 — UV/IR divergence structure',
-     rule:`UV-divergent if superficial degree D = 4L − 2×(# propagators) ≥ 0.<br>
-       For our diagram: D = 4×${nLoops} − 2×${nProp} = <strong>${4*nLoops-2*nProp}</strong> ${4*nLoops-2*nProp>=0?'→ UV divergent':'→ UV finite ✓'}`,
+     rule:`UV-divergent if superficial degree D = dL − 2×(# propagators) ≥ 0 &nbsp;(d=${DD.d}).<br>
+       For our diagram: D = ${DD.d}×${nLoops} − 2×${nProp} = <strong>${DD.d*nLoops-2*nProp}</strong> ${DD.d*nLoops-2*nProp>=0?'→ UV divergent':'→ UV finite ✓'}<br>
+       <em>Raising d makes loops more divergent</em> — the box (UV-finite at d=4) develops a UV pole once d≥8.`,
      expr:nProp<=2
        ? `B₀ contains 1/ε UV pole → requires renormalisation counterterm.<br>
           MS̄ renormalization: δZ or δm absorbs the pole.`
@@ -3522,8 +3658,9 @@ function go() {
     if (pendingIMComments && pendingIMComments2) {
       const t1 = iMDiagramToTrace(pendingIMComments);
       const t2 = iMDiagramToTrace(pendingIMComments2);
-      pendingIMComments = pendingIMComments2 = null;
-      pendingIMDisplay  = pendingIMDisplay2  = null;
+      // NOTE: keep pendingIMComments so re-solves (e.g. after changing the
+      // spacetime dimension d) re-derive the SAME imported diagram. They are
+      // cleared only when the user manually edits the input box (see listeners).
       if (t1 && t2) {
         const res = stepsInterference(t1, t2, diagSign);
         STEPS = res.steps; LATEX = res.latex; showAll(); return;
@@ -3543,8 +3680,7 @@ function go() {
   if (pendingIMComments) {
     const comments = pendingIMComments;
     const display  = pendingIMDisplay || raw;
-    pendingIMComments = null;
-    pendingIMDisplay  = null;
+    // Keep the import alive so changing d re-derives this same diagram (see listeners).
     const res = stepsFromIM(comments, display);
     STEPS = res.steps; LATEX = res.latex;
     showAll(); return;
@@ -3660,9 +3796,19 @@ function eg(name) {
 document.getElementById('amp-input').addEventListener('keydown', e=>{
   if (e.ctrlKey&&e.key==='Enter'){ e.preventDefault(); go(); }
 });
+// Manually editing an input box invalidates the structured editor-import state,
+// so the next solve parses the typed text instead of the stale imported comments.
+document.getElementById('amp-input').addEventListener('input', () => {
+  pendingIMComments = null; pendingIMDisplay = null;
+});
+const _ai2 = document.getElementById('amp-input2');
+if (_ai2) _ai2.addEventListener('input', () => {
+  pendingIMComments2 = null; pendingIMDisplay2 = null;
+});
 // Re-solve when the spacetime dimension changes, so d-dependence shows live.
+// Trigger on any pending import too (its text box is populated, so .value is set).
 document.getElementById('inp-dim').addEventListener('input', () => {
-  if (document.getElementById('amp-input').value.trim()) go();
+  if (document.getElementById('amp-input').value.trim() || pendingIMComments) go();
 });
 
 function importFromEditor() {
@@ -3710,6 +3856,14 @@ function toggleSyntax(){
   const p=document.getElementById('syntax-help');
   p.style.display=p.style.display==='none'?'block':'none';
 }
+function toggleHelp(show){
+  const m=document.getElementById('help-modal');
+  m.style.display = (show===undefined ? (m.style.display==='none'?'flex':'none') : (show?'flex':'none'));
+}
+document.getElementById('help-modal').addEventListener('click', e=>{ if(e.target.id==='help-modal') toggleHelp(false); });
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && document.getElementById('help-modal').style.display!=='none') toggleHelp(false);
+});
 
 document.getElementById('btn-copy').onclick=()=>{
   if(!LATEX) return;

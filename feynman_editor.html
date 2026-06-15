@@ -211,7 +211,76 @@
   <label class="check-row"><input type="checkbox" id="chk-snap" checked> Snap</label>
   <div class="sep"></div>
   <button id="btn-toggle-rules">Feynman Rules ▾</button>
+  <button id="btn-help" title="Show all controls">Help ?</button>
   <div id="status">Select tool and click to place vertices</div>
+</div>
+
+<!-- ─── Help / controls overlay ─────────────────────────────────────────────── -->
+<style>
+  .help-overlay { position:fixed; inset:0; background:rgba(0,0,0,.66); z-index:9999; display:flex; align-items:center; justify-content:center; }
+  .help-box { background:#0e0e1a; border:1px solid #2a2a48; border-radius:8px; width:min(780px,93vw); max-height:88vh; display:flex; flex-direction:column; box-shadow:0 12px 44px rgba(0,0,0,.65); }
+  .help-hd { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #22223e; font-size:15px; color:#a0b0e0; font-weight:bold; }
+  .help-x { background:none; border:none; color:#8080a0; font-size:22px; cursor:pointer; line-height:1; padding:0 4px; }
+  .help-x:hover { color:#fff; }
+  .help-body { padding:10px 18px 20px; overflow-y:auto; font-size:12.5px; color:#b8c0d8; line-height:1.6; }
+  .help-body h3 { color:#7e94d0; font-size:13px; margin:15px 0 5px; border-bottom:1px solid #1c1c34; padding-bottom:3px; }
+  .help-body h3:first-child { margin-top:2px; }
+  .help-body table { width:100%; border-collapse:collapse; }
+  .help-body td { padding:3px 10px 3px 0; vertical-align:top; }
+  .help-body td:first-child { white-space:nowrap; color:#cdd6ee; width:1%; }
+  .help-body ul { margin:4px 0; padding-left:18px; }
+  .help-body li { margin:2px 0; }
+  .help-body .hk { background:#1a1a30; border:1px solid #2e2e50; border-radius:3px; padding:0 5px; font-size:11px; color:#90a0d0; font-family:monospace; }
+  .help-foot { font-size:11px; color:#56608a; margin-top:14px; border-top:1px solid #1c1c34; padding-top:8px; }
+</style>
+<div id="help-modal" class="help-overlay" style="display:none">
+  <div class="help-box">
+    <div class="help-hd"><span>⬡ Feynman Editor — Controls</span><button id="help-close" class="help-x">×</button></div>
+    <div class="help-body">
+      <h3>Drawing tools <span style="color:#56608a;font-weight:normal">(toolbar, or press the key)</span></h3>
+      <table>
+        <tr><td><b>Select</b> <span class="hk">Q</span></td><td>Click a vertex/line to select. Drag empty canvas = box-select. Drag a selection = move the group. Double-click a vertex/line to label it.</td></tr>
+        <tr><td><b>Move</b> <span class="hk">M</span></td><td>Click-drag anywhere to pan the canvas.</td></tr>
+        <tr><td><b>Vertex</b> <span class="hk">V</span></td><td>Click the canvas to drop an interaction vertex.</td></tr>
+        <tr><td><b>Fermion</b> <span class="hk">F</span> · <b>Photon</b> <span class="hk">P</span> · <b>Gluon</b> <span class="hk">G</span> · <b>Scalar</b> <span class="hk">S</span> · <b>Ghost</b> <span class="hk">H</span></td><td>Click two vertices to connect them with that line type. Click the <i>same</i> vertex twice to make a self-loop.</td></tr>
+        <tr><td><b>Delete</b> <span class="hk">X</span></td><td>Click a vertex or line to remove it.</td></tr>
+      </table>
+
+      <h3>Mouse</h3>
+      <ul>
+        <li><b>Double-click empty canvas</b> → drop a new vertex. <b>Double-click a vertex/line</b> → edit its label.</li>
+        <li><b>Right-click + drag</b> → pan (works in any tool).</li>
+        <li>With a line selected, drag its <b>curve handle</b> to bend it (use <b>Reset curve</b> in the inspector to straighten).</li>
+      </ul>
+
+      <h3>Keyboard</h3>
+      <table>
+        <tr><td><span class="hk">Ctrl+Z</span></td><td>Undo</td></tr>
+        <tr><td><span class="hk">Ctrl+C</span> / <span class="hk">Ctrl+V</span></td><td>Copy / paste the selection (or the whole connected diagram)</td></tr>
+        <tr><td><span class="hk">Delete</span> / <span class="hk">⌫</span></td><td>Delete the current selection</td></tr>
+        <tr><td><span class="hk">0</span></td><td>Reset zoom &amp; pan</td></tr>
+        <tr><td><span class="hk">Esc</span></td><td>Cancel a half-drawn line / deselect</td></tr>
+      </table>
+
+      <h3>View</h3>
+      <p>The <b>+ / 1:1 / −</b> buttons (bottom-right of the canvas) zoom; press <span class="hk">0</span> to reset. Toggle <b>Grid</b>, <b>Labels</b>, and <b>Snap</b>-to-grid in the top bar.</p>
+
+      <h3>Building the amplitude</h3>
+      <ul>
+        <li><b>iM ▶</b> — reads the Feynman rules off your diagram and writes iM, the momentum routing, the <b>mass dimension</b>, the loop measure ∫dᵈℓ, the UV degree of divergence, and the <b>Lagrangian responsible</b> (free + interaction terms).</li>
+        <li><b>dim d</b> — the spacetime dimension. Changes the loop measure ∫dᵈℓ and the mass-dimension formula [M] = d − E(d−2)/2; the amplitude rebuilds live.</li>
+        <li><b>Copy LaTeX</b> — copies iM as LaTeX. <b>→ Stepper</b> — sends iM to the amplitude stepper to square it.</li>
+      </ul>
+
+      <h3>Inspector &amp; Feynman rules (right panel)</h3>
+      <ul>
+        <li>Select a vertex/line to edit its <b>label, style, type, and arrow direction</b>; the matched Feynman rule is shown beneath.</li>
+        <li>A vertex <b>label</b> (e, q, Zf, lW, Hf, λ, 3g, …) picks the interaction. Leave external-leg stubs blank — they auto-label p₁…p₄.</li>
+        <li><b>Feynman Rules ▾</b> — view/edit propagators, external legs, vertex rules, and the loop measure; <b>Save rules</b> or <b>Reset defaults</b>.</li>
+      </ul>
+      <div class="help-foot">Tip: arrows show fermion-number flow (not momentum). Momentum &amp; corner labels are positional: p₁=bottom-left, p₂=top-left (in), p₃=top-right, p₄=bottom-right (out).</div>
+    </div>
+  </div>
 </div>
 
 <div id="main">
@@ -2039,38 +2108,63 @@ const FR_DEFAULTS = {
     ghost_out:   { text: 'η̄^a({p})',             latex: '\\bar{\\eta}^a({p})' },
   },
   vertices: [
+    // Each vertex also carries `lag`/`lagLatex`: the interaction Lagrangian term
+    // L_int whose functional derivative gives this Feynman rule. Shown by buildAmplitude.
     // ── QED / QCD ──────────────────────────────────────────────────────────────
-    { label: 'e',   sig: {fermion:2, photon:1}, text: 'iQeγ^μ',              latex: 'iQe\\gamma^{\\mu}' },
-    { label: 'q',   sig: {fermion:2, gluon:1},  text: 'ig_sT^aγ^μ',          latex: 'ig_s T^a\\gamma^{\\mu}' },
-    { label: '3g',  sig: {gluon:3},  text: 'g_sf^{abc}[η^{μν}(p₁-p₂)^ρ+η^{νρ}(p₂-p₃)^μ+η^{ρμ}(p₃-p₁)^ν]',  latex: 'g_s f^{abc}[\\eta^{\\mu\\nu}(p_1{-}p_2)^{\\rho}+\\eta^{\\nu\\rho}(p_2{-}p_3)^{\\mu}+\\eta^{\\rho\\mu}(p_3{-}p_1)^{\\nu}]' },
-    { label: '4g',  sig: {gluon:4},  text: '-ig_s²[f^{ace}f^{bde}(η^{μρ}η^{νσ}-η^{μσ}η^{νρ})+f^{ade}f^{bce}(η^{μσ}η^{νρ}-η^{μν}η^{ρσ})+f^{abe}f^{cde}(η^{μν}η^{ρσ}-η^{μρ}η^{νσ})]',  latex: '-ig_s^2[f^{ace}f^{bde}(\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma}-\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho})+f^{ade}f^{bce}(\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho}-\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma})+f^{abe}f^{cde}(\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma}-\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma})]' },
-    { label: 'λ',   sig: {scalar:4}, text: '−iλ',                            latex: '-i\\lambda' },
+    { label: 'e',   sig: {fermion:2, photon:1}, text: 'iQeγ^μ',              latex: 'iQe\\gamma^{\\mu}',
+      lag: '−Qe ψ̄γ^μψ A_μ',            lagLatex: '-Qe\\,\\bar\\psi\\gamma^{\\mu}\\psi\\,A_{\\mu}' },
+    { label: 'q',   sig: {fermion:2, gluon:1},  text: 'ig_sT^aγ^μ',          latex: 'ig_s T^a\\gamma^{\\mu}',
+      lag: '−g_s ψ̄γ^μT^aψ A^a_μ',      lagLatex: '-g_s\\,\\bar\\psi\\gamma^{\\mu}T^a\\psi\\,A^a_{\\mu}' },
+    { label: '3g',  sig: {gluon:3},  text: 'g_sf^{abc}[η^{μν}(p₁-p₂)^ρ+η^{νρ}(p₂-p₃)^μ+η^{ρμ}(p₃-p₁)^ν]',  latex: 'g_s f^{abc}[\\eta^{\\mu\\nu}(p_1{-}p_2)^{\\rho}+\\eta^{\\nu\\rho}(p_2{-}p_3)^{\\mu}+\\eta^{\\rho\\mu}(p_3{-}p_1)^{\\nu}]',
+      lag: '−g_s f^{abc}(∂_μ A^a_ν)A^{bμ}A^{cν}',  lagLatex: '-g_s f^{abc}(\\partial_{\\mu}A^a_{\\nu})A^{b\\mu}A^{c\\nu}' },
+    { label: '4g',  sig: {gluon:4},  text: '-ig_s²[f^{ace}f^{bde}(η^{μρ}η^{νσ}-η^{μσ}η^{νρ})+f^{ade}f^{bce}(η^{μσ}η^{νρ}-η^{μν}η^{ρσ})+f^{abe}f^{cde}(η^{μν}η^{ρσ}-η^{μρ}η^{νσ})]',  latex: '-ig_s^2[f^{ace}f^{bde}(\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma}-\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho})+f^{ade}f^{bce}(\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho}-\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma})+f^{abe}f^{cde}(\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma}-\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma})]',
+      lag: '−¼g_s² f^{abe}f^{cde} A^a_μA^b_νA^{cμ}A^{dν}',  lagLatex: '-\\tfrac14 g_s^2 f^{abe}f^{cde}A^a_{\\mu}A^b_{\\nu}A^{c\\mu}A^{d\\nu}' },
+    { label: 'λ',   sig: {scalar:4}, text: '−iλ',                            latex: '-i\\lambda',
+      lag: '−(λ/4!) φ⁴',                lagLatex: '-\\tfrac{\\lambda}{4!}\\phi^4' },
     // ── Weak charged current (W boson, draw W as photon-type line) ─────────
     { label: 'lW',  sig: {fermion:2, photon:1}, text: 'ig/(2√2) γ^μ(1−γ⁵)',
-      latex: '\\frac{ig}{2\\sqrt{2}}\\gamma^{\\mu}(1-\\gamma^5)' },
+      latex: '\\frac{ig}{2\\sqrt{2}}\\gamma^{\\mu}(1-\\gamma^5)',
+      lag: '−(g/2√2) W⁺_μ ν̄γ^μ(1−γ⁵)ℓ + h.c.',  lagLatex: '-\\tfrac{g}{2\\sqrt2}W^+_{\\mu}\\bar\\nu\\gamma^{\\mu}(1-\\gamma^5)\\ell + \\text{h.c.}' },
     { label: 'qW',  sig: {fermion:2, photon:1}, text: 'iV_{CKM}g/(2√2) γ^μ(1−γ⁵)',
-      latex: '\\frac{iV_{\\mathrm{CKM}}g}{2\\sqrt{2}}\\gamma^{\\mu}(1-\\gamma^5)' },
+      latex: '\\frac{iV_{\\mathrm{CKM}}g}{2\\sqrt{2}}\\gamma^{\\mu}(1-\\gamma^5)',
+      lag: '−(g/2√2) V_{CKM} W⁺_μ ūγ^μ(1−γ⁵)d + h.c.',  lagLatex: '-\\tfrac{g}{2\\sqrt2}V_{\\mathrm{CKM}}W^+_{\\mu}\\bar u\\gamma^{\\mu}(1-\\gamma^5)d + \\text{h.c.}' },
     // ── Weak neutral current (Z boson) ──────────────────────────────────────
     { label: 'Zf',  sig: {fermion:2, photon:1}, text: 'ig/(2cosθ_W) γ^μ(g_V−g_Aγ⁵)',
-      latex: '\\frac{ig}{2\\cos\\theta_W}\\gamma^{\\mu}(g_V-g_A\\gamma^5)' },
+      latex: '\\frac{ig}{2\\cos\\theta_W}\\gamma^{\\mu}(g_V-g_A\\gamma^5)',
+      lag: '−(g/2cosθ_W) Z_μ ψ̄γ^μ(g_V−g_Aγ⁵)ψ',  lagLatex: '-\\tfrac{g}{2\\cos\\theta_W}Z_{\\mu}\\bar\\psi\\gamma^{\\mu}(g_V-g_A\\gamma^5)\\psi' },
     // ── Higgs–fermion Yukawa ────────────────────────────────────────────────
     { label: 'Hf',  sig: {fermion:2, scalar:1}, text: '−im_f/v',
-      latex: '-i\\frac{m_f}{v}' },
+      latex: '-i\\frac{m_f}{v}',
+      lag: '−(m_f/v) H ψ̄ψ',            lagLatex: '-\\tfrac{m_f}{v}H\\bar\\psi\\psi' },
     // ── Triple gauge (W/Z/γ drawn as photon-type) ───────────────────────────
     { label: 'WWγ', sig: {photon:3}, text: 'ie[g_μν(p₁−p₂)^ρ+g_{νρ}(p₂−p₃)^μ+g_{ρμ}(p₃−p₁)^ν]',
-      latex: 'ie[g_{\\mu\\nu}(p_1{-}p_2)^{\\rho}+g_{\\nu\\rho}(p_2{-}p_3)^{\\mu}+g_{\\rho\\mu}(p_3{-}p_1)^{\\nu}]' },
+      latex: 'ie[g_{\\mu\\nu}(p_1{-}p_2)^{\\rho}+g_{\\nu\\rho}(p_2{-}p_3)^{\\mu}+g_{\\rho\\mu}(p_3{-}p_1)^{\\nu}]',
+      lag: '−ie(∂_μW⁺_ν−∂_νW⁺_μ)W^{−μ}A^ν + h.c.',  lagLatex: '-ie(\\partial_{\\mu}W^+_{\\nu}-\\partial_{\\nu}W^+_{\\mu})W^{-\\mu}A^{\\nu} + \\text{h.c.}' },
     { label: 'WWZ', sig: {photon:3}, text: 'igcosθ_W[g_μν(p₁−p₂)^ρ+g_{νρ}(p₂−p₃)^μ+g_{ρμ}(p₃−p₁)^ν]',
-      latex: 'ig\\cos\\theta_W[g_{\\mu\\nu}(p_1{-}p_2)^{\\rho}+g_{\\nu\\rho}(p_2{-}p_3)^{\\mu}+g_{\\rho\\mu}(p_3{-}p_1)^{\\nu}]' },
+      latex: 'ig\\cos\\theta_W[g_{\\mu\\nu}(p_1{-}p_2)^{\\rho}+g_{\\nu\\rho}(p_2{-}p_3)^{\\mu}+g_{\\rho\\mu}(p_3{-}p_1)^{\\nu}]',
+      lag: '−ig cosθ_W(∂_μW⁺_ν−∂_νW⁺_μ)W^{−μ}Z^ν + h.c.',  lagLatex: '-ig\\cos\\theta_W(\\partial_{\\mu}W^+_{\\nu}-\\partial_{\\nu}W^+_{\\mu})W^{-\\mu}Z^{\\nu} + \\text{h.c.}' },
     // ── Higgs–gauge couplings (H drawn as scalar, W/Z as photon) ───────────
     { label: 'HWW', sig: {scalar:1, photon:2}, text: 'igm_W g_μν',
-      latex: 'igm_W g_{\\mu\\nu}' },
+      latex: 'igm_W g_{\\mu\\nu}',
+      lag: 'g m_W H W⁺_μW^{−μ}',         lagLatex: 'g m_W\\,H\\,W^+_{\\mu}W^{-\\mu}' },
     { label: 'HZZ', sig: {scalar:1, photon:2}, text: 'igm_Z/cosθ_W g_μν',
-      latex: 'i\\frac{gm_Z}{\\cos\\theta_W}g_{\\mu\\nu}' },
+      latex: 'i\\frac{gm_Z}{\\cos\\theta_W}g_{\\mu\\nu}',
+      lag: '(g m_Z/2cosθ_W) H Z_μZ^μ',   lagLatex: '\\tfrac{g m_Z}{2\\cos\\theta_W}H\\,Z_{\\mu}Z^{\\mu}' },
     // ── Higgs self-coupling ────────────────────────────────────────────────
     { label: 'H³',  sig: {scalar:3}, text: '−3iλv',
-      latex: '-3i\\lambda v' },
+      latex: '-3i\\lambda v',
+      lag: '−λv H³',                     lagLatex: '-\\lambda v\\,H^3' },
   ],
-  measure: { text: '∫d⁴{l}/(2π)⁴', latex: '\\int\\!\\frac{d^4{l}}{(2\\pi)^4}' },
+  measure: { text: '∫d{D}{l}/(2π){D}', latex: '\\int\\!\\frac{d^{{D}}{l}}{(2\\pi)^{{D}}}' },
+  // Free (kinetic) Lagrangian per line type — the term that yields each propagator
+  // and the external-state wavefunctions. Collected by buildAmplitude per diagram.
+  kinetic: {
+    fermion: { text: 'ψ̄(i∂̸ − m)ψ',        latex: '\\bar\\psi(i\\not\\partial - m)\\psi' },
+    photon:  { text: '−¼ F_{μν}F^{μν}',     latex: '-\\tfrac14 F_{\\mu\\nu}F^{\\mu\\nu}' },
+    scalar:  { text: '½(∂φ)² − ½m²φ²',      latex: '\\tfrac12(\\partial\\phi)^2 - \\tfrac12 m^2\\phi^2' },
+    gluon:   { text: '−¼ G^a_{μν}G^{aμν}',  latex: '-\\tfrac14 G^a_{\\mu\\nu}G^{a\\mu\\nu}' },
+    ghost:   { text: '∂_μη̄^a (D^μη)^a',     latex: '\\partial_{\\mu}\\bar\\eta^a (D^{\\mu}\\eta)^a' },
+  },
 };
 
 let feynmanRules = JSON.parse(JSON.stringify(FR_DEFAULTS));
@@ -2117,13 +2211,20 @@ function loadFRules() {
   FR_DEFAULTS.vertices.forEach(def => {
     const existing = feynmanRules.vertices.find(vr => vr.label === def.label);
     if (existing) {
-      existing.text  = def.text;
-      existing.latex = def.latex;
-      existing.sig   = def.sig;
+      existing.text     = def.text;
+      existing.latex    = def.latex;
+      existing.sig      = def.sig;
+      existing.lag      = def.lag;       // interaction Lagrangian term (may be absent in old caches)
+      existing.lagLatex = def.lagLatex;
     } else {
       feynmanRules.vertices.push(Object.assign({}, def));
     }
   });
+  // Always sync the free (kinetic) Lagrangian map from defaults.
+  feynmanRules.kinetic = Object.assign({}, FR_DEFAULTS.kinetic, feynmanRules.kinetic);
+  // Always sync the loop measure from defaults so the {D} dimension token is present
+  // (older caches stored a hardcoded ∫d⁴ℓ that ignored the spacetime dimension).
+  feynmanRules.measure = Object.assign({}, FR_DEFAULTS.measure);
 }
 function readRulesFromPanel() {
   ['fermion','photon','scalar','gluon','ghost'].forEach(t => {
@@ -2204,6 +2305,7 @@ function buildAmplitude() {
   spacetimeDim = dInp ? (parseInt(dInp.value,10) || 4) : 4;
 
   const uSub = n => String(n).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]||c).join('');
+  const uSup = n => String(n).split('').map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]||c).join('');
 
   // ── Find connected components ────────────────────────────────────────────────
   const compSeen = new Set();
@@ -2394,7 +2496,10 @@ function buildAmplitude() {
     const compMom = {};
     intEdges.forEach(e => { compMom[e.id] = vecToMom(edgeCoeff[e.id]); });
 
-    const subL = (tpl, mom, useLatex) => tpl.replace(/{l}/g, useLatex ? mom.latex : mom.text);
+    // {l} → loop momentum, {D} → spacetime dimension (superscript in text, digit in latex)
+    const subL = (tpl, mom, useLatex) => tpl
+      .replace(/{D}/g, useLatex ? String(spacetimeDim) : uSup(spacetimeDim))
+      .replace(/{l}/g, useLatex ? mom.latex : mom.text);
 
     // Mandelstam detection — standard P&S definitions (index-based, geometry-free):
     //   p₁=BL(idx 0), p₂=TL(idx 1), p₃=TR(idx 2), p₄=BR(idx 3)
@@ -2511,6 +2616,7 @@ function buildAmplitude() {
 
     // Build factor list
     const factors = [];
+    const lagInt = new Map();   // distinct interaction-Lagrangian terms (keyed by text)
 
     loopMoms.forEach(lm => {
       factors.push({ text: subL(feynmanRules.measure.text, lm, false), latex: subL(feynmanRules.measure.latex, lm, true), comment: 'loop integral' });
@@ -2524,6 +2630,7 @@ function buildAmplitude() {
       const vli = vertLrtz[v.id] || [];
       if (vr) {
         factors.push({ text: replLrtz(vr.text, vli, false), latex: replLrtz(vr.latex, vli, true), comment: `vertex (${vrBySig ? vr.label+' [auto]' : v.label})` });
+        if (vr.lag) lagInt.set(vr.lag, { text: vr.lag, latex: vr.lagLatex || vr.lag, label: vr.label });
       } else {
         const lbl = v.label || '?';
         factors.push({ text: `[V_{${lbl}}]`, latex: `V_{\\text{${lbl}}}`, comment: `vertex (${lbl}) — add rule in panel` });
@@ -2581,7 +2688,14 @@ function buildAmplitude() {
       }
     });
 
-    return { factors, intEdges, extEdges, intVerts, numLoops, compMom };
+    // Free (kinetic) Lagrangian: one term per distinct field (line) type present.
+    const fieldTypes = [...new Set(cEdges.map(e => e.type))];
+    const kinTerms = fieldTypes
+      .map(t => (feynmanRules.kinetic && feynmanRules.kinetic[t]) ? { type: t, ...feynmanRules.kinetic[t] } : null)
+      .filter(Boolean);
+
+    return { factors, intEdges, extEdges, intVerts, numLoops, compMom,
+             lagInt: [...lagInt.values()], kinTerms };
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -2595,7 +2709,7 @@ function buildAmplitude() {
   const allLines = [];
 
   results.forEach((res, ci) => {
-    const { factors, intEdges, intVerts, extEdges, numLoops, compMom } = res;
+    const { factors, intEdges, intVerts, extEdges, numLoops, compMom, lagInt, kinTerms } = res;
     const lbl = multi ? `iM${uSub(ci+1)}` : 'iM';
     if (multi) allLines.push(`┌── Diagram ${ci+1} ${'─'.repeat(30)}`);
 
@@ -2643,6 +2757,31 @@ function buildAmplitude() {
       const Dsup = d*numLoops - 2*IB - IF;
       allLines.push(`  ── UV superficial degree of divergence D = ${d}·${numLoops} − 2·${IB} − ${IF} = ${Dsup}  → ${Dsup<0?'UV finite ✓':Dsup===0?'log divergent':'power divergent (D='+Dsup+')'}`);
     }
+
+    // ── Lagrangian responsible for this diagram ──────────────────────────────
+    // Interaction terms come from the matched vertices; the free (kinetic) terms
+    // generate the propagators and external-state wavefunctions.
+    // Sign-aware join: a term starting with "−" gets " − term", else " + term".
+    const sgnJoin = arr => arr.map((t, i) =>
+      i === 0 ? t : (/^\s*−/.test(t) ? '  −  ' + t.replace(/^\s*−\s*/, '') : '  +  ' + t)
+    ).join('');
+    if ((kinTerms && kinTerms.length) || (lagInt && lagInt.length)) {
+      allLines.push('');
+      allLines.push(`  ── Lagrangian responsible:`);
+      if (kinTerms && kinTerms.length) {
+        allLines.push(`     ℒ_free = ${sgnJoin(kinTerms.map(k => k.text))}`);
+        allLines.push(`              (→ propagators & external legs: ${kinTerms.map(k=>k.type).join(', ')})`);
+      }
+      if (lagInt && lagInt.length) {
+        lagInt.forEach((L, i) => {
+          const head = i === 0 ? '     ℒ_int  = ' : (/^\s*−/.test(L.text) ? '             − ' : '             + ');
+          const term = i === 0 ? L.text : L.text.replace(/^\s*−\s*/, '');
+          allLines.push(`${head}${term}` + (L.label ? `        ← vertex ${L.label}` : ''));
+        });
+      } else {
+        allLines.push(`     ℒ_int  = (no matched interaction vertex — assign a vertex label/rule)`);
+      }
+    }
     allLines.push('');
   });
 
@@ -2677,6 +2816,19 @@ document.getElementById('btn-toggle-rules').addEventListener('click', () => {
   if (open) populateRulesPanel();
   resize();
 });
+// ─── Help overlay ─────────────────────────────────────────────────────────────
+function toggleHelp(show) {
+  const m = document.getElementById('help-modal');
+  m.style.display = (show === undefined ? (m.style.display === 'none' ? 'flex' : 'none')
+                                        : (show ? 'flex' : 'none'));
+}
+document.getElementById('btn-help').addEventListener('click', () => toggleHelp());
+document.getElementById('help-close').addEventListener('click', () => toggleHelp(false));
+document.getElementById('help-modal').addEventListener('click', e => { if (e.target.id === 'help-modal') toggleHelp(false); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('help-modal').style.display !== 'none') toggleHelp(false);
+});
+
 document.getElementById('btn-build-amp').addEventListener('click', buildAmplitude);
 // Re-evaluate the mass dimension live when the spacetime dimension is changed.
 document.getElementById('inp-dim').addEventListener('input', () => { if (latexAmplitude) buildAmplitude(); });
