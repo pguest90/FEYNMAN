@@ -133,6 +133,7 @@
   .insp-gluon   { background:#0c1a0c; border:1px solid #205020; color:#80ff90; }
   .insp-scalar  { background:#160c1a; border:1px solid #4a2060; color:#c080ff; }
   .insp-ghost   { background:#1a0c0c; border:1px solid #602020; color:#ff9060; }
+  .insp-graviton{ background:#0a1a18; border:1px solid #1f5048; color:#5ad0c0; }
   .insp-multi   { background:#101028; border:1px solid #303060; color:#8090c0; }
   .insp-none    { background:#0c0c18; border:1px solid #202040; color:#404060; }
   .insp-dot     { width:8px; height:8px; border-radius:50%; background:currentColor; flex-shrink:0; }
@@ -242,7 +243,7 @@
         <tr><td><b>Select</b> <span class="hk">Q</span></td><td>Click a vertex/line to select. Drag empty canvas = box-select. Drag a selection = move the group. Double-click a vertex/line to label it.</td></tr>
         <tr><td><b>Move</b> <span class="hk">M</span></td><td>Click-drag anywhere to pan the canvas.</td></tr>
         <tr><td><b>Vertex</b> <span class="hk">V</span></td><td>Click the canvas to drop an interaction vertex.</td></tr>
-        <tr><td><b>Fermion</b> <span class="hk">F</span> · <b>Photon</b> <span class="hk">P</span> · <b>Gluon</b> <span class="hk">G</span> · <b>Scalar</b> <span class="hk">S</span> · <b>Ghost</b> <span class="hk">H</span></td><td>Click two vertices to connect them with that line type. Click the <i>same</i> vertex twice to make a self-loop.</td></tr>
+        <tr><td><b>Fermion</b> <span class="hk">F</span> · <b>Photon</b> <span class="hk">P</span> · <b>Gluon</b> <span class="hk">G</span> · <b>Scalar</b> <span class="hk">S</span> · <b>Ghost</b> <span class="hk">H</span> · <b>Graviton</b> <span class="hk">T</span></td><td>Click two vertices to connect them with that line type (graviton = double wavy line). Click the <i>same</i> vertex twice to make a self-loop.</td></tr>
         <tr><td><b>Delete</b> <span class="hk">X</span></td><td>Click a vertex or line to remove it.</td></tr>
       </table>
 
@@ -275,7 +276,7 @@
       <h3>Inspector &amp; Feynman rules (right panel)</h3>
       <ul>
         <li>Select a vertex/line to edit its <b>label, style, type, and arrow direction</b>; the matched Feynman rule is shown beneath.</li>
-        <li>A vertex <b>label</b> (e, q, Zf, lW, Hf, λ, 3g, …) picks the interaction. Leave external-leg stubs blank — they auto-label p₁…p₄.</li>
+        <li>A vertex <b>label</b> (e, q, Zf, lW, Hf, λ, 3g, …) picks the interaction. Gravity vertices: <b>hff</b> (graviton–fermion), <b>hφφ</b> (graviton–scalar), <b>hAA</b> (graviton–photon), <b>hhh</b> (triple graviton) — all from −(κ/2)h<sub>μν</sub>T<sup>μν</sup>. Leave external-leg stubs blank — they auto-label p₁…p₄.</li>
         <li><b>Feynman Rules ▾</b> — view/edit propagators, external legs, vertex rules, and the loop measure; <b>Save rules</b> or <b>Reset defaults</b>.</li>
       </ul>
       <div class="help-foot">Tip: arrows show fermion-number flow (not momentum). Momentum &amp; corner labels are positional: p₁=bottom-left, p₂=top-left (in), p₃=top-right, p₄=bottom-right (out).</div>
@@ -305,6 +306,9 @@
     </div>
     <div class="tool-row">
       <button class="tool-btn" id="tool-ghost"    data-tool="ghost">Ghost <span class="kbd">H</span></button>
+    </div>
+    <div class="tool-row">
+      <button class="tool-btn" id="tool-graviton" data-tool="graviton">Graviton <span class="kbd">T</span></button>
     </div>
     <div class="tool-row">
       <button class="tool-btn" id="tool-delete"   data-tool="delete">Delete <span class="kbd">X</span></button>
@@ -405,6 +409,7 @@
           <option value="gluon">Gluon</option>
           <option value="scalar">Scalar / Higgs</option>
           <option value="ghost">Ghost</option>
+          <option value="graviton">Graviton</option>
         </select>
       </div>
 
@@ -477,6 +482,11 @@
       <input type="text" class="fr-inp" id="fr-prop-ghost-text" placeholder="display text">
       <input type="text" class="fr-inp-latex" id="fr-prop-ghost-latex" placeholder="LaTeX">
     </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#5ad0c0">Graviton</span>
+      <input type="text" class="fr-inp" id="fr-prop-graviton-text" placeholder="display text">
+      <input type="text" class="fr-inp-latex" id="fr-prop-graviton-latex" placeholder="LaTeX">
+    </div>
 
     <div class="fr-sub-hdr">External legs — {p} = momentum  |  fermion in/out from arrow direction</div>
     <div class="fr-row">
@@ -523,6 +533,16 @@
       <span class="fr-lbl" style="color:#ff9060">η out</span>
       <input type="text" class="fr-inp" id="fr-ext-ghost_out-text">
       <input type="text" class="fr-inp-latex" id="fr-ext-ghost_out-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#5ad0c0">h in</span>
+      <input type="text" class="fr-inp" id="fr-ext-graviton_in-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-graviton_in-latex">
+    </div>
+    <div class="fr-row">
+      <span class="fr-lbl" style="color:#5ad0c0">h out</span>
+      <input type="text" class="fr-inp" id="fr-ext-graviton_out-text">
+      <input type="text" class="fr-inp-latex" id="fr-ext-graviton_out-latex">
     </div>
 
     <div class="fr-sub-hdr">Vertex rules — matched by vertex label (double-click a vertex to set its label)</div>
@@ -592,6 +612,7 @@ const COLORS = {
   gluon:   '#80ff90',
   scalar:  '#c080ff',
   ghost:   '#ff9060',
+  graviton:'#5ad0c0',
   vert:    '#e8e0ff',
   vertSel: '#7090ff',
   edgeSel: '#ffffff',
@@ -800,6 +821,63 @@ function builtinTemplates() {
         {fromIdx:0, toIdx:2, type:'scalar', label:'', reversed:false, cx:0, cy:0},
         {fromIdx:0, toIdx:3, type:'scalar', label:'', reversed:false, cx:0, cy:0},
         {fromIdx:0, toIdx:4, type:'scalar', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    // ── Gravity templates (graviton = double wavy line) ─────────────────────────
+    {
+      name: 'Graviton–fermion (hff)',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'hff', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'',    style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'',    style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',    style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion',  label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'fermion',  label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'graviton', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'Graviton–scalar (hφφ)',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'hφφ', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'',    style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'',    style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',    style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'scalar',   label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'scalar',   label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'graviton', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'Graviton–photon (hAA)',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'hAA', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'',    style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'',    style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',    style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:0, toIdx:1, type:'photon',   label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'photon',   label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'graviton', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'Triple graviton (hhh)',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'hhh', style:'dot',  isCenter:true},
+        {idx:1, x:-75, y:-75, label:'',    style:'none', isCenter:false},
+        {idx:2, x: 75, y:-75, label:'',    style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',    style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:0, toIdx:1, type:'graviton', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'graviton', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'graviton', label:'', reversed:false, cx:0, cy:0},
       ]
     }
   ];
@@ -1017,11 +1095,13 @@ function midpoint(e) {
     return { x: lx + r*Math.cos(a+Math.PI), y: ly + r*Math.sin(a+Math.PI) };
   }
   const a = vertById(e.from), b = vertById(e.to);
+  if (!a || !b) return { x: 0, y: 0 };   // orphaned edge guard
   return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 };
 }
 function ctrlPoint(e) {
   if (isLoop(e)) {
     const v = vertById(e.from);
+    if (!v) return { x: e.cx||0, y: e.cy||0 };   // orphaned edge guard
     return { x: v.x + e.cx, y: v.y + e.cy };
   }
   const m = midpoint(e);
@@ -1270,6 +1350,7 @@ function drawEdge(e, selected) {
     case 'gluon':   drawGluon(a, b, cp, color); break;
     case 'scalar':  drawScalar(a, b, cp, color); break;
     case 'ghost':   drawGhost(a, b, cp, color, e.reversed, selected); break;
+    case 'graviton':drawGraviton(a, b, cp, color); break;
   }
 }
 
@@ -1334,6 +1415,26 @@ function drawGluon(a, b, cp, color) {
   ctx.stroke();
 }
 
+// ── Graviton: double sinusoid (the standard "double wavy line") ──────────────
+function drawGraviton(a, b, cp, color) {
+  const N = 120, AMP = 6, FREQ = 11, SEP = 3.2;   // two waves separated by ±SEP
+  ctx.strokeStyle = color; ctx.lineWidth = lw(1.5); ctx.setLineDash([]);
+  for (const side of [+1, -1]) {
+    ctx.beginPath();
+    for (let i=0; i<=N; i++) {
+      const t = i/N;
+      const p = bezPt(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+      const tan = bezTan(t, a.x,a.y, cp.x,cp.y, b.x,b.y);
+      const len = Math.hypot(tan.x, tan.y) || 1;
+      const nx = -tan.y/len, ny = tan.x/len;
+      const wave = AMP * Math.sin(FREQ * Math.PI * t) + side*SEP;
+      const px = p.x + nx*wave, py = p.y + ny*wave;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+  }
+}
+
 // ── Scalar: dashed bezier ────────────────────────────────────────────────────
 function drawScalar(a, b, cp, color) {
   ctx.beginPath();
@@ -1368,6 +1469,7 @@ function drawGhost(a, b, cp, color, rev, sel) {
 // ── Self-loop drawing ─────────────────────────────────────────────────────────
 function drawSelfLoop(e, selected) {
   const v = vertById(e.from);
+  if (!v) return;   // orphaned loop edge (vertex deleted) — skip rather than crash draw()
   const lx = v.x + e.cx, ly = v.y + e.cy;
   const r = Math.hypot(e.cx, e.cy);
   if (r < 5) return;
@@ -1379,6 +1481,7 @@ function drawSelfLoop(e, selected) {
     case 'gluon':   drawLoopGluon(lx, ly, r, color, attachAngle); break;
     case 'scalar':  drawLoopScalar(lx, ly, r, color, selected); break;
     case 'ghost':   drawLoopGhost(lx, ly, r, color, e.reversed, selected, attachAngle); break;
+    case 'graviton':drawLoopGraviton(lx, ly, r, color, attachAngle); break;
   }
 }
 function loopArrowhead(lx, ly, r, color, rev, attachAngle, as, aw) {
@@ -1430,6 +1533,21 @@ function drawLoopGluon(lx, ly, r, color, attachAngle) {
     else        ctx.lineTo(lx + rg*Math.cos(angle), ly + rg*Math.sin(angle));
   }
   ctx.stroke();
+}
+function drawLoopGraviton(lx, ly, r, color, attachAngle) {
+  const N = 200, AMP = 5, FREQ = 9, SEP = 3;
+  ctx.strokeStyle = color; ctx.lineWidth = lw(1.5); ctx.setLineDash([]);
+  for (const side of [+1, -1]) {
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const t = i/N;
+      const angle = attachAngle + t*2*Math.PI;
+      const rw = r + side*SEP + AMP * Math.sin(FREQ * 2*Math.PI * t);
+      if (i===0) ctx.moveTo(lx + rw*Math.cos(angle), ly + rw*Math.sin(angle));
+      else        ctx.lineTo(lx + rw*Math.cos(angle), ly + rw*Math.sin(angle));
+    }
+    ctx.stroke();
+  }
 }
 
 // ── Edge label ───────────────────────────────────────────────────────────────
@@ -1483,6 +1601,7 @@ function toolHint(t) {
     gluon:   'Click two vertices to connect. Click same vertex twice for a loop.',
     scalar:  'Click two vertices to connect. Click same vertex twice for a loop.',
     ghost:   'Click two vertices to connect. Click same vertex twice for a loop.',
+    graviton:'Click two vertices to connect. Click same vertex twice for a loop.',
     delete:  'Click vertex or line to delete.',
     stamp:   'Click to place. Space = rotate 90°. Esc to cancel.',
   }[t] || '';
@@ -1654,7 +1773,7 @@ canvas.addEventListener('mousedown', e => {
   }
 
   // Edge tools
-  if (['fermion','photon','gluon','scalar','ghost'].includes(tool)) {
+  if (['fermion','photon','gluon','scalar','ghost','graviton'].includes(tool)) {
     // On second click, skip edgeSrc so overlapping vertices (coincident leg endpoints) are reachable
     const v = edgeSrc !== null
       ? (hitVert(mx, my, edgeSrc) || hitVert(mx, my))
@@ -1834,7 +1953,7 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
-  const map = {q:'select',m:'move',v:'vertex',f:'fermion',p:'photon',g:'gluon',s:'scalar',h:'ghost',x:'delete'};
+  const map = {q:'select',m:'move',v:'vertex',f:'fermion',p:'photon',g:'gluon',s:'scalar',h:'ghost',t:'graviton',x:'delete'};
   const t = map[e.key.toLowerCase()];
   if (t) setTool(t);
 });
@@ -1843,7 +1962,7 @@ document.addEventListener('keydown', e => {
 
 const TYPE_COLORS = {
   fermion:'#80c8ff', photon:'#ffd060', gluon:'#80ff90',
-  scalar:'#c080ff', ghost:'#ff9060', vertex:'#70a8e0'
+  scalar:'#c080ff', ghost:'#ff9060', graviton:'#5ad0c0', vertex:'#70a8e0'
 };
 
 function vertexRuleMatch(v) {
@@ -2092,6 +2211,8 @@ const FR_DEFAULTS = {
     scalar:  { text: 'i/({p2}−m²)',               latex: '\\frac{i}{{p2}-m^2}' },
     gluon:   { text: '−iδ^ab g_μν/{p2}',          latex: '\\frac{-i\\delta^{ab}g_{\\mu\\nu}}{{p2}}' },
     ghost:   { text: '−iδ^ab/{p2}',               latex: '\\frac{-i\\delta^{ab}}{{p2}}' },
+    graviton:{ text: '(i/2)(η_μρη_νσ+η_μση_νρ−η_μνη_ρσ)/{p2}',
+               latex: '\\frac{i}{2{p2}}\\,(\\eta_{\\mu\\rho}\\eta_{\\nu\\sigma}+\\eta_{\\mu\\sigma}\\eta_{\\nu\\rho}-\\eta_{\\mu\\nu}\\eta_{\\rho\\sigma})' },  // de Donder gauge
   },
   external: {
     fermion_in:       { text: 'u({p},s)',   latex: 'u({p},s)' },
@@ -2106,6 +2227,8 @@ const FR_DEFAULTS = {
     gluon_out:   { text: 'ε^μa*({p},λ)',          latex: '\\varepsilon^{*\\mu,a}({p},\\lambda)' },
     ghost_in:    { text: 'η^a({p})',              latex: '\\eta^a({p})' },
     ghost_out:   { text: 'η̄^a({p})',             latex: '\\bar{\\eta}^a({p})' },
+    graviton_in: { text: 'ε_μν({p},λ)',           latex: '\\varepsilon_{\\mu\\nu}({p},\\lambda)' },
+    graviton_out:{ text: 'ε*_μν({p},λ)',          latex: '\\varepsilon^{*}_{\\mu\\nu}({p},\\lambda)' },
   },
   vertices: [
     // Each vertex also carries `lag`/`lagLatex`: the interaction Lagrangian term
@@ -2154,6 +2277,24 @@ const FR_DEFAULTS = {
     { label: 'H³',  sig: {scalar:3}, text: '−3iλv',
       latex: '-3i\\lambda v',
       lag: '−λv H³',                     lagLatex: '-\\lambda v\\,H^3' },
+    // ── Gravity (graviton h_μν couples to the stress–energy tensor T^μν) ─────
+    // Coupling κ = √(32πG). Every matter vertex is −(κ/2) h_μν T^μν of that field.
+    { label: 'hff', sig: {graviton:1, fermion:2},
+      text: '−(iκ/8)[γ^μ(p+p′)^ν+γ^ν(p+p′)^μ−2η^μν(p̸+p̸′−2m)]',
+      latex: '-\\tfrac{i\\kappa}{8}\\big[\\gamma^{\\mu}(p{+}p\')^{\\nu}+\\gamma^{\\nu}(p{+}p\')^{\\mu}-2\\eta^{\\mu\\nu}(\\not p{+}\\not p\'{-}2m)\\big]',
+      lag: '−(κ/2) h_μν T^μν_(ψ)',        lagLatex: '-\\tfrac{\\kappa}{2}\\,h_{\\mu\\nu}\\,T^{\\mu\\nu}_{(\\psi)}' },
+    { label: 'hφφ', sig: {graviton:1, scalar:2},
+      text: '−iκ[p₁^μp₂^ν+p₁^νp₂^μ−η^μν(p₁·p₂−m²)]',
+      latex: '-i\\kappa\\big[p_1^{\\mu}p_2^{\\nu}+p_1^{\\nu}p_2^{\\mu}-\\eta^{\\mu\\nu}(p_1\\!\\cdot\\!p_2-m^2)\\big]',
+      lag: '−(κ/2) h_μν T^μν_(φ)',        lagLatex: '-\\tfrac{\\kappa}{2}\\,h_{\\mu\\nu}\\,T^{\\mu\\nu}_{(\\phi)}' },
+    { label: 'hAA', sig: {graviton:1, photon:2},
+      text: '−iκ[p₁·p₂(η^μαη^νβ+η^μβη^να−η^μνη^αβ) + (η^αβp₁^μp₂^ν − …)]',
+      latex: '-i\\kappa\\big[p_1\\!\\cdot\\!p_2(\\eta^{\\mu\\alpha}\\eta^{\\nu\\beta}+\\eta^{\\mu\\beta}\\eta^{\\nu\\alpha}-\\eta^{\\mu\\nu}\\eta^{\\alpha\\beta})+\\dots\\big]',
+      lag: '−(κ/2) h_μν T^μν_(EM)',       lagLatex: '-\\tfrac{\\kappa}{2}\\,h_{\\mu\\nu}\\,T^{\\mu\\nu}_{(\\mathrm{EM})}' },
+    { label: 'hhh', sig: {graviton:3},
+      text: '(iκ/2)·Sym[ momentum-dependent, ~100 terms ] (de Donder)',
+      latex: '\\tfrac{i\\kappa}{2}\\,\\mathrm{Sym}\\big[\\,p\\,p\\,\\eta\\eta\\eta\\,\\big]\\ (\\text{de Donder; }\\sim\\!100\\text{ terms})',
+      lag: '(2/κ²)√(−g)R at O(h³) → κ h(∂h)² + …', lagLatex: '\\tfrac{2}{\\kappa^2}\\sqrt{-g}\\,R\\big|_{O(h^3)} \\to \\kappa\\,h(\\partial h)^2+\\dots' },
   ],
   measure: { text: '∫d{D}{l}/(2π){D}', latex: '\\int\\!\\frac{d^{{D}}{l}}{(2\\pi)^{{D}}}' },
   // Free (kinetic) Lagrangian per line type — the term that yields each propagator
@@ -2164,6 +2305,8 @@ const FR_DEFAULTS = {
     scalar:  { text: '½(∂φ)² − ½m²φ²',      latex: '\\tfrac12(\\partial\\phi)^2 - \\tfrac12 m^2\\phi^2' },
     gluon:   { text: '−¼ G^a_{μν}G^{aμν}',  latex: '-\\tfrac14 G^a_{\\mu\\nu}G^{a\\mu\\nu}' },
     ghost:   { text: '∂_μη̄^a (D^μη)^a',     latex: '\\partial_{\\mu}\\bar\\eta^a (D^{\\mu}\\eta)^a' },
+    graviton:{ text: '−½∂_λh_μν∂^λh^μν + … (Fierz–Pauli = linearised √−g R)',
+               latex: '-\\tfrac12\\partial_{\\lambda}h_{\\mu\\nu}\\partial^{\\lambda}h^{\\mu\\nu}+\\dots\\ (\\text{Fierz–Pauli})' },
   },
 };
 
@@ -2227,7 +2370,7 @@ function loadFRules() {
   feynmanRules.measure = Object.assign({}, FR_DEFAULTS.measure);
 }
 function readRulesFromPanel() {
-  ['fermion','photon','scalar','gluon','ghost'].forEach(t => {
+  ['fermion','photon','scalar','gluon','ghost','graviton'].forEach(t => {
     const tEl = document.getElementById(`fr-prop-${t}-text`);
     const lEl = document.getElementById(`fr-prop-${t}-latex`);
     if (tEl) feynmanRules.propagators[t].text  = tEl.value;
@@ -2245,7 +2388,7 @@ function readRulesFromPanel() {
   if (ml) feynmanRules.measure.latex = ml.value;
 }
 function populateRulesPanel() {
-  ['fermion','photon','scalar','gluon','ghost'].forEach(t => {
+  ['fermion','photon','scalar','gluon','ghost','graviton'].forEach(t => {
     const r = feynmanRules.propagators[t];
     const tEl = document.getElementById(`fr-prop-${t}-text`);
     const lEl = document.getElementById(`fr-prop-${t}-latex`);
@@ -2708,6 +2851,36 @@ function buildAmplitude() {
   const multi = results.length > 1;
   const allLines = [];
 
+  // ── Lagrangian renderer (shared by per-diagram and combined views) ───────────
+  // Sign-aware join: a term starting with "−" gets " − term", else " + term".
+  const sgnJoin = arr => arr.map((t, i) =>
+    i === 0 ? t : (/^\s*−/.test(t) ? '  −  ' + t.replace(/^\s*−\s*/, '') : '  +  ' + t)
+  ).join('');
+  const pushLagrangian = (kins, ints, title) => {
+    if (!((kins && kins.length) || (ints && ints.length))) return;
+    allLines.push('');
+    allLines.push(`  ── ${title}`);
+    if (kins && kins.length) {
+      allLines.push(`     ℒ_free = ${sgnJoin(kins.map(k => k.text))}`);
+      allLines.push(`              (→ propagators & external legs: ${kins.map(k=>k.type).join(', ')})`);
+    }
+    if (ints && ints.length) {
+      ints.forEach((L, i) => {
+        const head = i === 0 ? '     ℒ_int  = ' : (/^\s*−/.test(L.text) ? '             − ' : '             + ');
+        const term = i === 0 ? L.text : L.text.replace(/^\s*−\s*/, '');
+        allLines.push(`${head}${term}` + (L.label ? `        ← vertex ${L.label}` : ''));
+      });
+    } else {
+      allLines.push(`     ℒ_int  = (no matched interaction vertex — assign a vertex label/rule)`);
+    }
+  };
+  // Deduplicate Lagrangian terms by their display text (used for the combined view).
+  const dedupeByText = arr => {
+    const m = new Map();
+    arr.forEach(x => { if (!m.has(x.text)) m.set(x.text, x); });
+    return [...m.values()];
+  };
+
   results.forEach((res, ci) => {
     const { factors, intEdges, intVerts, extEdges, numLoops, compMom, lagInt, kinTerms } = res;
     const lbl = multi ? `iM${uSub(ci+1)}` : 'iM';
@@ -2752,7 +2925,7 @@ function buildAmplitude() {
     allLines.push(`  ── Mass dimension [${lbl}] = ${d} − ${E}·(${d}−2)/2 = ${fmtDim(mdim)}   (d=${d} spacetime dims, E=${E} external legs)`);
     // Superficial degree of UV divergence (loop diagrams):  D = dL − 2I_B − I_F
     if (numLoops > 0) {
-      const IB = intEdges.filter(e => e.type==='photon'||e.type==='gluon'||e.type==='scalar'||e.type==='ghost').length;
+      const IB = intEdges.filter(e => e.type==='photon'||e.type==='gluon'||e.type==='scalar'||e.type==='ghost'||e.type==='graviton').length;
       const IF = intEdges.filter(e => e.type==='fermion').length;
       const Dsup = d*numLoops - 2*IB - IF;
       allLines.push(`  ── UV superficial degree of divergence D = ${d}·${numLoops} − 2·${IB} − ${IF} = ${Dsup}  → ${Dsup<0?'UV finite ✓':Dsup===0?'log divergent':'power divergent (D='+Dsup+')'}`);
@@ -2760,28 +2933,10 @@ function buildAmplitude() {
 
     // ── Lagrangian responsible for this diagram ──────────────────────────────
     // Interaction terms come from the matched vertices; the free (kinetic) terms
-    // generate the propagators and external-state wavefunctions.
-    // Sign-aware join: a term starting with "−" gets " − term", else " + term".
-    const sgnJoin = arr => arr.map((t, i) =>
-      i === 0 ? t : (/^\s*−/.test(t) ? '  −  ' + t.replace(/^\s*−\s*/, '') : '  +  ' + t)
-    ).join('');
-    if ((kinTerms && kinTerms.length) || (lagInt && lagInt.length)) {
-      allLines.push('');
-      allLines.push(`  ── Lagrangian responsible:`);
-      if (kinTerms && kinTerms.length) {
-        allLines.push(`     ℒ_free = ${sgnJoin(kinTerms.map(k => k.text))}`);
-        allLines.push(`              (→ propagators & external legs: ${kinTerms.map(k=>k.type).join(', ')})`);
-      }
-      if (lagInt && lagInt.length) {
-        lagInt.forEach((L, i) => {
-          const head = i === 0 ? '     ℒ_int  = ' : (/^\s*−/.test(L.text) ? '             − ' : '             + ');
-          const term = i === 0 ? L.text : L.text.replace(/^\s*−\s*/, '');
-          allLines.push(`${head}${term}` + (L.label ? `        ← vertex ${L.label}` : ''));
-        });
-      } else {
-        allLines.push(`     ℒ_int  = (no matched interaction vertex — assign a vertex label/rule)`);
-      }
-    }
+    // generate the propagators and external-state wavefunctions. For multiple
+    // diagrams the per-diagram blocks are skipped in favour of one combined
+    // Lagrangian printed after the total amplitude line (below).
+    if (!multi) pushLagrangian(kinTerms, lagInt, 'Lagrangian responsible:');
     allLines.push('');
   });
 
@@ -2794,6 +2949,10 @@ function buildAmplitude() {
     latexAmplitude = 'i\\mathcal{M} = ' + results.map(r =>
       r.factors.length ? r.factors.map(f => f.latex).join(' \\cdot ') : '1'
     ).join(' + ');
+    // Combined Lagrangian: union of every diagram's kinetic + interaction terms.
+    const allKin = dedupeByText(results.flatMap(r => r.kinTerms || []));
+    const allInt = dedupeByText(results.flatMap(r => r.lagInt   || []));
+    pushLagrangian(allKin, allInt, `Combined Lagrangian (all ${results.length} diagrams):`);
   } else {
     const { factors } = results[0];
     allLines.push('  iM = ' + (factors.length ? factors.map(f => f.text).join(' × ') : '1'));
@@ -2923,6 +3082,10 @@ function loadSample() {
       if (s.verts && s.verts.length > 0) {
         verts  = s.verts;
         edges  = s.edges || [];
+        // Drop any edge that references a vertex which no longer exists — a stale
+        // saved diagram with such an orphan crashes draw() (drawSelfLoop/ctrlPoint).
+        const vids = new Set(verts.map(v => v.id));
+        edges = edges.filter(e => vids.has(e.from) && vids.has(e.to));
         nextId = s.nextId || (Math.max(0, ...verts.map(v=>v.id), ...edges.map(e=>e.id)) + 1);
         return;
       }
