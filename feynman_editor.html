@@ -571,6 +571,7 @@
         style="width:42px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
         title="Spacetime dimension d (default 4 = 3 space + 1 time)">
       <button id="btn-to-stepper" style="font-size:11px;margin-left:auto;border-color:#304070;color:#6080b0">→ Stepper</button>
+      <button id="btn-export-file" style="font-size:11px;border-color:#304070;color:#6080b0" title="Save the amplitude as a .json file you can move to any laptop/browser (Import File in the stepper)">⇩ Export File</button>
     </div>
     <div id="amp-display">Draw a diagram, set your Feynman rules, then click Build ▶</div>
   </div>
@@ -2991,9 +2992,10 @@ document.addEventListener('keydown', e => {
 document.getElementById('btn-build-amp').addEventListener('click', buildAmplitude);
 // Re-evaluate the mass dimension live when the spacetime dimension is changed.
 document.getElementById('inp-dim').addEventListener('input', () => { if (latexAmplitude) buildAmplitude(); });
-document.getElementById('btn-to-stepper').addEventListener('click', () => {
-  buildAmplitude();
-  if (!lastAmplitudeFactors.length) { alert('Build the amplitude first (iM ▶).'); return; }
+// Shared by both export paths: the URL-hash hand-off to the stepper tab, and
+// the downloadable .json file (manual cross-machine fallback).
+function buildStepperExportObj() {
+  if (!lastAmplitudeFactors.length) return null;
   // Build ONE export entry per diagram (connected component). Two diagrams ADD,
   // they are NOT multiplied — so each is exported separately.
   const comps = (lastAmplitudeComponents.length ? lastAmplitudeComponents
@@ -3006,15 +3008,43 @@ document.getElementById('btn-to-stepper').addEventListener('click', () => {
   const combinedIM = diagrams.length === 1
     ? diagrams[0].iM
     : 'iM = ' + diagrams.map(d => '(' + d.iM.replace(/^iM\s*=\s*/, '') + ')').join('  +  ');
-  localStorage.setItem('feynman_iM_export', JSON.stringify({
+  return {
     diagrams,                       // array — the stepper sums these
     iM: combinedIM,                 // combined display string
     comments: diagrams[0].comments, // first diagram's comments (legacy single-diagram path)
     latex: latexAmplitude, d: spacetimeDim, timestamp: Date.now()
-  }));
+  };
+}
+document.getElementById('btn-to-stepper').addEventListener('click', () => {
+  buildAmplitude();
+  const exportObj = buildStepperExportObj();
+  if (!exportObj) { alert('Build the amplitude first (iM ▶).'); return; }
+  // Universal path: embed the data in the URL hash and open/refocus the
+  // stepper tab directly. This works in any browser (Chrome/Firefox/Safari)
+  // because it's just navigation + URL parsing — no localStorage, which
+  // Firefox/Safari restrict or refuse to share between file:// pages.
+  const encoded = encodeURIComponent(JSON.stringify(exportObj));
+  window.open('amplitude_stepper.html#import=' + encoded, 'feynman_stepper');
   const btn = document.getElementById('btn-to-stepper');
   const orig = btn.textContent;
-  btn.textContent = diagrams.length > 1 ? `Exported ${diagrams.length} diagrams ✓` : 'Exported ✓';
+  btn.textContent = exportObj.diagrams.length > 1 ? `Exported ${exportObj.diagrams.length} diagrams ✓` : 'Exported ✓';
+  setTimeout(() => btn.textContent = orig, 2000);
+});
+// Cross-machine path: same payload as → Stepper, but as a downloadable .json
+// file instead of localStorage (which never crosses browsers/laptops).
+document.getElementById('btn-export-file').addEventListener('click', () => {
+  buildAmplitude();
+  const exportObj = buildStepperExportObj();
+  if (!exportObj) { alert('Build the amplitude first (iM ▶).'); return; }
+  const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'feynman_amplitude.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  const btn = document.getElementById('btn-export-file');
+  const orig = btn.textContent;
+  btn.textContent = 'Saved ✓';
   setTimeout(() => btn.textContent = orig, 2000);
 });
 document.getElementById('btn-copy-latex').addEventListener('click', () => {

@@ -108,7 +108,8 @@
 
       <h3>Import from Editor</h3>
       <ul>
-        <li>In the editor: draw → <b>iM ▶</b> → <b>→ Stepper</b>. Here: <b>Import from Editor</b> pulls it in, adopts the editor's dimension d, and solves. Multiple connected components import as separate diagrams that <b>add</b>.</li>
+        <li>In the editor: draw → <b>iM ▶</b> → <b>→ Stepper</b>. This opens (or refocuses) this page directly with the amplitude attached, adopts the editor's dimension d, and solves. Multiple connected components import as separate diagrams that <b>add</b>.</li>
+        <li>On a different laptop/browser, use the editor's <b>⇩ Export File</b> button, then <b>⇧ Import File</b> here instead.</li>
         <li>Editing an input box switches it back to parsing your typed text.</li>
       </ul>
 
@@ -152,7 +153,8 @@
   <div class="input-row">
     <button onclick="go()">Solve ▶</button>
     <button id="btn-two" onclick="toggleTwoDiagrams()">+ Two Diagrams</button>
-    <button id="btn-import" onclick="importFromEditor()" style="border-color:#304070;color:#6080b0">Import from Editor</button>
+    <button id="btn-import-file" onclick="document.getElementById('file-import-input').click()" style="border-color:#304070;color:#6080b0" title="Load a .json file saved from the editor's ⇩ Export File button — works on any laptop/browser, no shared storage needed">⇧ Import File</button>
+    <input type="file" id="file-import-input" accept=".json,application/json" style="display:none">
     <div class="sep"></div>
     <button id="btn-presets" onclick="togglePresets()" style="font-size:11px;border-color:#252545;color:#404068">Examples ▾</button>
   </div>
@@ -3811,11 +3813,28 @@ document.getElementById('inp-dim').addEventListener('input', () => {
   if (document.getElementById('amp-input').value.trim() || pendingIMComments) go();
 });
 
-function importFromEditor() {
-  const raw = localStorage.getItem('feynman_iM_export');
-  if (!raw) { alert('Nothing exported yet. In feynman_editor.html: draw a diagram → click iM ▶ → click → Stepper.'); return; }
-  const data = JSON.parse(raw);
-  const ago = Math.round((Date.now() - data.timestamp) / 1000);
+// Cross-machine path: read the same payload from a .json file (saved via the
+// editor's ⇩ Export File button) instead of localStorage, which is scoped to
+// one browser profile on one machine and never crosses laptops.
+document.getElementById('file-import-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      applyImportedData(JSON.parse(reader.result));
+      const btn = document.getElementById('btn-import-file');
+      const orig = btn.textContent;
+      btn.textContent = 'Imported ✓';
+      setTimeout(() => btn.textContent = orig, 2000);
+    } catch (err) {
+      alert('Could not read that file — is it a .json exported from the editor\'s ⇩ Export File button?');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';   // allow re-importing the same file later
+});
+function applyImportedData(data) {
   // Adopt the spacetime dimension the editor was using.
   if (data.d) { const di=document.getElementById('inp-dim'); if (di) di.value = data.d; DIM = data.d; }
 
@@ -3831,8 +3850,6 @@ function importFromEditor() {
     pendingIMComments2 = data.diagrams[1].comments;
     pendingIMDisplay2  = data.diagrams[1].iM;
     go();
-    document.getElementById('btn-import').textContent = `Imported ${data.diagrams.length} diagrams ✓`;
-    setTimeout(() => document.getElementById('btn-import').textContent = 'Import from Editor', 2500);
     return;
   }
 
@@ -3848,8 +3865,6 @@ function importFromEditor() {
   }
 
   go();
-  document.getElementById('btn-import').textContent = `Imported (${ago}s ago) ✓`;
-  setTimeout(() => document.getElementById('btn-import').textContent = 'Import from Editor', 2000);
 }
 
 function toggleSyntax(){
@@ -3872,8 +3887,30 @@ document.getElementById('btn-copy').onclick=()=>{
     .catch(()=>prompt('LaTeX:',LATEX));
 };
 
-// ─── Load default ─────────────────────────────────────────────────────────────
-eg('ee_mumu');
+// ─── Load default, or auto-import data the editor embedded in the URL hash ───
+// The editor's → Stepper button opens this page with '#import=<encoded JSON>'
+// instead of relying on shared localStorage (which Firefox/Safari restrict
+// for file:// pages). Falls back to the usual default example if there's no
+// hash, so this is purely additive.
+// GOTCHA: if this tab is already open, window.open() with the SAME path and
+// only a different hash does an in-page fragment navigation, not a reload —
+// the script does not re-run, only a 'hashchange' event fires. So the import
+// must be reusable and wired to both initial load AND hashchange.
+function importFromUrlHash() {
+  if (location.hash.indexOf('#import=') === 0) {
+    try {
+      const data = JSON.parse(decodeURIComponent(location.hash.slice('#import='.length)));
+      history.replaceState(null, '', location.pathname + location.search);
+      applyImportedData(data);
+      return true;
+    } catch (e) {
+      console.warn('Could not parse imported amplitude from URL hash:', e);
+    }
+  }
+  return false;
+}
+window.addEventListener('hashchange', importFromUrlHash);
+if (!importFromUrlHash()) eg('ee_mumu');
 </script>
 </body>
 </html>
