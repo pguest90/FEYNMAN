@@ -60,6 +60,11 @@
   <input id="inp-dim" type="number" value="4" min="1" max="12" step="1"
     style="width:42px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
     title="Spacetime dimension d. Changing it alters traces: γ^μγ_μ=d, the (d−4) dim-reg term, etc. Re-run to apply.">
+  <div class="sep"></div>
+  <span style="font-size:10px;color:#404060" title="Rξ gauge parameter ξ. ξ=1 = Feynman/Lorenz gauge (default). ξ≠1 appends Ward-identity steps showing the result is independent of gauge.">gauge&nbsp;ξ</span>
+  <input id="inp-xi" type="number" value="1" min="0" max="10" step="1"
+    style="width:42px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
+    title="Rξ gauge parameter ξ (ξ=1: Feynman gauge, ξ=0: Landau gauge). Set ξ≠1 to see the Ward-identity proof that |M|² is gauge-independent.">
 </div>
 
 <!-- ─── Help / controls overlay ─────────────────────────────────────────────── -->
@@ -101,9 +106,9 @@
         <li>Changing d <b>re-solves live</b> — coefficients and poles update (e.g. e⁺e⁻→μ⁺μ⁻ gives 8e⁴(t²+u²)/s² at d=4, 8e⁴(t²+u²+s²)/s² at d=6).</li>
       </ul>
 
-      <h3>Two diagrams &amp; interference</h3>
+      <h3>N-diagram interference</h3>
       <ul>
-        <li><b>+ Two Diagrams</b> reveals a second box and the <b>amplitude sign</b>: <b>M₁ − M₂</b> (identical-fermion exchange) or <b>M₁ + M₂</b> (boson / distinct). It computes |M₁ ± M₂|² = |M₁|² + |M₂|² ± 2Re(M₁M₂*).</li>
+        <li><b>+ Diagram</b> adds an extra input box. Each extra box has its own <b>±</b> sign toggle: − for identical-fermion exchange (Bhabha, Møller), + for bosonic / distinct diagrams. Solves |ΣMᵢ|² = Σ|Mᵢ|² + Σᵢ&lt;ⱼ 2sᵢsⱼRe(MᵢMⱼ*) for any number of diagrams. Bhabha and Møller examples load automatically.</li>
       </ul>
 
       <h3>Import from Editor</h3>
@@ -125,26 +130,23 @@
   #preset-drawer { display:none; flex-wrap:wrap; gap:5px; padding:7px 0 4px; align-items:center; }
   #preset-drawer.open { display:flex; }
   #btn-presets.open { color:#7080c0; border-color:#304060; }
-  #input2-row { display:none; margin-top:6px; }
-  #amp-input2 { width:100%; background:#07070f; border:1px solid #2a2a44; color:#c0d0e8; font-family:'Courier New',monospace; font-size:13px; padding:7px 10px; border-radius:3px; resize:none; height:44px; }
-  #amp-input2:focus { outline:none; border-color:#405060; }
-  #sign-row { display:none; margin-top:5px; font-size:11px; color:#5060a0; gap:8px; align-items:center; }
-  .sign-btn { padding:3px 10px; font-size:13px; }
-  .sign-btn.active { background:#1a2a3a; border-color:#50a0c0; color:#90d0f0; }
-  #btn-two { font-size:11px; }
-  #btn-two.active { background:#1a2a1a; border-color:#408040; color:#80c080; }
+  #extra-diags { margin-top:0; }
+  .extra-diag-row { margin-top:6px; }
+  .extra-diag-hdr { display:flex; align-items:center; gap:6px; margin-bottom:3px; font-size:11px; color:#5060a0; }
+  .extra-diag-input { width:100%; box-sizing:border-box; background:#07070f; border:1px solid #2a2a44; color:#c0d0e8; font-family:'Courier New',monospace; font-size:13px; padding:7px 10px; border-radius:3px; resize:none; height:44px; }
+  .extra-diag-input:focus { outline:none; border-color:#405060; }
+  .diag-sign-lbl { color:#7080c0; font-weight:bold; min-width:32px; }
+  .sign-toggle { padding:2px 8px; font-size:11px; background:#0a0a14; border:1px solid #304060; color:#6080c0; cursor:pointer; border-radius:2px; }
+  .sign-toggle:hover { border-color:#5080a0; color:#90b0d0; }
+  .remove-diag { padding:2px 8px; font-size:11px; background:#0a0a14; border:1px solid #402020; color:#804040; cursor:pointer; border-radius:2px; }
+  .remove-diag:hover { border-color:#804040; color:#c06060; }
+  #btn-add-diag { font-size:11px; }
+  #btn-add-diag.active { background:#1a2a1a; border-color:#408040; color:#80c080; }
 </style>
 <div id="input-area">
-  <div class="lbl">Diagram 1 &nbsp;<span id="diag-lbl2" style="display:none;color:#405060">/ Diagram 2</span></div>
+  <div class="lbl">Diagram 1</div>
   <textarea id="amp-input" placeholder="e.g.  (e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]"></textarea>
-  <div id="input2-row">
-    <textarea id="amp-input2" placeholder="Diagram 2:  e.g.  (e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]"></textarea>
-  </div>
-  <div id="sign-row">
-    Amplitude sign:
-    <button class="sign-btn active" id="sign-minus" onclick="setSign(-1)">M₁ − M₂ &nbsp;(fermion exchange)</button>
-    <button class="sign-btn" id="sign-plus"  onclick="setSign(+1)">M₁ + M₂ &nbsp;(boson or distinct)</button>
-  </div>
+  <div id="extra-diags"></div>
   <div id="syntax-help">
     <strong>Traces:</strong> Tr[p1 gm p2 gn] &nbsp;|&nbsp; <strong>Momenta inside trace:</strong> p1…p8, k (always slashed) &nbsp;|&nbsp; <strong>Gammas:</strong> gm gn gr gs ga gb (index labels — matching labels are contracted)<br>
     <strong>Scalars:</strong> e2 e4 gs2 gs4 m2 &nbsp;|&nbsp; <strong>Denominators:</strong> /s /t /u /s2 /t2 /u2 &nbsp;|&nbsp; <strong>Spinors (for squaring):</strong> ubar(p1) gm u(p3) &nbsp;|&nbsp; <strong>Sum momenta:</strong> (p1+k) inside Tr<br>
@@ -152,7 +154,7 @@
   </div>
   <div class="input-row">
     <button onclick="go()">Solve ▶</button>
-    <button id="btn-two" onclick="toggleTwoDiagrams()">+ Two Diagrams</button>
+    <button id="btn-add-diag" onclick="addDiagramRow()">+ Diagram</button>
     <button id="btn-import-file" onclick="document.getElementById('file-import-input').click()" style="border-color:#304070;color:#6080b0" title="Load a .json file saved from the editor's ⇩ Export File button — works on any laptop/browser, no shared storage needed">⇧ Import File</button>
     <input type="file" id="file-import-input" accept=".json,application/json" style="display:none">
     <div class="sep"></div>
@@ -558,6 +560,13 @@ function stepsDouble4(parsed, pat) {
     });
   }
 
+  // Append Ward-identity steps when ξ ≠ 1 (Rξ gauge demonstration)
+  if (XI !== 1 && scalar) {
+    const scP = parseScalarParts(scalar);
+    const dn  = scP.denHTML.includes(MV('s'))?'s': scP.denHTML.includes(MV('t'))?'t':'u';
+    stepsGaugeWard(dn).forEach(s => steps.push(s));
+  }
+
   steps.push({title:'Final result', rule:'', expr:finalHTML, expl:`Use s+t+u=0 to eliminate one variable if desired.`});
 
   const latexInner = ev.final ? ev.final.replace(/²/g,'^2').replace(/<[^>]+>/g,'') : '...';
@@ -895,32 +904,66 @@ function dimDisp(){
     half, isEven:d%2===0
   };
 }
-// Evaluate the scalar master integral ∫dᵈℓ_E/(2π)ᵈ /(ℓ²+Δ)ⁿ at the current d.
+// LaTeX form of dimDisp().fourPi — same value, same branching, \LaTeX syntax
+// instead of HTML <sup>. Kept in sync so "Copy LaTeX" never goes stale at d≠4
+// (this is what fixes the bug where exported LaTeX hardcoded 16\pi^2).
+function fourPiLatex(d){
+  const half = d/2;
+  return d===4 ? '16\\pi^2'
+       : Number.isInteger(half) ? `(4\\pi)^{${half}}` : `(4\\pi)^{${d}/2}`;
+}
+// Γ(r+d/2)/Γ(d/2) as a rising-factorial (Pochhammer) product ∏_{k=0}^{r-1}(d/2+k)
+// — exactly 1 at r=0 (empty product). This is the only new ingredient needed to
+// generalise the scalar (r=0) master integral to a rank-r numerator (ℓ²)^r,
+// because Γ(r+d/2) and Γ(d/2) always appear as this ratio (see masterIntegralHTML).
+function pochhammerHalf(r){
+  const half = DIM/2;
+  let val = 1; const terms = [];
+  for (let k=0; k<r; k++) { const f = half+k; terms.push(fmtHalf(f)); val *= f; }
+  return {str: terms.join('·'), val};               // str==='' and val===1 at r=0
+}
+// Evaluate the master integral ∫dᵈℓ_E/(2π)ᵈ (ℓ²)^r/(ℓ²+Δ)ⁿ at the current d, for
+// any non-negative integer rank r. r=0 (default) is the scalar integral used
+// throughout the file; r=1 is the rank-2 tensor-reduction ingredient needed for
+// roadmap step 3 (the g^μν piece of I^μν, via ℓ^μℓ^ν → (ℓ²/d)g^μν).
 // Returns an HTML string: symbolic form → d substituted → evaluated (or pole flag).
-// The single source of truth for the scalar master integral, derived for ANY d
-// from one identity (no per-dimension lookups):
-//   ∫dᵈℓ_E/(2π)ᵈ /(ℓ²+Δ)ⁿ = Γ(n−d/2)/[(4π)^{d/2} Γ(n)] · Δ^{d/2−n}.
-// • Γ(n−d/2) finite  → evaluate to a closed form (loopGamma).
-// • Γ(n−d/2) on a pole (n−d/2 = −k, k≥0 int) → the UV divergence: set d=d₀−2ε and
-//   Laurent-expand Γ(−k+ε)=(−1)^k/k!·[1/ε+ψ(k+1)+O(ε)], ψ(k+1)=−γ_E+H_k, combined
-//   with (4π)^ε Δ^{−ε} μ^{2ε} = 1+ε·ln(4πμ²/Δ). d=4 is just the k=0 special case.
-function masterIntegralHTML(n){
+// The single source of truth, derived for ANY d and r from one identity
+// (no per-dimension/per-rank lookups):
+//   ∫dᵈℓ_E/(2π)ᵈ (ℓ²)^r/(ℓ²+Δ)ⁿ = [Γ(r+d/2)/Γ(d/2)]·Γ(n−r−d/2)/[(4π)^{d/2}Γ(n)] · Δ^{r−n+d/2}.
+// At r=0 the Pochhammer ratio is exactly 1, so every existing r=0 call site is
+// untouched (same formula, same output) — this is a strict generalisation.
+// • Γ(n−r−d/2) finite  → evaluate to a closed form (loopGamma), same as before
+//   but with the effective point-count nEff = n−r.
+// • Γ(n−r−d/2) on a pole (nEff−d/2 = −k, k≥0 int) → the UV divergence: set
+//   d=d₀−2ε and Laurent-expand Γ(−k+ε), exactly as the r=0 case, scaled by the
+//   Pochhammer ratio (the only place r enters the pole-side numerator).
+function masterIntegralHTML(n, r=0){
   const {d,half,fourPi} = dimDisp();
-  const arg = n - half;                               // Γ argument: n − d/2
-  const exp = half - n;                               // Δ exponent: d/2 − n
-  const g   = loopGamma(arg);
-  const sym = `∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR('1','(ℓ²+Δ)<sup>n</sup>')} = ${FR('Γ(n−d/2)','(4π)<sup>d/2</sup>Γ(n)')} Δ<sup>d/2−n</sup>`;
-  const subFR = FR(`Γ(${n}−${fmtHalf(half)})`, `${fourPi}·Γ(${n})`);
+  const nEff = n - r;                                 // effective point-count for the pole structure
+  const arg = nEff - half;                            // Γ argument: (n−r) − d/2
+  const exp = half - nEff;                            // Δ exponent: r − n + d/2
+  const g    = loopGamma(arg);
+  const poch = pochhammerHalf(r);                     // Γ(r+d/2)/Γ(d/2); ===1 (poch.str='') at r=0
+  const rPow = r===0 ? '1' : (r===1 ? 'ℓ²' : `(ℓ²)<sup>${r}</sup>`);
+  const nMinusR = r===0 ? `${n}` : `${n}−${r}`;
+  // r=0 reproduces the original "Γ(n−d/2) ... Δ^{d/2−n}" symbolic line exactly
+  // (no "r" anywhere); r>0 shows the generalised "Γ(n−r−d/2) ... Δ^{r−n+d/2}"
+  // form with the extra Pochhammer prefactor.
+  const sym = r===0
+    ? `∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR('1','(ℓ²+Δ)<sup>n</sup>')} = ${FR('Γ(n−d/2)','(4π)<sup>d/2</sup>Γ(n)')} Δ<sup>d/2−n</sup>`
+    : `∫${FR('d<sup>d</sup>ℓ<sub>E</sub>','(2π)<sup>d</sup>')} ${FR(rPow,'(ℓ²+Δ)<sup>n</sup>')} = ${FR('Γ(r+d/2)/Γ(d/2)·Γ(n−r−d/2)','(4π)<sup>d/2</sup>Γ(n)')} Δ<sup>r−n+d/2</sup>`;
+  const subFR = FR(`Γ(${nMinusR}−${fmtHalf(half)})`, `${fourPi}·Γ(${n})`);
 
   if (!g.pole){
     const gN    = loopFact(n-1);                       // Γ(n) = (n−1)!
     const denom = `${fourPi}${gN>1?'·'+gN:''}`;
     const dPow  = exp===0 ? '  (Δ-independent — log-type)' : ` Δ<sup>${fmtHalf(exp)}</sup>`;
-    return `${sym}<br>At d=${d}, n=${n}: = ${subFR} Δ<sup>${fmtHalf(exp)}</sup> = ${FR(g.str, denom)}${dPow}  (UV finite)`;
+    const numStr = r===0 ? g.str : (poch.val===1 ? g.str : `${poch.str}·${g.str}`);
+    return `${sym}<br>At d=${d}, n=${n}${r?', r='+r:''}: = ${subFR} Δ<sup>${fmtHalf(exp)}</sup> = ${FR(numStr, denom)}${dPow}  (UV finite)`;
   }
 
-  // UV-divergent: Γ(n−d/2) sits on a pole. Derive the ε-expansion.
-  const k    = half - n;                               // pole index ≥ 0  (n−d/2 = −k)
+  // UV-divergent: Γ(n−r−d/2) sits on a pole. Derive the ε-expansion.
+  const k    = half - nEff;                            // pole index ≥ 0  (n_eff−d/2 = −k)
   const d0   = 2*half;                                 // the even integer dimension we expand about
   const sgn  = k % 2 === 0 ? 1 : -1;
   const kf   = loopFact(k), nf = loopFact(n-1);         // k!  and  Γ(n)=(n−1)!
@@ -928,10 +971,111 @@ function masterIntegralHTML(n){
   const fourPi0 = d0===4 ? '16π²' : (Number.isInteger(d0/2) ? `(4π)<sup>${d0/2}</sup>` : `(4π)<sup>${d0}/2</sup>`);
   const Hk   = k===0 ? '' : ' + ' + (k===1 ? '1' : '(' + Array.from({length:k},(_,j)=>'1/'+(j+1)).join('+') + ')');
   const dPow = k===0 ? '' : (k===1 ? ' Δ' : ` Δ<sup>${k}</sup>`);
-  const finalCoef = coefDen>1 ? FR(`${sgn<0?'−':''}1`, `${fourPi0}·${coefDen}`) : FR(`${sgn<0?'−':''}1`, fourPi0);
-  return `${sym}<br>At d=${d}, n=${n}: Γ(${fmtHalf(arg)}) is a pole ⇒ set d=${d0}−2ε so n−d/2 = −${k}+ε.<br>`
+  const sgnStr = sgn<0?'−':'';
+  // Pochhammer factor multiplies straight into the pole-residue numerator (r=0 → '1', unchanged).
+  const poleNum = r===0 ? `${sgnStr}1` : `${sgnStr}${poch.str}`;
+  const finalCoef = coefDen>1 ? FR(poleNum, `${fourPi0}·${coefDen}`) : FR(poleNum, fourPi0);
+  return `${sym}<br>At d=${d}, n=${n}${r?', r='+r:''}: Γ(${fmtHalf(arg)}) is a pole ⇒ set d=${d0}−2ε so ${r?'(n−r)':'n'}−d/2 = −${k}+ε.<br>`
     + `Laurent: Γ(−${k}+ε) = ${sgn<0?'−':''}${kf>1?FR('1',kf+''):''}[${FR('1','ε')} − γ_E${Hk}] + O(ε);  (4π)<sup>ε</sup>Δ<sup>−ε</sup>μ<sup>2ε</sup> = 1 + ε·ln${FR('4πμ²','Δ')}<br>`
     + `⇒ I = ${finalCoef} [${FR('1','ε')} − γ_E${Hk} + ln${FR('4πμ²','Δ')}]${dPow}  (1/ε = UV pole → counterterm)`;
+}
+
+// ─── Roadmap step 3: closed-form rank-1 / rank-2 tensor reduction ────────────
+// Derives (not states) the standard Passarino–Veltman-equivalent reduction by
+// reusing the SAME "complete the square, shift ℓ→ℓ−q(x)" mechanism already used
+// for the scalar master integral (Step 5) and Δ(x) above — one general
+// algorithm, unchanged for n=2 (bubble), n=3 (triangle), n=4 (box):
+//   Iᵘ  = ∫dᵏℓ_orig ℓᵘ/∏Dᵢ  = −(n−1)!∫[dx] q(x)ᵘ · M₀(Δ(x))     (odd term in shifted ℓ vanishes)
+//   Iᵘᵛ = ∫dᵏℓ_orig ℓᵘℓᵛ/∏Dᵢ = (n−1)!∫[dx][ (gᵘᵛ/d)·M₁(Δ(x)) + q(x)ᵘq(x)ᵛ·M₀(Δ(x)) ]
+// where q(x)=Σᵢxᵢqᵢ is the SAME shift momentum already used for Δ(x), and
+// M_r(Δ)=masterIntegralHTML(n,r). At n=2 with the usual q₁=0 routing, q(x)ᵘ=x₂pᵘ,
+// so Iᵘ=pᵘB₁ and Iᵘᵛ=gᵘᵛB₀₀+pᵘpᵛB₁₁ exactly — the textbook bubble PV form is
+// the n=2 special case of this one identity, not a separately hardcoded rule;
+// n=3/4 naturally expand into the multi-momentum sum form (Σᵢpᵢᵘ Bᵢ, etc.)
+// because q(x) is then a combination of more than one independent external
+// momentum — same algorithm, no per-topology branching.
+function tensorReductionSteps(nProp, propMoms, hasProps) {
+  const qLabels = hasProps ? propMoms : Array.from({length:nProp}, (_,i)=>'q'+(i+1));
+  const qSum = qLabels.map((q,i)=>`x${i+1}${q}`).join('+');
+  const M1html = masterIntegralHTML(nProp, 1);   // the new ingredient: rank-1 (ℓ²)¹ master integral
+
+  const bubbleNote = nProp===2
+    ? ` At n=2 with the standard q₁=0 routing this is exactly the textbook bubble form: I<sup>μ</sup>=p<sup>μ</sup>B₁, I<sup>μν</sup>=g<sup>μν</sup>B₀₀+p<sup>μ</sup>p<sup>ν</sup>B₁₁.`
+    : ` For n=${nProp} (${nProp===3?'triangle':'box'}) q(x) is a combination of ${nProp-1} independent external momenta, so this expands into the sum form I<sup>μ</sup>=Σᵢpᵢ<sup>μ</sup>Bᵢ (rank-2: g<sup>μν</sup>B₀₀+Σᵢⱼpᵢ<sup>μ</sup>pⱼ<sup>ν</sup>Bᵢⱼ) — the same algorithm, just more terms.`;
+
+  return [
+    {title:'Step 5b — Tensor reduction (rank 1): Iᵘ = qᵘ-weighted scalar integral',
+     rule:`Reuse the shift ℓ→ℓ−q(x) from Step 3: ℓ_orig<sup>μ</sup>=ℓ_shifted<sup>μ</sup>−q(x)<sup>μ</sup>, so a rank-1 numerator splits into ℓ_shifted<sup>μ</sup> (odd → integrates to 0, the same fact already used to drop the linear term in Step 3) plus −q(x)<sup>μ</sup>.`,
+     expr:`q(x) = ${qSum}<br>I<sup>μ</sup> = −(n−1)!∫[dx] q(x)<sup>μ</sup> × M₀(Δ(x))  &nbsp;[M₀ = the scalar master integral from Step 5]`,
+     expl:`This derives the rank-1 PV-equivalent reduction from the SAME Feynman-parameter shift already used for the scalar integral — one general algorithm, not a per-topology lookup.${bubbleNote}`},
+
+    {title:'Step 5c — Tensor reduction (rank 2): Iᵘᵛ = gᵘᵛB₀₀ + qᵘqᵛ-weighted scalar integral',
+     rule:`Expand (ℓ_shifted−q)<sup>μ</sup>(ℓ_shifted−q)<sup>ν</sup>: the cross terms ℓ_shifted<sup>μ</sup>q<sup>ν</sup> are odd → vanish (same as rank 1). The surviving ℓ_shifted<sup>μ</sup>ℓ_shifted<sup>ν</sup> piece is isotropic after Wick rotation: ℓ_shifted<sup>μ</sup>ℓ_shifted<sup>ν</sup> → (g<sup>μν</sup>/d)ℓ_shifted² — a RANK-1 scalar integral M₁(Δ)=∫(ℓ²)¹/(ℓ²+Δ)ⁿ, not the scalar M₀ used everywhere else in this derivation.`,
+     expr:`I<sup>μν</sup> = (n−1)!∫[dx] [ (g<sup>μν</sup>/d)·M₁(Δ(x)) + q(x)<sup>μ</sup>q(x)<sup>ν</sup>·M₀(Δ(x)) ]<br>M₁(Δ) = ${M1html}`,
+     expl:`B₀₀ needs M₁ (this rank's own master integral), not M₀ — that distinction is exactly why masterIntegralHTML was generalised to take a rank parameter r rather than reusing the scalar one.${bubbleNote}`},
+  ];
+}
+
+// ─── Closed-form B₀ (bubble/self-energy) — completing the Feynman-parameter
+// integral that masterIntegralHTML deliberately leaves symbolic (Δ as a
+// placeholder). Scoped to the bubble ONLY (not triangle/box — C₀/D₀ need
+// dilogarithms and multi-region branch cuts, explicitly deferred, see memory).
+// All propagator masses in this app render as the single generic symbol 'm'
+// (FR_DEFAULTS), so there are exactly 3 cases by how many of the 2 internal
+// lines are massless — no "general unequal nonzero mass" case can even arise
+// from this app's existing Feynman-rule conventions. Each formula was derived
+// directly from completing ∫₀¹dx ln Δ(x) (not recalled from a table) and
+// numerically cross-checked against direct integration at several sample
+// (m²,p²) values before being written here.
+//   nMassless=2 (both massless):   B₀ = Δ_UV + 2 − ln(−p²/μ²)
+//   nMassless=1 (one mass m, one massless — the textbook electron
+//     self-energy structure, fermion+photon loop):
+//     B₀ = Δ_UV + 2 − ln(m²/μ²) + [(m²−p²)/p²]·ln(1−p²/m²)
+//   nMassless=0 (both mass m):
+//     B₀ = Δ_UV + 2 − ln(m²/μ²) − β·ln[(β+1)/(β−1)], β=√(1−4m²/p²)
+//          (real for p²≤0 or p²≥4m²; below threshold 0<p²<4m² use the
+//          equivalent real form −2β′·arctan(1/β′), β′=√(4m²/p²−1), derived
+//          via β=iβ′ — this is the region p²=m² always falls into on-shell).
+// onshell: the p²→m² limit of each case, needed by Step 7's δm/δZ extension —
+// derived analytically (δm: the x·lnx→0 / closed arctan value; δZ: case 1 has
+// no internal mass so no on-shell point; case 2's derivative genuinely
+// log-diverges — a real QED on-shell-Z₂ IR divergence from the massless
+// internal photon, not a bug; case 3's derivative is finite, verified
+// numerically against finite differences of the closed form itself).
+function closedFormBubbleHTML(pLabel, nMassless) {
+  const p2 = `${pLabel}²`;
+  if (nMassless === 2) {
+    return {
+      formula: `Δ_UV + 2 − ln(${FR(`−${p2}`,'μ²')})`,
+      note: `Both internal lines massless — there is no internal mass m to renormalise against, so there's no on-shell δm/δZ extraction for this case (Step 7 below only fires for the other two).`,
+      onshell: null,
+    };
+  }
+  if (nMassless === 1) {
+    return {
+      formula: `Δ_UV + 2 − ln(${FR('m²','μ²')}) + ${FR(`(m²−${p2})`, p2)}·ln(${FR(`m²−${p2}`,'m²')})`,
+      note: `One massive line (mass m) + one massless line — the textbook electron self-energy structure (fermion + photon loop).`,
+      onshell: {
+        dm: `2 − ln(${FR('m²','μ²')})`,
+        dmNote: `The [(m²−p²)/p²]·ln(1−p²/m²) term → 0 as p²→m² (it's an x·ln(x)→0 limit), leaving this clean finite result.`,
+        dzDivergent: true,
+        dzNote: `Diverges as ∝ −ln(m²−p²) as p²→m² — a genuine logarithmic IR divergence from the massless internal line, not a bug: this is the standard QED statement that the on-shell field-strength renormalisation Z₂ is IR-divergent (it cancels against soft real-photon emission in physical cross-sections — the same KLN mechanism already described elsewhere in this file for bremsstrahlung).`,
+      },
+    };
+  }
+  // nMassless === 0
+  return {
+    formula: `Δ_UV + 2 − ln(${FR('m²','μ²')}) − β·ln(${FR('β+1','β−1')})&nbsp; [β=√(1−4m²/${p2}), valid ${p2}≤0 or ${p2}≥4m²]<br>`
+            + `&nbsp;&nbsp;= Δ_UV + 2 − ln(${FR('m²','μ²')}) − 2β′·arctan(1/β′)&nbsp; [β′=√(4m²/${p2}−1), below threshold 0<${p2}<4m²]`,
+    note: `Both internal lines have the same mass m. Below the p²=4m² pair-production threshold, β is imaginary; the equivalent real arctan form (via β=iβ′) is used instead — exactly the region p²=m² (on-shell) always falls into, since m²<4m² trivially.`,
+    onshell: {
+      dm: `2 − ln(${FR('m²','μ²')}) + ${FR('π','√3')}`,
+      dmNote: `At p²=m²: β′=√3, and 2β′·arctan(1/β′) = 2√3·(π/6) = π/√3 exactly, since arctan(1/√3)=π/6.`,
+      dzDivergent: false,
+      dz: `${FR('1','m²')}·(1 − ${FR('2π√3','9')})`,
+      dzNote: `Finite — no massless internal line, so no IR divergence. Obtained by differentiating the arctan form and evaluating at p²=m² (verified numerically against finite differences of the closed form itself).`,
+    },
+  };
 }
 
 // ─── 4-boson loop scattering (γγ→γγ or gg→gg via fermion box) ────────────────
@@ -1171,6 +1315,7 @@ function stepsSquareScalar(text, nVert, nScalarProp, nScalarExt, scalarPropNorm)
 // γ^μ p̸ γ_μ = (2−d)p̸. It is NOT the Dirac trace normalisation Tr[1], which is
 // kept = 4 (conventional dimensional regularisation). Default 4 = 3 space + 1 time.
 let DIM = 4;
+let XI  = 1;   // Rξ gauge parameter (ξ=1: Feynman/Lorenz gauge)
 function S0()              { return []; }
 function S1(n)             { return n===0?[]:[{c:n,pairs:[],free:[]}]; }
 function Sadd(a,b)         { return [...a,...b]; }
@@ -2302,11 +2447,14 @@ function stepsFromMathIM(text) {
     const coupling = isGluon ? 'gs' : 'e';
     // 4-photon box (γγ→γγ or gg→gg)
     if (nFermExt===0 && nPhotExt>=4) return stepsPhotonBox(text, nLoops, nProp, isGluon);
-    // Triangle with external photons/gluons (Furry's theorem territory)
-    if (nFermExt===0 && nPhotExt>=2 && nFermProp>=2)
+    // Triangle with external photons/gluons (Furry's theorem territory); needs ≥3
+    // external boson legs — vacuum polarisation (nPhotExt===2) must fall through to
+    // stepsLoopIntegral so the generic roadmap engine handles it.
+    if (nFermExt===0 && nPhotExt>=3 && nFermProp>=2)
       return stepsLoopFermionTriangle(text, nPhotExt, nFermProp, coupling);
-    // General loop: pass full text for momentum extraction
-    return stepsLoopIntegral(nLoops, nProp||4, coupling, text);
+    // General loop: pass full text for momentum extraction, plus the E-classification
+    // (self-energy/vertex/box) so the handler can branch on it (roadmap step 1).
+    return stepsLoopIntegral(nLoops, nProp||4, coupling, text, nFermExt + nPhotExt + nScalarExt, {nFermExt, nPhotExt, nScalarExt});
   }
 
   // ── Triple gauge vertex (WWγ, WWZ, 3g) ───────────────────────────────────
@@ -2315,7 +2463,7 @@ function stepsFromMathIM(text) {
 
   // ── Triple gauge contact (3g or 4g with no propagator) ───────────────────
   if (nTripleGaugeVert>=1 && nPhotProp===0 && nFermExt===0 && nLoops===0)
-    return stepsContactGauge({nPhotExt, nVerts:nVert, isGluon:/ig_?s/i.test(text)}, text, text);
+    return stepsGaugeBosonContactTerm({nPhotExt, nVerts:nVert, isGluon:/ig_?s/i.test(text)}, text, text);
 
   // ── Metric vertex + scalar propagator: WW→H→WW via HWW/HZZ ──────────────
   if (nFermExt===0 && nPhotExt>=2 && nScalarProp>=1 && nPhotProp===0 && nLoops===0)
@@ -2323,7 +2471,7 @@ function stepsFromMathIM(text) {
 
   // ── Metric vertex decay: H→WW, H→ZZ (metric vertex, 2 ext bosons, no prop) ─
   if (nFermExt===0 && nPhotExt===2 && nMetricVert>=1 && nScalarProp===0 && nPhotProp===0 && nLoops===0)
-    return stepsDecayBosonTo2Boson({nVerts:nVert, isGluon:false}, '', text);
+    return stepsScalarToTwoBosonsDecay({nVerts:nVert, isGluon:false}, '', text);
 
   // ── Yukawa 2→2 scalar exchange: fermion legs + scalar propagator ────────────
   // e.g. ff→ff or ff̄→ff̄ via Higgs exchange. Scalar vertex (no γ^μ) + scalar prop.
@@ -2389,7 +2537,7 @@ function stepsFromMathIM(text) {
 
   // Compton
   if (nFermExt===2 && nPhotExt===2 && nFermProp>=1)
-    return stepsSquareCompton({}, '', text);
+    return stepsFermionBosonScattering({}, '', text);
 
   // Unknown topology → route to general Wick engine
   return stepsGeneralAmplitude(text);
@@ -2408,10 +2556,109 @@ function parseIMFactors(text) {
   return factors;
 }
 
+// Classify a 1-loop diagram by its external-leg count E:
+//   E=2 → self-energy (2-point), E=3 → vertex correction (3-point), E≥4 → box-and-above.
+// Single source of truth for both the editor-import path (getAmplitudeTopology)
+// and the typed-math path (stepsFromMathIM) so the two classifiers can't diverge.
+function classifyLoopTopology(E) {
+  if (E === 2) return 'self_energy';
+  if (E === 3) return 'vertex';
+  if (E >= 4)  return 'box';
+  return 'other';
+}
+const LOOP_CLASS_LABEL = {
+  self_energy: 'self-energy (2-point)',
+  vertex:      'vertex correction (3-point)',
+  box:         'box-and-above (≥4-point)',
+  other:       'unclassified external-leg count',
+};
+
+// For a self-energy (E=2), which field is being corrected determines which
+// counterterms are even physical: a gauge boson (photon/gluon) self-energy
+// (vacuum polarisation) gets NO mass counterterm — the Ward identity forces
+// Π^{μν}(q) ∝ q²(...), so gauge invariance forbids a photon/gluon mass term.
+function selfEnergyFieldType(nFermExt, nPhotExt, nScalarExt) {
+  if (nFermExt === 2)  return 'fermion';
+  if (nPhotExt === 2)  return 'gauge_boson';
+  if (nScalarExt === 2) return 'scalar';
+  return 'unknown';
+}
+
+// Roadmap step 2: branch the renormalisation step by E-classification (step 1's
+// output) instead of the one-size-fits-all MS̄ blurb. Scheme: MS̄, reusing the
+// exact Laurent expansion already derived by masterIntegralHTML (single source
+// of truth — no separate/duplicated pole formula here).
+function buildRenormalisationStep({loopClass, E, isUVdivergent, nProp, coupHTML, nFermExt, nPhotExt, nScalarExt, closedForm}) {
+  const pole = masterIntegralHTML(nProp);   // the actual derived 1/ε (or finite) result
+
+  if (!isUVdivergent) {
+    return {title:'Step 7 — No counterterm needed (UV finite)',
+      rule:`Step 6 found this diagram UV finite (D&lt;0) — there is no pole to absorb.`,
+      expr:`No δ-counterterm is added. The MS̄ Laurent expansion from Step 5 has no 1/ε piece here:<br>${pole}`,
+      expl:`Renormalisation only introduces a counterterm when a divergence actually needs cancelling. Adding one here would be fabricating a term the calculation doesn't require.`};
+  }
+
+  if (loopClass === 'self_energy') {
+    const ft = selfEnergyFieldType(nFermExt, nPhotExt, nScalarExt);
+    if (ft === 'gauge_boson') {
+      return {title:'Step 7 — Renormalisation: gauge-boson self-energy → field-strength counterterm δZ only',
+        rule:`<strong>E=2, gauge boson (vacuum polarisation Π<sup>μν</sup>(q)):</strong> the Ward identity q<sub>μ</sub>Π<sup>μν</sup>(q)=0 forces Π<sup>μν</sup>(q) = (q²g<sup>μν</sup>−q<sup>μ</sup>q<sup>ν</sup>)Π(q²) — every term carries a factor of q². <strong>No δm<sub>photon</sub> counterterm exists or is needed</strong>; a photon/gluon mass term would itself violate gauge invariance.`,
+        expr:`δℒ<sub>CT</sub> = −¼δZ<sub>A</sub> F<sub>μν</sub>F<sup>μν</sup> &nbsp;(only the kinetic term)<br>
+          δZ<sub>A</sub> fixed (MS̄) by cancelling exactly the 1/ε pole derived in Step 5:<br>${pole}`,
+        expl:`This is why QED/QCD have a massless photon/gluon to all orders in perturbation theory — gauge invariance protects the mass, loop corrections only renormalise the kinetic term (and hence the coupling, via the Ward identity relating δZ_A to the vertex/coupling renormalisation).`};
+    }
+    const fieldLabel = ft === 'scalar' ? 'scalar φ' : ft === 'fermion' ? 'fermion ψ' : 'field (type not resolved from the diagram — assuming massive matter field)';
+    const ctTerm = ft === 'scalar'
+      ? '½δZ<sub>φ</sub>(∂φ)² − ½δm²φ²'
+      : 'δZ<sub>ψ</sub> ψ̄(i∂̸)ψ − δm ψ̄ψ';
+
+    // What does "squaring" mean for a self-energy? Not |M|² (Σ(p) isn't a
+    // standalone S-matrix element) — it renormalises the propagator's pole
+    // (δm) and residue (δZ). Made concrete here using the closed-form Σ(p²)
+    // from Step 5d, evaluated on-shell (p²→m²) — only when that closed form
+    // was actually derived for this diagram (closedForm.onshell is null for
+    // the massless-massless case, which has no internal mass to shift).
+    const os = closedForm && closedForm.onshell;
+    const massShiftBlock = os ? `
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid #1c1c34">
+      <strong>What "squaring" means here:</strong> Σ(p) is a propagator correction, not a scattering amplitude — there is no |M|². Instead it shifts the propagator's pole (δm) and residue (δZ), read directly off the closed form from Step 5d at p²→m²:<br><br>
+      δm = Σ(m²) = ${os.dm}<br>
+      <span style="color:#5a6890;font-size:11px">${os.dmNote}</span><br><br>
+      δZ = dΣ/dp²|<sub>p²=m²</sub> = ${os.dzDivergent ? '<strong>diverges</strong> (see note)' : os.dz}<br>
+      <span style="color:#5a6890;font-size:11px">${os.dzNote}</span>
+      </div>` : '';
+
+    return {title:'Step 7 — Renormalisation: self-energy → mass + field-strength counterterms (δm, δZ)',
+      rule:`<strong>E=2, ${fieldLabel}:</strong> the 1PI two-point function has a divergent piece that two independent counterterms absorb — δZ (coefficient of the kinetic term) and δm (coefficient of the mass term).`,
+      expr:`δℒ<sub>CT</sub> = ${ctTerm}<br>
+        δZ, δm fixed (MS̄) by cancelling exactly the 1/ε pole derived in Step 5:<br>${pole}${massShiftBlock}`,
+      expl:`On-shell scheme would instead fix δZ,δm by requiring the propagator pole stay at the physical mass with unit residue; MS̄ (used here, matching masterIntegralHTML) instead cancels just the 1/ε piece and absorbs the −γ_E+ln(4πμ²) remainder into the μ-dependence of the renormalised mass/field.${os ? ' The boxed block above does exactly that on-shell calculation explicitly, using the real closed-form Σ(p²) derived in Step 5d.' : ''}`};
+  }
+
+  if (loopClass === 'vertex') {
+    return {title:'Step 7 — Renormalisation: vertex correction → coupling counterterm (δg)',
+      rule:`<strong>E=3:</strong> the 1-loop correction to the 3-point vertex is absorbed into a multiplicative renormalisation of the coupling: g<sub>bare</sub> = μ<sup>ε</sup>Z<sub>g</sub>g(μ), Z<sub>g</sub>=1+δg.`,
+      expr:`δℒ<sub>CT</sub> = δg × (vertex operator)<br>
+        δg fixed (MS̄) by cancelling exactly the 1/ε pole derived in Step 5:<br>${pole}`,
+      expl:`This δg is exactly what generates the running coupling / β-function shown below — the β-function is the renormalisation-group statement of "how much δg is needed at each scale μ".`};
+  }
+
+  // Box-and-above (E≥4, or 'other' if E couldn't be classified): a renormalisable
+  // theory has no dimension-≤4 local operator with this many external legs to use
+  // as a counterterm (Weinberg's theorem) — so a genuine UV divergence here means
+  // something is off, not that a δ-counterterm should be fabricated to hide it.
+  return {title:`Step 7 — ⚠ Box-and-above (E=${E}) UV divergence: flagging, not fabricating a counterterm`,
+    rule:`<strong>Weinberg's theorem:</strong> in a renormalisable theory (all couplings of mass dimension ≥0), 1PI amplitudes with E≥4 external legs are required by power counting to be UV finite — there is no available dimension-≤4 counterterm operator with this many legs.`,
+    expr:`Step 5/6 derived a genuine 1/ε pole for this E=${E} diagram:<br>${pole}<br>
+      This is <strong>not</strong> resolved by inventing a counterterm here.`,
+    expl:`Two real possibilities: (a) a non-renormalisable (dimension&gt;4) vertex was used somewhere in this diagram — then this IS an EFT and needs its own higher-dimension counterterm series, not a δm/δZ/δg patch; or (b) this diagram is only part of a larger UV-finite sum (Ward-identity cancellation against sibling diagrams at the same order) that hasn't been added yet. Check the vertex rules used before trusting this pole.`};
+}
+
 function getAmplitudeTopology(factors) {
   const cnt = t => factors.filter(f => f.type.includes(t)).length;
   const nFermExt  = cnt('fermion ext');
   const nPhotExt  = cnt('photon ext') + cnt('gluon ext');
+  const nScalarExt = cnt('scalar ext');                    // Higgs/φ external legs
   const nFermProp = cnt('fermion prop');
   const nBosonProp= cnt('photon prop') + cnt('gluon prop');
   const nVerts    = cnt('vertex');
@@ -2425,6 +2672,8 @@ function getAmplitudeTopology(factors) {
   const scalarStr = `${coupling}${nVerts*2}/${denom}2`;
   // Total internal propagators (for loop topology identification)
   const nPropTotal = nFermProp + nBosonProp;
+  // Total external legs across all field types — feeds the E-classification above.
+  const E = nFermExt + nPhotExt + nScalarExt;
 
   // ── 2→2 tree-level ────────────────────────────────────────────────────────
   if (nFermExt===4 && nBosonProp>=1 && nPhotExt===0 && nFermProp===0 && nLoops===0)
@@ -2440,7 +2689,7 @@ function getAmplitudeTopology(factors) {
     const phOut = factors.filter(f => f.type.includes('photon ext out') || f.type.includes('gluon ext out')).length;
     const processType = (phIn===1 && phOut===1) ? 'compton'
                       : phIn===2 ? 'pair_prod' : 'pair_annih';
-    return {topo:'compton', nFermProp, nLoops, fermDenom, processType};
+    return {topo:'fermion_boson_scattering', nFermProp, nLoops, fermDenom, processType};
   }
 
   // ── 1→2 decays ────────────────────────────────────────────────────────────
@@ -2461,10 +2710,8 @@ function getAmplitudeTopology(factors) {
 
   // ── Loop ──────────────────────────────────────────────────────────────────
   if (nLoops>=1)
-    return {topo:'loop', nLoops, nPropTotal, nFermProp, nBosonProp, coupling, isGluon, scalarStr, denom};
-
-  // Count scalar external legs (Higgs, φ legs)
-  const nScalarExt = cnt('scalar ext');
+    return {topo:'loop', nLoops, nPropTotal, nFermProp, nBosonProp, coupling, isGluon, scalarStr, denom,
+            nFermExt, nPhotExt, nScalarExt, E, loopClass: classifyLoopTopology(E)};
 
   // ── H→WW / H→ZZ decay (metric vertex, 2 external bosons, no propagator) ──
   if (nFermExt===0 && nPhotExt===2 && nBosonProp===0 && nFermProp===0 && nScalarProp===0 && nLoops===0)
@@ -2662,7 +2909,7 @@ function evalPropDot(propTerms, pX) {
   return {halfCoeff:null, mand:null, html};
 }
 
-function stepsSquareCompton(topo, text, iMDisplay) {
+function stepsFermionBosonScattering(topo, text, iMDisplay) {
   const {fermDenom, processType} = topo;
   const step0 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
@@ -2804,7 +3051,7 @@ function stepsSquareCompton(topo, text, iMDisplay) {
      expl:`This is the contribution from the <strong>single ${denom}-channel diagram</strong> you drew.<br>
        For the full physical result you also need: the <strong>${missingDenom}-channel diagram</strong>
        + their interference 2Re(M<sub>${denom}</sub>M<sub>${missingDenom}</sub>*).
-       Use the <strong>Two Diagrams</strong> mode to add both and compute the interference automatically.`},
+       Use the <strong>+ Diagram</strong> button to add both and compute the interference automatically.`},
   ], latex: resultLatex};
 }
 
@@ -2827,6 +3074,43 @@ function parseLoopPropagators(text) {
   const re2 = /i\s*\(\/(ℓ\d*)\s*[+-]\s*m/g;
   while ((m = re2.exec(nt)) !== null) if (!moms.includes(m[1])) moms.push(m[1]);
   return moms;
+}
+
+// For an n=2 (bubble/self-energy) loop diagram, extract BOTH propagators'
+// momentum label and mass (massless: true for photon/gluon, false for
+// fermion/scalar — symbolic 'm', never a number) in propagator order. Unlike
+// parseLoopPropagators above (fermion-shaped patterns only, used for the
+// generic Δ(x) display), this also catches the boson propagator — needed
+// because a real self-energy loop is one fermion prop + one photon prop, and
+// the closed-form B₀ below needs to know which (if either) internal line is
+// massless. Returns null rather than guessing if extraction isn't confident.
+function extractBubblePropagators(text) {
+  // Import path: structured "← type (arg)" comment lines (reuses parseIMFactors,
+  // the same parser the rest of the import-path machinery already relies on).
+  const factors = parseIMFactors(text);
+  const propFactors = factors.filter(f => f.type.includes('prop'));
+  if (propFactors.length === 2) {
+    return propFactors.map(f => ({
+      mom: f.arg,
+      massless: f.type.includes('photon') || f.type.includes('gluon'),
+    }));
+  }
+  // Typed-math path: split "iM = A × B × ..." into factors and classify each
+  // in document order — fermion/scalar propagator i(/(q)±m), or boson
+  // propagator −ig_μν/{q²} (reusing the same −ig_μν / η^μν shape already
+  // matched by parseMathExpression's isPhotonProp check).
+  const subN = s => s.replace(/[₀-₉]/g,c=>'0123456789'[c.charCodeAt(0)-0x2080]||c);
+  const parts = subN(text.replace(/^iM\s*=\s*/i,'').replace(/[−–]/g,'-')).split(/\s*[×*]\s*/);
+  const found = [];
+  for (const f of parts) {
+    const fermM = f.match(/^i\s*\(\/\s*\(?\s*([^)]+?)\s*\)?\s*[+-]\s*m\)?/);
+    if (fermM) { found.push({mom: fermM[1].trim(), massless: false}); continue; }
+    if (/^-i[^[]*(g_[a-zα-ω]{2}|η[\^_]\{?[a-zα-ω])/iu.test(f)) {
+      const bosonM = f.match(/\/\s*\(?\(?([^)²2]+?)\)?\)?[²2]/u);
+      if (bosonM) { found.push({mom: bosonM[1].trim(), massless: true}); continue; }
+    }
+  }
+  return found.length === 2 ? found : null;
 }
 
 // ─── Fermion triangle loop (specialized: n external photons/gluons) ───────────
@@ -2978,17 +3262,29 @@ function stepsLoopFermionTriangle(text, nPhotExt, nFermProp, coupling) {
 
   const latex = isOdd
     ? `\\mathcal{M}^{\\mu\\nu\\rho}_{\\rm photon\\,triangle} = 0 \\quad (\\text{Furry's theorem})`
-    : `C_0 = \\frac{i}{16\\pi^2}\\int_0^1 dx_1 dx_2\\,\\frac{\\theta(1{-}x_1{-}x_2)}{\\Delta(x_i)}`;
+    : `C_0 = \\frac{i}{${fourPiLatex(DD.d)}}\\int_0^1 dx_1 dx_2\\,\\frac{\\theta(1{-}x_1{-}x_2)}{\\Delta(x_i)}`;
 
   return {steps, latex};
 }
 
 // ─── General loop integral handler (improved — uses actual propagator momenta) ─
-function stepsLoopIntegral(nLoops, nProp, coupling, text) {
+// E (optional): total external-leg count, classified via classifyLoopTopology
+// into self-energy (E=2) / vertex (E=3) / box-and-above (E≥4). Threaded through
+// from both call sites (editor-import getAmplitudeTopology and typed-math
+// stepsFromMathIM) — roadmap step 1. Not yet branched on (that's step 2's
+// E-classified renormalisation); surfaced here so the classification is visible
+// and verifiable before the renormalisation step consumes it.
+function stepsLoopIntegral(nLoops, nProp, coupling, text, E, extCounts) {
   const coupHTML = coupling==='gs' ? CP('g<sub>s</sub>') : CP('e');
   const loopType = nProp<=2 ? 'Bubble B₀' : nProp===3 ? 'Triangle C₀' : 'Box D₀';
   const nFeyParam = nProp - 1;
   const DD = dimDisp();   // spacetime-dimension display bundle (measure, (4π)^{d/2}, ε, …)
+  const loopClass = (E !== undefined) ? classifyLoopTopology(E) : null;
+  const {nFermExt=0, nPhotExt=0, nScalarExt=0} = extCounts || {};
+  // Superficial UV degree (shared by Step 6's display and Step 7's branching —
+  // single computation, no risk of the two drifting apart).
+  const Dsup = DD.d*nLoops - 2*nProp;
+  const isUVdivergent = Dsup >= 0;
 
   // Extract propagator momenta from text if available
   const propMoms = text ? parseLoopPropagators(text) : [];
@@ -3003,7 +3299,30 @@ function stepsLoopIntegral(nLoops, nProp, coupling, text) {
     ? `${MV('Δ')} = −x₁x₂(${propMoms[0]}−${propMoms[1]})² ${propMoms[2]?'− x₂x₃('+propMoms[1]+'−'+propMoms[2]+')² − x₃x₁('+propMoms[2]+'−'+propMoms[0]+')²':''} + m²`
     : `${MV('Δ')} = −Σ<sub>i<j</sub> xᵢxⱼ(pᵢ−pⱼ)² + Σ<sub>i</sub> xᵢmᵢ²`;
 
+  // Roadmap follow-up: closed-form B₀ for the bubble only (n=2). Needs BOTH
+  // propagators' mass info (extractBubblePropagators, not the fermion-only
+  // parseLoopPropagators above) — only attempted for n=2, so n=3/4 (triangle/
+  // box) are completely unaffected.
+  let closedForm = null, extMomLabel = 'p';
+  if (nProp === 2) {
+    const bubbleProps = text ? extractBubblePropagators(text) : null;
+    if (bubbleProps) {
+      const extFactor = parseIMFactors(text).find(f => f.type.includes('ext'));
+      if (extFactor && extFactor.arg) extMomLabel = extFactor.arg;
+      const nMassless = bubbleProps.filter(p => p.massless).length;
+      closedForm = closedFormBubbleHTML(extMomLabel, nMassless);
+    }
+  }
+
   const steps = [
+    // Classification is shown as its own step whenever E is known, independent of
+    // whether the raw-text preview (step0, below) is available — the import path
+    // doesn't pass text, but still threads E through (roadmap step 1).
+    ...(loopClass ? [{title:`Loop topology — ${nLoops}-loop ${loopType}, E=${E} external legs`,
+     rule:`Classified by total external-leg count E = nFermExt + nPhotExt + nScalarExt = ${E}.`,
+     expr:`<strong>${LOOP_CLASS_LABEL[loopClass]}</strong>`,
+     expl:`Self-energy (E=2) needs mass + field-strength counterterms (δm, δZ); vertex correction (E=3) needs a coupling counterterm (δg); box-and-above (E≥4) should not need a counterterm in a renormalisable theory — a UV divergence there would signal non-renormalisability. (Branching the renormalisation step on this is the next roadmap step — not yet implemented here.)`}] : []),
+
     ...(step0 ? [{title:`${nLoops}-loop ${loopType} integral — input`,
      rule:`Propagators detected: ${nProp}. ${hasProps?'Propagator momenta extracted from text: <strong>'+propMoms.join(', ')+'</strong>':'Momentum routing read from diagram.'}`,
      expr:step0, expl:''}] : []),
@@ -3051,33 +3370,64 @@ function stepsLoopIntegral(nLoops, nProp, coupling, text) {
        ${masterIntegralHTML(nProp)}`,
      expl:`The Δ function encodes all the kinematics. For our diagram with propagator momenta ${hasProps?propMoms.join(', '):'q₁,q₂,...'}: Δ contains all the relevant mass and momentum invariants.`},
 
+    // Roadmap step 3: real (not merely described) Passarino-Veltman-equivalent
+    // rank-1/rank-2 tensor reduction, one general algorithm for n=2/3/4.
+    ...tensorReductionSteps(nProp, propMoms, hasProps),
+
+    // Closed-form B₀ — completes the Feynman-parameter integral Step 5 leaves
+    // symbolic, for the bubble only (n=2; triangle/box need dilogarithms,
+    // explicitly out of scope — see the note below when this isn't shown).
+    ...(closedForm ? [{title:'Step 5d — Closed form: Σ(p²) (finite part)',
+     rule:`Completing the remaining ∫₀¹dx of the Feynman parameter left symbolic in Step 5, for this bubble specifically (external momentum ${M(extMomLabel)}). ${closedForm.note}`,
+     expr:closedForm.formula,
+     expl:`Derived directly from ∫dx ln Δ(x) (not looked up), then numerically cross-checked against direct integration before being shown here. Triangle/box closed forms (C₀/D₀) need dilogarithms and multiple kinematic-region branch cuts — intentionally out of scope for now.`}]
+    : (nProp!==2 ? [{title:'Closed form: not attempted for this topology',
+     rule:'', expr:`${loopType} closed-form evaluation (dilogarithms, multiple kinematic regions) is intentionally out of scope — only the bubble (B₀, self-energy) closed form is implemented.`,
+     expl:''}] : [])),
+
     {title:'Step 6 — UV/IR divergence structure',
      rule:`UV-divergent if superficial degree D = dL − 2×(# propagators) ≥ 0 &nbsp;(d=${DD.d}).<br>
-       For our diagram: D = ${DD.d}×${nLoops} − 2×${nProp} = <strong>${DD.d*nLoops-2*nProp}</strong> ${DD.d*nLoops-2*nProp>=0?'→ UV divergent':'→ UV finite ✓'}<br>
+       For our diagram: D = ${DD.d}×${nLoops} − 2×${nProp} = <strong>${Dsup}</strong> ${isUVdivergent?'→ UV divergent':'→ UV finite ✓'}<br>
        <em>Raising d makes loops more divergent</em> — the box (UV-finite at d=4) develops a UV pole once d≥8.`,
-     expr:nProp<=2
-       ? `B₀ contains 1/ε UV pole → requires renormalisation counterterm.<br>
-          MS̄ renormalization: δZ or δm absorbs the pole.`
-       : nProp===3
-       ? `C₀ is UV finite. May have IR divergences if Δ→0 (collinear/soft limits).<br>
-          IR divergences cancel in physical observables (KLN theorem).`
-       : `D₀ is UV and IR finite for generic kinematics.<br>
-          Massless limits require careful regularisation.`,
+     // Gated on the ACTUAL isUVdivergent (computed above from Dsup at this d),
+     // not a hardcoded per-nProp assumption — a bubble isn't always divergent
+     // and a triangle/box isn't always finite once d≠4 (see Step 7's same gate;
+     // these two must never disagree, which an earlier nProp-only version did).
+     expr: isUVdivergent
+       ? `${loopType} contains a 1/ε UV pole at d=${DD.d} → requires a renormalisation counterterm (see Step 7).<br>
+          MS̄ renormalisation absorbs the pole.`
+       : (nProp<=2
+           ? `B₀ is UV finite at d=${DD.d} — no pole to absorb.`
+           : nProp===3
+           ? `C₀ is UV finite at d=${DD.d}. May have IR divergences if Δ→0 (collinear/soft limits).<br>
+              IR divergences cancel in physical observables (KLN theorem).`
+           : `D₀ is UV and IR finite at d=${DD.d} for generic kinematics.<br>
+              Massless limits require careful regularisation.`),
      expl:`UV divergences require counterterms (renormalisation). IR divergences cancel between virtual corrections (this loop) and real emission diagrams (bremsstrahlung). Both are scheme-dependent but physical results are scheme-independent.`},
 
-    {title:'Step 7 — Renormalisation (MS̄ scheme)',
-     rule:`Add counterterm Lagrangian δL to cancel UV poles. Finite part fixed by physical renormalization condition.`,
-     expr:`A<sub>bare</sub> + A<sub>CT</sub> = A<sub>ren</sub>(μ) &nbsp;[UV finite, μ-dependent]<br>
-       Running coupling: μ d${coupHTML}/dμ = β(${coupHTML})<br>
+    // Step 7: branched by E-classification (roadmap step 2) instead of one
+    // generic MS̄ blurb — self-energy/vertex/box each need a genuinely different
+    // counterterm (or none at all). Falls back to the old generic text when E
+    // wasn't classified (loopClass===null, e.g. an exotic/unrecognised topology).
+    loopClass
+      ? buildRenormalisationStep({loopClass, E, isUVdivergent, nProp, coupHTML, nFermExt, nPhotExt, nScalarExt, closedForm})
+      : {title:'Step 7 — Renormalisation (MS̄ scheme)',
+         rule:`Add counterterm Lagrangian δL to cancel UV poles. Finite part fixed by physical renormalization condition.`,
+         expr:`A<sub>bare</sub> + A<sub>CT</sub> = A<sub>ren</sub>(μ) &nbsp;[UV finite, μ-dependent]`,
+         expl:`External-leg count wasn't available for this diagram, so the counterterm couldn't be classified by type (δm/δZ vs δg vs non-renormalisability check) — falling back to the generic statement.`},
+
+    {title:'Step 8 — Running coupling (renormalisation group)',
+     rule:`Whatever counterterm Step 7 introduced (δZ, δm, or δg) is μ-dependent — the renormalised coupling must run with the renormalisation scale μ to keep physical S-matrix elements μ-independent.`,
+     expr:`μ d${coupHTML}/dμ = β(${coupHTML})<br>
        QED: β(e) = +e³/(12π²)  &nbsp;|&nbsp;  QCD: β(g_s) = −g_s³(11N_c−2N_f)/(16π²)`,
-     expl:`The μ-dependence of the renormalized coupling is the renormalization group equation. Physical S-matrix elements are μ-independent to all orders.`},
+     expl:`This is the same RG statement regardless of which 1PI function (self-energy/vertex/box) generated the divergence in Step 7 — all the scale-dependence flows into the running of the same coupling(s).`},
   ];
 
-  return {steps, latex: `${loopType}\\text{: } \\frac{i}{16\\pi^2}\\left[\\frac{1}{\\varepsilon}_{\\rm UV}+\\text{finite}(\\Delta)\\right]`};
+  return {steps, latex: `${loopType}\\text{: } \\frac{i}{${fourPiLatex(DD.d)}}\\left[\\frac{1}{\\varepsilon}_{\\rm UV}+\\text{finite}(\\Delta)\\right]`};
 }
 
 // ─── 1→2 decay: Z/W/γ* → ff̄ ─────────────────────────────────────────────────
-function stepsDecay1to2(topo, text, iMDisplay) {
+function stepsVectorBosonFermionDecay(topo, text, iMDisplay) {
   const {coupling, isGluon} = topo;
   const coupHTML = isGluon ? CP('g<sub>s</sub>') : CP('g<sub>Z</sub>');
   const step1 = iMDisplay
@@ -3132,7 +3482,7 @@ function stepsDecay1to2(topo, text, iMDisplay) {
 }
 
 // ─── 1→2 scalar decay: H → ff̄ (Yukawa) ────────────────────────────────────
-function stepsDecayScalar(topo, text, iMDisplay) {
+function stepsScalarFermionPairDecay(topo, text, iMDisplay) {
   const step1 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
     : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,5).join('\n'))}</div>`;
@@ -3168,7 +3518,7 @@ function stepsDecayScalar(topo, text, iMDisplay) {
 }
 
 // ─── 2→3 with photon/gluon radiation (bremsstrahlung) ────────────────────────
-function stepsBremsstrahlung(topo, text, iMDisplay) {
+function stepsTwoToThreeRadiation(topo, text, iMDisplay) {
   const {coupling, isGluon, nBosonProp} = topo;
   const particleName = isGluon ? 'gluon' : 'photon';
   const coupHTML = isGluon ? CP('g<sub>s</sub>') : CP('e');
@@ -3242,7 +3592,7 @@ function stepsBremsstrahlung(topo, text, iMDisplay) {
 //   = 2 + (p₂·p₃)²/m_V⁴
 //   → For H→WW: p₂·p₃ = (m_H²−2m_W²)/2
 //
-function stepsDecayBosonTo2Boson(topo, text, iMDisplay) {
+function stepsScalarToTwoBosonsDecay(topo, text, iMDisplay) {
   const step0 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
     : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
@@ -3297,7 +3647,7 @@ function stepsDecayBosonTo2Boson(topo, text, iMDisplay) {
 // For scalar φⁿ vertices: iM = coupling × 1 × 1 × ... (scalars contribute factor 1 each)
 // |M|² = |coupling|² — pure constant, no spin sums, no pol sums, no Lorentz algebra.
 //
-function stepsContactScalar(topo, text, iMDisplay) {
+function stepsScalarContactTerm(topo, text, iMDisplay) {
   const {nScalarExt, nVerts} = topo;
   const step0 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
@@ -3347,7 +3697,7 @@ function stepsContactScalar(topo, text, iMDisplay) {
 // contracted with 4 external polarisation vectors.
 // The vertex tensor has a complex structure: −ig_s²[f^{ace}f^{bde}(...) + ...]
 //
-function stepsContactGauge(topo, text, iMDisplay) {
+function stepsGaugeBosonContactTerm(topo, text, iMDisplay) {
   const {nPhotExt, isGluon} = topo;
   const particleName = isGluon ? 'gluon' : 'W boson';
   const coupH = isGluon ? CP('g<sub>s</sub>') : CP('g');
@@ -3392,22 +3742,22 @@ function stepsFromIM(text, iMDisplay) {
 
   // ── 2→2 ──────────────────────────────────────────────────────────────────
   if (topo.topo==='two_current')        return stepsSquareTwoCurrent(topo, text, iMDisplay);
-  if (topo.topo==='compton')            return stepsSquareCompton(topo, text, iMDisplay);
+  if (topo.topo==='fermion_boson_scattering') return stepsFermionBosonScattering(topo, text, iMDisplay);
   if (topo.topo==='triple_gauge_exchange') return stepsTripleGaugeVertex(iMDisplay||text, topo);
   if (topo.topo==='boson_scalar_exchange') return stepsSquareBosonMetric(iMDisplay||text);
   if (topo.topo==='yukawa_exchange')       return stepsSquareYukawa(iMDisplay||text);
 
   // ── 1→2 decays ────────────────────────────────────────────────────────────
-  if (topo.topo==='decay_1to2')         return stepsDecay1to2(topo, text, iMDisplay);
-  if (topo.topo==='decay_scalar')       return stepsDecayScalar(topo, text, iMDisplay);
-  if (topo.topo==='decay_boson_to_2boson') return stepsDecayBosonTo2Boson(topo, text, iMDisplay);
+  if (topo.topo==='decay_1to2')         return stepsVectorBosonFermionDecay(topo, text, iMDisplay);
+  if (topo.topo==='decay_scalar')       return stepsScalarFermionPairDecay(topo, text, iMDisplay);
+  if (topo.topo==='decay_boson_to_2boson') return stepsScalarToTwoBosonsDecay(topo, text, iMDisplay);
 
   // ── Contact terms (no internal propagator) ────────────────────────────────
-  if (topo.topo==='contact_scalar')     return stepsContactScalar(topo, text, iMDisplay);
-  if (topo.topo==='contact_gauge')      return stepsContactGauge(topo, text, iMDisplay);
+  if (topo.topo==='contact_scalar')     return stepsScalarContactTerm(topo, text, iMDisplay);
+  if (topo.topo==='contact_gauge')      return stepsGaugeBosonContactTerm(topo, text, iMDisplay);
 
   // ── 2→3 ──────────────────────────────────────────────────────────────────
-  if (topo.topo==='bremsstrahlung') return stepsBremsstrahlung(topo, text, iMDisplay);
+  if (topo.topo==='bremsstrahlung') return stepsTwoToThreeRadiation(topo, text, iMDisplay);
   if (topo.topo==='multi_photon')  return {steps:[{
     title:`2→3+ multi-photon: e⁺e⁻→${topo.nPhotExt}γ`,
     rule:'',
@@ -3416,7 +3766,10 @@ function stepsFromIM(text, iMDisplay) {
   }], latex:''};
 
   // ── Loop ─────────────────────────────────────────────────────────────────
-  if (topo.topo==='loop')          return stepsLoopIntegral(topo.nLoops, topo.nPropTotal||2, topo.coupling||'e');
+  // Pass the real comments text through (previously hardcoded '') so the
+  // propagator-momentum/mass extraction below can actually run for diagrams
+  // arriving via the editor's → Stepper import.
+  if (topo.topo==='loop')          return stepsLoopIntegral(topo.nLoops, topo.nPropTotal||2, topo.coupling||'e', text, topo.E, {nFermExt: topo.nFermExt, nPhotExt: topo.nPhotExt, nScalarExt: topo.nScalarExt});
 
   // ── Pure boson ────────────────────────────────────────────────────────────
   if (topo.topo==='pure_boson')    return {steps:[{
@@ -3443,6 +3796,61 @@ function parseScalarParts(sc) {
   };
 }
 
+// ─── Rξ gauge: Ward-identity steps (only when XI !== 1) ─────────────────────
+// Returns an array of step objects to append to stepsDouble4.
+// Shows that the (1−ξ)q^μq^ν/q² piece of the propagator vanishes on-shell via
+// the Ward–Takahashi identity q_μ J^μ = 0, proving gauge-invariance of |M|².
+function stepsGaugeWard(denom) {
+  if (XI === 1) return [];
+  const xiStr = String(XI);
+  const qMap = { s:'p₁+p₂', t:'p₁−p₃', u:'p₁−p₄' };
+  const qLabel = MV(qMap[denom] || 'q');
+
+  // Spinor bilinear that appears in the current for each channel:
+  // s-channel: pair (particle + antiparticle) → v̄(p₂)p̸₁u(p₁) = mv̄u, v̄(p₂)p̸₂u(p₁) = −mv̄u
+  // t-channel: same-species pair → ū(p₃)p̸₁u(p₁) = mūu, ū(p₃)p̸₃u(p₁) = mūu  (−sign from q)
+  // u-channel: same structure as t
+  const isSChan = (denom === 's');
+  const bra = isSChan ? 'v̄(p₂)' : (denom==='t' ? 'ū(p₃)' : 'ū(p₄)');
+  const ket = 'u(p₁)';
+  const qSlash = qMap[denom] || 'q';
+  const wardLHS = `q<sub>μ</sub>[${bra}γ<sup>μ</sup>${ket}]`;
+  const wardMid = `${bra}(${MV(qSlash)})${ket}`;
+  const wardRHS = isSChan
+    ? `${bra}(p̸₁+p̸₂)${ket} = +${M('m')}·${bra}${ket} + (−${M('m')})·${bra}${ket} = 0`
+    : `${bra}(p̸₁${denom==='t'?'−p̸₃':'−p̸₄'})${ket} = +${M('m')}·${bra}${ket} − ${M('m')}·${bra}${ket} = 0`;
+  const wardEquation = `${bra}p̸ = ${isSChan?`−${M('m')}${bra}`:`+${M('m')}${bra}`}, p̸${ket} = ${M('m')}${ket}`;
+
+  return [
+    {
+      title: `Rξ gauge (ξ=${xiStr}): photon propagator structure`,
+      rule: `<strong>General Rξ propagator</strong> (q = ${qLabel}):<br>
+        D<sup>μν</sup>(q) = ${FR('−i','q²')}[g<sup>μν</sup> − (1−${xiStr})${FR('q<sup>μ</sup>q<sup>ν</sup>','q²')}]<br>
+        ξ=1 → Feynman gauge (used above). For ξ≠1 the extra term must be checked.`,
+      expr: `D<sup>μν</sup> = ${FR('−ig<sup>μν</sup>','q²')} + ${FR(`−i(1−${xiStr})q<sup>μ</sup>q<sup>ν</sup>`,'q⁴')}`,
+      expl: `The longitudinal piece contributes (1−${xiStr})/q⁴ × [q<sub>μ</sub>J<sup>μ</sup>₁][q<sub>ν</sub>J<sup>ν</sup>₂] to |M|². We now show both factors vanish.`
+    },
+    {
+      title: `Ward–Takahashi identity: q_μJ^μ = 0`,
+      rule: `<strong>Contract the ${denom}-channel momentum q with the current J<sup>μ</sup>:</strong><br>
+        ${wardLHS} = ${wardMid}<br>
+        <strong>On-shell Dirac equations:</strong> p̸u(p)=mu(p), ū(p)p̸=mū(p),
+        p̸v(p)=−mv(p), v̄(p)p̸=−mv̄(p)`,
+      expr: `q<sub>μ</sub>J<sup>μ</sup> = ${wardRHS}`,
+      expl: `${isSChan
+        ? `s-channel: v̄(p₂)p̸₁u(p₁) = +mv̄(p₂)u(p₁) and v̄(p₂)p̸₂u(p₁) = (v̄(p₂)p̸₂)u(p₁) = −mv̄(p₂)u(p₁). Sum = 0.`
+        : `${denom}-channel: ū(p${denom==='t'?'₃':'₄'})p̸₁u(p₁) = mū·u and ū(p${denom==='t'?'₃':'₄'})p̸${denom==='t'?'₃':'₄'}u(p₁) = mū·u, but q carries a minus sign, so the two terms cancel.`
+      } Ward–Takahashi identity holds for any on-shell amplitude.`
+    },
+    {
+      title: `Gauge invariance: (1−${xiStr})×0 = 0`,
+      rule: `Longitudinal correction: Δ|M|²<sub>ξ</sub> = (1−ξ)/q⁴ × [q<sub>μ</sub>J<sup>μ</sup>₁] × [q<sub>ν</sub>J<sup>ν</sup>₂]`,
+      expr: `Δ|M|²<sub>ξ</sub> = (1−${xiStr}) × 0 × 0 = <strong>0</strong> &nbsp; ✓`,
+      expl: `|M|² is independent of ξ. The Feynman-gauge result above is exact for all physical (on-shell) amplitudes.`
+    }
+  ];
+}
+
 // ─── Two-diagram interference ─────────────────────────────────────────────────
 // Key formula (verified analytically):
 //   Tr[γ^μ p̸_A γ^ν p̸_B γ_μ p̸_C γ_ν p̸_D] = −32(A·C)(B·D)
@@ -3463,130 +3871,128 @@ function evalInterferenceDot(v1, v2) {
   return r; // {html, val, mand, sign}
 }
 
-function stepsInterference(expr1, expr2, diagSign) {
-  const p1 = parseInput(expr1), p2 = parseInput(expr2);
-  const pat1 = identify(p1); pat1.scalar = p1.scalar;
-  const pat2 = identify(p2); pat2.scalar = p2.scalar;
+function stepsInterference(exprs, signs) {
+  const N = exprs.length;
 
-  if (pat1.type !== 'double4' || pat2.type !== 'double4')
-    return {steps:[{title:'Two-diagram mode requires two double-trace expressions',
-      rule:'', expr:`<span style="color:#806040">Both inputs must be of the form (e4/q2)*Tr[...]*Tr[...].</span>`, expl:''}], latex:''};
+  // Parse and validate: all must be double4
+  const parsed = exprs.map(ex => {
+    const p = parseInput(ex); const pat = identify(p); pat.scalar = p.scalar; return {p, pat};
+  });
+  const badIdx = parsed.findIndex(({pat}) => pat.type !== 'double4');
+  if (badIdx >= 0) return {steps:[{title:`Diagram ${badIdx+1}: not a double-trace expression`,
+    rule:'', expr:`<span style="color:#806040">All inputs must be (coupling/channel²)×Tr[…]×Tr[…].</span>`, expl:''}], latex:''};
 
-  // Extract chain momenta and denominators
-  const [pA,pB] = pat1.m1.map(getDotId);
-  const [pC,pD] = pat1.m2.map(getDotId);
-  const sc1 = parseScalarParts(p1.scalar);
-  const denom1 = sc1.denHTML.includes(MV('s')) ? 's' : sc1.denHTML.includes(MV('t')) ? 't' : 'u';
+  // Diagram info: scalar, denom for each
+  const diagInfo = parsed.map(({p, pat}) => {
+    const sc = parseScalarParts(p.scalar);
+    const denom = sc.denHTML.includes(MV('s')) ? 's' : sc.denHTML.includes(MV('t')) ? 't' : 'u';
+    return {p, pat, sc, denom};
+  });
 
-  const [pE,pF] = pat2.m1.map(getDotId);
-  const [pG,pH] = pat2.m2.map(getDotId);
-  const sc2 = parseScalarParts(p2.scalar);
-  const denom2 = sc2.denHTML.includes(MV('s')) ? 's' : sc2.denHTML.includes(MV('t')) ? 't' : 'u';
+  // Individual |Mᵢ|² results
+  const indivRes = parsed.map(({p, pat}) => stepsDouble4(p, pat));
+  const finalExprs = indivRes.map(r => r.steps[r.steps.length-1].expr);
 
-  const q3 = interferenceVar(denom1, denom2);
-  const procName = denom1==='t'&&denom2==='s' || denom1==='s'&&denom2==='t' ? 'Bhabha (t+s)' :
-                   denom1==='t'&&denom2==='u' || denom1==='u'&&denom2==='t' ? 'Møller (t+u)' :
-                   denom1==='s'&&denom2==='u' || denom1==='u'&&denom2==='s' ? 'annihilation (s+u)' :
-                   `two-diagram (${denom1}+${denom2})`;
-  const signStr = diagSign < 0 ? 'M = M₁ − M₂' : 'M = M₁ + M₂';
-  const signDesc = diagSign < 0 ? 'fermionic exchange / crossed diagram' : 'bosonic / distinct-particle addition';
+  // Process name
+  const denoms = diagInfo.map(d => d.denom);
+  const procName = N===2
+    ? ((denoms[0]==='t'&&denoms[1]==='s')||(denoms[0]==='s'&&denoms[1]==='t')) ? 'Bhabha (t+s)' :
+      ((denoms[0]==='t'&&denoms[1]==='u')||(denoms[0]==='u'&&denoms[1]==='t')) ? 'Møller (t+u)' :
+      ((denoms[0]==='s'&&denoms[1]==='u')||(denoms[0]==='u'&&denoms[1]==='s')) ? 'annihilation (s+u)' :
+      `two-diagram (${denoms[0]}+${denoms[1]})`
+    : `${N}-diagram interference`;
 
-  // Identify the 8-gamma trace momenta
-  // Rule: the 4 momenta across the two diagrams are connected in a specific crossing pattern
-  // The trace dot-products are those involving the "missing" Mandelstam variable
-  const q3Pairs = {
-    's': [['p1','p2'],['p3','p4']], 't': [['p1','p3'],['p2','p4']], 'u': [['p1','p4'],['p2','p3']]
-  };
-  const crossPair = q3Pairs[q3] || [['p1','p2'],['p3','p4']];
-  const [cross1, cross2] = crossPair;
-  const dp_cross1 = dpHTML(cross1[0], cross1[1]);
-  const dp_cross2 = dpHTML(cross2[0], cross2[1]);
-  const traceVal = dp_cross1.mand && dp_cross2.mand
-    ? `−32·(${dp_cross1.html})·(${dp_cross2.html})`
-    : `−32·${dotP(cross1[0],cross1[1])}·${dotP(cross2[0],cross2[1])}`;
-  const traceNum = dp_cross1.sign && dp_cross2.sign
-    ? -32 * (dp_cross1.sign/2) * (dp_cross2.sign/2)  // -32 × (±1/2)² = -32/4 = -8
-    : null;
-  // interference = diagSign × -(1/4) × 2 × (e4/(denom1×denom2)) × traceNum×q3²
-  // = diagSign × (4e4×q3²)/(denom1×denom2) [simplified]
-  const interferenceMV = q3 ? `4${CP('e')}⁴ × ${FR(`${MV(q3)}²`, `${MV(denom1)}·${MV(denom2)}`)}` : '?';
-  const interferenceMV_sign = diagSign < 0 ? interferenceMV : `−${interferenceMV}`;
+  const amplStr = `M = M₁ ${signs.slice(1).map((s,i)=>`${s<0?'−':'+'}M${i+2}`).join(' ')}`;
 
-  // Run individual diagram steps
-  const res1 = stepsDouble4(p1, pat1);
-  const res2 = stepsDouble4(p2, pat2);
+  // All pairs (i<j)
+  const pairs = [];
+  for (let ii=0; ii<N; ii++) for (let jj=ii+1; jj<N; jj++) pairs.push([ii,jj]);
 
-  const finalExpr1 = res1.steps[res1.steps.length-1].expr;
-  const finalExpr2 = res2.steps[res2.steps.length-1].expr;
+  // Pre-compute cross-term HTML for each pair
+  const crossTerms = pairs.map(([ii,jj]) => {
+    const {denom:di} = diagInfo[ii], {denom:dj} = diagInfo[jj];
+    const q3 = interferenceVar(di, dj);
+    const pairSign = signs[ii] * signs[jj];
+    const body = `4${CP('e')}⁴ × ${FR(`${MV(q3||'?')}²`,`${MV(di)}·${MV(dj)}`)}`;
+    return {pairSign, q3, di, dj, body, html:`${pairSign<0?'−':'+'}${body}`};
+  });
+
+  // Derivation steps for one cross-term pair (ii,jj)
+  function pairSteps(ii, jj) {
+    const {denom:di} = diagInfo[ii], {denom:dj} = diagInfo[jj];
+    const pairSign = signs[ii] * signs[jj];
+    const q3 = interferenceVar(di, dj);
+    const q3Pairs = {
+      's':[['p1','p2'],['p3','p4']], 't':[['p1','p3'],['p2','p4']], 'u':[['p1','p4'],['p2','p3']]
+    };
+    const [cross1,cross2] = q3Pairs[q3] || q3Pairs['s'];
+    const dp1 = dpHTML(cross1[0], cross1[1]);
+    const dp2 = dpHTML(cross2[0], cross2[1]);
+    const traceVal = dp1.mand && dp2.mand
+      ? `−32·(${dp1.html})·(${dp2.html})`
+      : `−32·${dotP(cross1[0],cross1[1])}·${dotP(cross2[0],cross2[1])}`;
+    const lbl = `M${ii+1}M${jj+1}*`;
+    return [
+      {title:`Cross-term 2Re(${lbl}): 8-gamma trace`,
+       rule:`After spin sums the cross-term closes into a <strong>single trace</strong> with 8 gamma matrices:<br>
+         2Re(${lbl}) = ${FR(`2${CP('e')}⁴`,`${MV(di)}·${MV(dj)}`)} × ${TR('Tr')}[${G('γ')}<sup>μ</sup>${slash(cross1[0])}${G('γ')}<sup>ν</sup>${slash(cross2[0])}${G('γ')}<sub>μ</sub>${slash(cross2[1])}${G('γ')}<sub>ν</sub>${slash(cross1[1])}]`,
+       expr:`${TR('Tr')}[${G('γ')}<sup>μ</sup>${slash(cross1[0])}${G('γ')}<sup>ν</sup>${slash(cross2[0])}${G('γ')}<sub>μ</sub>${slash(cross2[1])}${G('γ')}<sub>ν</sub>${slash(cross1[1])}]`,
+       expl:`Momenta for missing variable ${MV(q3||'?')} cross between diagrams ${ii+1} and ${jj+1}.`},
+      {title:`Evaluate the 8-gamma trace (${ii+1},${jj+1})`,
+       rule:`<strong>Key identity (d=4):</strong><br>
+         ${TR('Tr')}[${G('γ')}<sup>μ</sup>${slash('A')}${G('γ')}<sup>ν</sup>${slash('B')}${G('γ')}<sub>μ</sub>${slash('C')}${G('γ')}<sub>ν</sub>${slash('D')}] = −32(A·C)(B·D)<br>
+         <strong>Proof:</strong> γ<sup>μ</sup>(${slash('A')}γ<sup>ν</sup>${slash('B')})γ<sub>μ</sub> = −2${slash('B')}γ<sup>ν</sup>${slash('A')} &nbsp;[3-gamma rule] &nbsp;→&nbsp; γ<sup>ν</sup>(${slash('A')}${slash('C')})γ<sub>ν</sub> = 4(A·C) &nbsp;[2-gamma rule]`,
+       expr:`= −32·${dotP(cross1[0],cross2[0])}·${dotP(cross2[1],cross1[1])}  = ${traceVal}`,
+       expl:`The ${MV(q3||'?')}-carrying momenta cross between the two fermion chains.`},
+      {title:`Substitute Mandelstam: interference (${ii+1},${jj+1})`,
+       rule:`${dotP(cross1[0],cross2[0])} = ${dp1.html} &nbsp;&nbsp; ${dotP(cross2[1],cross1[1])} = ${dp2.html}<br>
+         Prefactor: ${FR(`${pairSign<0?'−':''}2${CP('e')}⁴`,`${MV(di)}·${MV(dj)}`)} × trace`,
+       expr:`2Re(${lbl})/e⁴ = ${FR(`2`,`${MV(di)}·${MV(dj)}`)} × (−8${MV(q3||'?')}²/${DT('4')}) = ${FR(`−4${MV(q3||'?')}²`,`${MV(di)}·${MV(dj)}`)}`,
+       expl:`(±${MV(q3||'?')}/2)·(±${MV(q3||'?')}/2) = ${MV(q3||'?')}²/4.`},
+    ];
+  }
+
+  const identExpr = `<div style="font-size:12px;color:#8090b8;background:#07070f;padding:8px 10px;border-radius:3px;line-height:2">
+    ${diagInfo.map((d,i)=>`<strong>Diag.${i+1}</strong> (channel ${MV(d.denom)}, sign ${signs[i]<0?'−':'+'}): &nbsp;${rScalar(d.p.scalar)}${rTrace(d.p.traces[0])} × ${rTrace(d.p.traces[1])}`).join('<br>')}
+  </div>`;
 
   const steps = [
-    {title:`Two-diagram amplitude identified: ${procName}`,
+    {title:`${N}-diagram amplitude: ${procName}`,
      rule:'',
-     expr:`<div style="font-size:12px;color:#8090b8;background:#07070f;padding:8px 10px;border-radius:3px;line-height:2">
-       <strong>Diagram 1</strong> (denom ${MV(denom1)}): &nbsp;${rScalar(p1.scalar)}${rTrace(p1.traces[0])} × ${rTrace(p1.traces[1])}<br>
-       <strong>Diagram 2</strong> (denom ${MV(denom2)}): &nbsp;${rScalar(p2.scalar)}${rTrace(p2.traces[0])} × ${rTrace(p2.traces[1])}
-     </div>`,
-     expl:`${signStr} &nbsp;(${signDesc}). Missing variable: ${MV(q3||'?')} → appears in the cross-term trace.`},
+     expr:identExpr,
+     expl:`${amplStr}. Squaring gives ${N} direct terms and ${pairs.length} cross-term${pairs.length===1?'':'s'}.`},
 
-    {title:'Full squared amplitude: |M|² = |M₁|² + |M₂|² ± 2Re(M₁M₂*)',
-     rule:`For <strong>${signStr}</strong>:<br>
-       |M|² = |M₁|² + |M₂|² ${diagSign<0?'−':'+'}2Re(M₁M₂*)<br>
-       The cross term 2Re(M₁M₂*) involves a <strong>single 8-gamma trace</strong> — not two separate 4-gamma traces.`,
-     expr:`${rScalar(p1.scalar)}${TR('Tr')}[...] × ${TR('Tr')}[...]  ${diagSign<0?'−':'+'}  ${rScalar(p2.scalar)}${TR('Tr')}[...] × ${TR('Tr')}[...]`,
-     expl:`The cross term arises because the two diagrams share the same external momenta but route them through different fermion chains, creating a fermion loop in the trace structure.`},
+    {title:'|M|² = Σᵢ|Mᵢ|² + Σᵢ<ⱼ 2sᵢsⱼRe(MᵢMⱼ*)',
+     rule:`<strong>${amplStr}</strong>:<br>
+       |M|² = ${diagInfo.map((_,i)=>`|M${i+1}|²`).join(' + ')} + ${pairs.map(([i,j])=>`2s${i+1}s${j+1}Re(M${i+1}M${j+1}*)`).join(' + ')}<br>
+       Each cross-term closes into a single 8-gamma trace — not two separate 4-gamma traces.`,
+     expr:`${diagInfo.map((_,i)=>`|M${i+1}|²`).join(' + ')}  ${crossTerms.map(ct=>ct.html).join('  ')}`,
+     expl:'The cross terms arise because all diagrams share the same external momenta but route them through different fermion chains.'},
 
-    {title:'Evaluate |M₁|² (Diagram 1)',
-     rule:'Apply double-trace contraction formula (same as single-diagram case).',
-     expr:finalExpr1,
-     expl:`Full derivation: use the → Diagram 1 input alone to see all intermediate steps.`},
+    ...indivRes.map((res,i)=>({
+      title:`Evaluate |M${i+1}|²`,
+      rule:'Apply double-trace contraction formula.',
+      expr:finalExprs[i],
+      expl:`Full derivation: input Diagram ${i+1} alone and hit Solve.`})),
 
-    {title:'Evaluate |M₂|² (Diagram 2)',
-     rule:'',
-     expr:finalExpr2,
-     expl:`Full derivation: use the → Diagram 2 input alone to see all intermediate steps.`},
-
-    {title:'Cross-term 2Re(M₁M₂*): setup the 8-gamma trace',
-     rule:`After spin sums, the cross term closes into a <strong>single trace</strong> with 8 gamma matrices:<br>
-       2Re(M₁M₂*) = ${FR(`2${CP('e')}⁴`,`${MV(denom1)}·${MV(denom2)}`)} × ${TR('Tr')}[${G('γ')}<sup>μ</sup>${slash(cross1[0])}${G('γ')}<sup>ν</sup>${slash(cross2[0])}${G('γ')}<sub>μ</sub>${slash(cross2[1])}${G('γ')}<sub>ν</sub>${slash(cross1[1])}]`,
-     expr:`${TR('Tr')}[${G('γ')}<sup>μ</sup>${slash(cross1[0])}${G('γ')}<sup>ν</sup>${slash(cross2[0])}${G('γ')}<sub>μ</sub>${slash(cross2[1])}${G('γ')}<sub>ν</sub>${slash(cross1[1])}]`,
-     expl:`The momenta in the 8-gamma trace are those that "cross" between the two diagrams — specifically the pair associated with the missing Mandelstam variable ${MV(q3||'?')}.`},
-
-    {title:'Evaluate the 8-gamma trace',
-     rule:`<strong>Key identity (d=4):</strong><br>
-       ${TR('Tr')}[${G('γ')}<sup>μ</sup>${slash('A')}${G('γ')}<sup>ν</sup>${slash('B')}${G('γ')}<sub>μ</sub>${slash('C')}${G('γ')}<sub>ν</sub>${slash('D')}] = −32(A·C)(B·D)<br>
-       <strong>Proof:</strong> γ<sup>μ</sup>(${slash('A')}γ<sup>ν</sup>${slash('B')})γ<sub>μ</sub> = −2${slash('B')}γ<sup>ν</sup>${slash('A')} &nbsp;[3-gamma rule] &nbsp;→&nbsp; γ<sup>ν</sup>(${slash('A')}${slash('C')})γ<sub>ν</sub> = 4(A·C) &nbsp;[2-gamma rule]`,
-     expr:`= −32·${dotP(cross1[0],cross2[0])}·${dotP(cross2[1],cross1[1])}  = ${traceVal}`,
-     expl:`The two dot products (${MV(q3||'?')}·${MV(q3||'?')} terms) come from the momenta that cross between the two fermion chains.`},
-
-    {title:'Substitute Mandelstam + collect interference',
-     rule:`${dotP(cross1[0],cross2[0])} = ${dp_cross1.html} &nbsp;&nbsp; ${dotP(cross2[1],cross1[1])} = ${dp_cross2.html}<br>
-       Prefactor: ${FR(`${diagSign<0?'−':''}2${CP('e')}⁴`,`${MV(denom1)}·${MV(denom2)}`)} × trace`,
-     expr:`2Re(M₁M₂*)/e⁴ = ${FR(`2`,`${MV(denom1)}·${MV(denom2)}`)} × (−8${MV(q3||'?')}²/${DT('4')}) = ${FR(`−4${MV(q3||'?')}²`,`${MV(denom1)}·${MV(denom2)}`)}`,
-     expl:`Using (±${MV(q3||'?')}/2)·(±${MV(q3||'?')}/2) = ${MV(q3||'?')}²/4.`},
+    ...pairs.flatMap(([i,j])=>pairSteps(i,j)),
 
     {title:'Final result',
      rule:'',
-     expr:`|M̄|² = |M̄₁|² + |M̄₂|² ${diagSign<0?'−':'+'}2Re(M̄₁M̄₂*)/4<br><br>
-       = ${finalExpr1} &nbsp;+&nbsp; ${finalExpr2}<br>
-       ${diagSign<0?'−':'+'}  ${interferenceMV}`,
-     expl:`The interference sign is ${diagSign<0?'negative (fermionic)':'positive (bosonic)'}. For physical kinematics (s>0, t<0, u<0), ${MV(denom1)}·${MV(denom2)} is ${denom1==='s'||denom2==='s'?'negative (s>0, other<0)':'positive (both <0)'}, making the interference ${diagSign<0?(denom1==='s'||denom2==='s'?'negative — reduces total ✓':'positive — enhances total ✓'):'positive'}.
-       <br><strong>Spin-averaged</strong>: divide the full |M|² by 4.`},
+     expr:`|M̄|² = ${finalExprs.map((ex,i)=>(i===0?ex:' + '+ex)).join('')}<br>
+       ${crossTerms.map(ct=>`${ct.pairSign<0?'−':'+'}  4${CP('e')}⁴ × ${FR(`${MV(ct.q3||'?')}²`,`${MV(ct.di)}·${MV(ct.dj)}`)}`).join('<br>')}`,
+     expl:`Spin-averaged: divide |M|² by the initial spin multiplicity product (¼ for 2→2 QED). Cross-term sign${pairs.length===1?'':'s'}: ${crossTerms.map((ct,k)=>`pair(${pairs[k][0]+1},${pairs[k][1]+1}) ${ct.pairSign<0?'−':'+'}`).join(', ')}.`},
   ];
 
-  const latex1 = res1.latex.replace(/<[^>]+>/g,'').replace(/[⁴²¹]/g,s=>'^'+{'⁴':'4','²':'2'}[s]||s);
-  const latex2 = res2.latex.replace(/<[^>]+>/g,'').replace(/[⁴²¹]/g,s=>'^'+{'⁴':'4','²':'2'}[s]||s);
-  const latex = `|\\bar{M}|^2 = [${latex1}] + [${latex2}] ${diagSign<0?'-':'+'} \\frac{4e^4 ${q3||'?'}^2}{${denom1}\\cdot ${denom2}}`;
-  return {steps, latex};
+  const latexParts = indivRes.map(r=>r.latex.replace(/<[^>]+>/g,'').replace(/[⁴²]/g,s=>'^'+({'⁴':'4','²':'2'}[s]||s)));
+  return {steps, latex:`|\\bar{M}|^2 = ${latexParts.map(l=>`[${l}]`).join(' + ')}`};
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let STEPS = [], LATEX = '';
 let pendingIMComments = null;
 let pendingIMDisplay  = null;
-let pendingIMComments2 = null;   // second diagram (two-diagram import)
-let pendingIMDisplay2  = null;
-let twoMode  = false;
-let diagSign = -1;   // -1: M=M₁-M₂ (fermion exchange), +1: M=M₁+M₂
+// Extra diagrams stored on DOM rows via addDiagramRow / getExtraDiagrams
 
 // ─── Two-diagram UI helpers ───────────────────────────────────────────────────
 function togglePresets() {
@@ -3597,19 +4003,65 @@ function togglePresets() {
   b.textContent = open ? 'Examples ▴' : 'Examples ▾';
 }
 
-function toggleTwoDiagrams() {
-  twoMode = !twoMode;
-  document.getElementById('input2-row').style.display = twoMode ? 'block' : 'none';
-  document.getElementById('sign-row').style.display   = twoMode ? 'flex'  : 'none';
-  document.getElementById('diag-lbl2').style.display  = twoMode ? 'inline': 'none';
-  const btn = document.getElementById('btn-two');
-  btn.textContent = twoMode ? '✕ One Diagram' : '+ Two Diagrams';
-  btn.classList.toggle('active', twoMode);
+function addDiagramRow(sign, comments, display) {
+  if (sign === undefined) sign = -1;
+  const container = document.getElementById('extra-diags');
+  const diagNum = container.querySelectorAll('.extra-diag-row').length + 2;
+  const row = document.createElement('div');
+  row.className = 'extra-diag-row';
+  row.dataset.sign = String(sign);
+  row._pendingComments = comments || null;
+  row._pendingDisplay  = display  || null;
+  row.innerHTML = `
+    <div class="extra-diag-hdr">
+      <span class="diag-sign-lbl">${sign<0?'−':'+'}M${diagNum}</span>
+      <button class="sign-toggle" onclick="toggleExtraSign(this)" title="Toggle: − fermion exchange, + boson/distinct">±</button>
+      <button class="remove-diag" onclick="removeDiagramRow(this)">✕ remove</button>
+    </div>
+    <textarea class="extra-diag-input" placeholder="Diagram ${diagNum}: e.g. (e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]"></textarea>`;
+  if (display) row.querySelector('.extra-diag-input').value = display;
+  row.querySelector('.extra-diag-input').addEventListener('input', () => {
+    row._pendingComments = null; row._pendingDisplay = null;
+  });
+  row.querySelector('.extra-diag-input').addEventListener('keydown', ev => {
+    if (ev.ctrlKey && ev.key === 'Enter') { ev.preventDefault(); go(); }
+  });
+  container.appendChild(row);
+  const btn = document.getElementById('btn-add-diag');
+  if (btn) btn.classList.add('active');
 }
-function setSign(s) {
-  diagSign = s;
-  document.getElementById('sign-minus').classList.toggle('active', s < 0);
-  document.getElementById('sign-plus').classList.toggle('active',  s > 0);
+function removeDiagramRow(btn) {
+  btn.closest('.extra-diag-row').remove();
+  renumberExtraRows();
+  const b = document.getElementById('btn-add-diag');
+  if (b) b.classList.toggle('active', document.querySelectorAll('.extra-diag-row').length > 0);
+}
+function toggleExtraSign(btn) {
+  const row = btn.closest('.extra-diag-row');
+  const newSign = -parseInt(row.dataset.sign, 10);
+  row.dataset.sign = String(newSign);
+  const idx = Array.from(document.querySelectorAll('.extra-diag-row')).indexOf(row);
+  row.querySelector('.diag-sign-lbl').textContent = `${newSign<0?'−':'+'}M${idx+2}`;
+}
+function clearExtraDiagrams() {
+  document.getElementById('extra-diags').innerHTML = '';
+  const btn = document.getElementById('btn-add-diag');
+  if (btn) btn.classList.remove('active');
+}
+function renumberExtraRows() {
+  document.querySelectorAll('.extra-diag-row').forEach((row, i) => {
+    const sign = parseInt(row.dataset.sign, 10);
+    const lbl = row.querySelector('.diag-sign-lbl');
+    if (lbl) lbl.textContent = `${sign<0?'−':'+'}M${i+2}`;
+  });
+}
+function getExtraDiagrams() {
+  return Array.from(document.querySelectorAll('.extra-diag-row')).map(row => ({
+    expr: (row.querySelector('.extra-diag-input') || {}).value?.trim() || '',
+    sign: parseInt(row.dataset.sign, 10) || -1,
+    comments: row._pendingComments || null,
+    display:  row._pendingDisplay  || null,
+  }));
 }
 
 // ─── Trace-expression dispatcher ──────────────────────────────────────────────
@@ -3653,28 +4105,31 @@ function go() {
   // double-trace). Default 4. Changing it alters γ^μγ_μ=d and the (d−4) term.
   const dEl = document.getElementById('inp-dim');
   DIM = dEl ? (parseInt(dEl.value,10) || 4) : 4;
+  const xiEl = document.getElementById('inp-xi');
+  XI = xiEl ? (parseFloat(xiEl.value) ?? 1) : 1;
 
-  // Two-diagram mode
-  if (twoMode) {
-    // Imported as two iM-factor diagrams → convert each to a trace, then interfere.
-    if (pendingIMComments && pendingIMComments2) {
-      const t1 = iMDiagramToTrace(pendingIMComments);
-      const t2 = iMDiagramToTrace(pendingIMComments2);
-      // NOTE: keep pendingIMComments so re-solves (e.g. after changing the
-      // spacetime dimension d) re-derive the SAME imported diagram. They are
-      // cleared only when the user manually edits the input box (see listeners).
-      if (t1 && t2) {
-        const res = stepsInterference(t1, t2, diagSign);
+  // N-diagram mode: check for populated extra diagram rows
+  const extras = getExtraDiagrams().filter(e => e.expr || e.comments);
+  if (extras.length > 0) {
+    const allSigns = [1, ...extras.map(e => e.sign)];
+    // All editor imports (have comment lines) → convert each to a trace expression.
+    // Keep pendingIMComments and row._pendingComments alive so changing d re-derives.
+    // They are only cleared when the user manually edits an input box (see listeners).
+    if (pendingIMComments && extras.every(e => e.comments)) {
+      const allComments = [pendingIMComments, ...extras.map(e => e.comments)];
+      const traces = allComments.map(c => iMDiagramToTrace(c));
+      if (traces.every(Boolean)) {
+        const res = stepsInterference(traces, allSigns);
         STEPS = res.steps; LATEX = res.latex; showAll(); return;
       }
-      // Conversion failed → fall back to whatever is in the input boxes below.
+      // Conversion failed → fall back to typed text below.
     }
-    const raw2 = document.getElementById('amp-input2').value.trim();
-    if (raw2) {
-      const res = stepsInterference(raw, raw2, diagSign);
-      STEPS = res.steps; LATEX = res.latex;
-      showAll(); return;
+    const allExprs = [raw, ...extras.map(e => e.expr)];
+    if (allExprs.every(Boolean)) {
+      const res = stepsInterference(allExprs, allSigns);
+      STEPS = res.steps; LATEX = res.latex; showAll(); return;
     }
+    // Some boxes empty; fall through to single-diagram solve for diagram 1.
   }
 
   // If we have structured comments from an editor import, use those for parsing
@@ -3758,20 +4213,21 @@ const EX = {
 };
 function eg(name) {
   if (name === 'bhabha') {
-    if (!twoMode) toggleTwoDiagrams();
-    setSign(-1);
-    document.getElementById('amp-input').value  = '(e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]';
-    document.getElementById('amp-input2').value = '(e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]';
+    clearExtraDiagrams();
+    addDiagramRow(-1);
+    document.getElementById('amp-input').value = '(e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]';
+    document.querySelectorAll('.extra-diag-input')[0].value = '(e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]';
     go(); return;
   }
   if (name === 'moller') {
-    if (!twoMode) toggleTwoDiagrams();
-    setSign(-1);
-    document.getElementById('amp-input').value  = '(e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]';
-    document.getElementById('amp-input2').value = '(e4/u2) * Tr[p1 gm p4 gn] * Tr[p2 gm p3 gn]';
+    clearExtraDiagrams();
+    addDiagramRow(-1);
+    document.getElementById('amp-input').value = '(e4/t2) * Tr[p1 gm p3 gn] * Tr[p2 gm p4 gn]';
+    document.querySelectorAll('.extra-diag-input')[0].value = '(e4/u2) * Tr[p1 gm p4 gn] * Tr[p2 gm p3 gn]';
     go(); return;
   }
   if (name === 'from_editor') {
+    clearExtraDiagrams();
     // Simulate a real editor import: math expression shown, comment lines used for parsing
     const iM = 'iM = iQeγ^μ × −iη^μν/s₁₂ × iQeγ^ν × u(p₁,s) × v̄(p₂,s) × ū(p₃,s) × v(p₄,s)';
     const comments = [
@@ -3790,6 +4246,7 @@ function eg(name) {
     return;
   }
   const v=EX[name]; if(!v) return;
+  clearExtraDiagrams();   // exit multi-diagram mode for single examples
   document.getElementById('amp-input').value=v;
   go();
 }
@@ -3803,15 +4260,14 @@ document.getElementById('amp-input').addEventListener('keydown', e=>{
 document.getElementById('amp-input').addEventListener('input', () => {
   pendingIMComments = null; pendingIMDisplay = null;
 });
-const _ai2 = document.getElementById('amp-input2');
-if (_ai2) _ai2.addEventListener('input', () => {
-  pendingIMComments2 = null; pendingIMDisplay2 = null;
-});
-// Re-solve when the spacetime dimension changes, so d-dependence shows live.
-// Trigger on any pending import too (its text box is populated, so .value is set).
-document.getElementById('inp-dim').addEventListener('input', () => {
-  if (document.getElementById('amp-input').value.trim() || pendingIMComments) go();
-});
+// Re-solve when spacetime dimension or gauge parameter changes.
+function _regoIfInput() {
+  const hasInput = document.getElementById('amp-input').value.trim() || pendingIMComments
+    || Array.from(document.querySelectorAll('.extra-diag-input')).some(t => t.value.trim());
+  if (hasInput) go();
+}
+document.getElementById('inp-dim').addEventListener('input', _regoIfInput);
+document.getElementById('inp-xi').addEventListener('input', _regoIfInput);
 
 // Cross-machine path: read the same payload from a .json file (saved via the
 // editor's ⇩ Export File button) instead of localStorage, which is scoped to
@@ -3835,27 +4291,28 @@ document.getElementById('file-import-input').addEventListener('change', (e) => {
   e.target.value = '';   // allow re-importing the same file later
 });
 function applyImportedData(data) {
-  // Adopt the spacetime dimension the editor was using.
+  // Adopt the spacetime dimension and gauge parameter the editor was using.
   if (data.d) { const di=document.getElementById('inp-dim'); if (di) di.value = data.d; DIM = data.d; }
+  if (data.xi !== undefined) { const xi=document.getElementById('inp-xi'); if(xi) xi.value=data.xi; XI=data.xi; }
 
-  // ── Multiple diagrams (M = M₁ + M₂ + …) → use two-diagram mode ─────────────
+  // ── Multiple diagrams (M = M₁ + M₂ + …) → N-diagram mode ───────────────────
   // Two separate connected components on the editor canvas are two diagrams that
   // ADD; they must NOT be multiplied. The editor exports them as data.diagrams[].
   if (Array.isArray(data.diagrams) && data.diagrams.length >= 2) {
-    if (!twoMode) toggleTwoDiagrams();
-    document.getElementById('amp-input').value  = data.diagrams[0].iM;
-    document.getElementById('amp-input2').value = data.diagrams[1].iM;
-    pendingIMComments  = data.diagrams[0].comments;
-    pendingIMDisplay   = data.diagrams[0].iM;
-    pendingIMComments2 = data.diagrams[1].comments;
-    pendingIMDisplay2  = data.diagrams[1].iM;
+    clearExtraDiagrams();
+    for (let k = 1; k < data.diagrams.length; k++) {
+      addDiagramRow(+1, data.diagrams[k].comments, data.diagrams[k].iM);
+    }
+    document.getElementById('amp-input').value = data.diagrams[0].iM;
+    pendingIMComments = data.diagrams[0].comments;
+    pendingIMDisplay  = data.diagrams[0].iM;
     go();
     return;
   }
 
   // ── Single diagram ─────────────────────────────────────────────────────────
   const d0 = (Array.isArray(data.diagrams) && data.diagrams[0]) || data;
-  if (twoMode) toggleTwoDiagrams();   // ensure single-diagram mode
+  clearExtraDiagrams();   // ensure single-diagram mode
   if (d0.iM && d0.comments) {
     document.getElementById('amp-input').value = d0.iM;
     pendingIMComments = d0.comments;

@@ -12,8 +12,14 @@
     font-size: 13px;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
+  }
+  #editor-shell {
     height: 100vh;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
+    flex-shrink: 0;
   }
   #topbar {
     display: flex;
@@ -196,10 +202,93 @@
   .fr-inp-latex { flex: 1; font-size: 10px !important; padding: 2px 4px !important; min-width: 0; color: #607090 !important; font-family: 'Courier New', monospace; }
   .fr-sub-hdr { font-size: 9px; color: #303050; text-transform: uppercase; letter-spacing: 1px; padding: 4px 0 1px; margin-top: 3px; border-top: 1px solid #16162a; }
   .fr-sub-hdr:first-child { margin-top: 0; border-top: none; }
+  .fr-inp[readonly], .fr-inp-latex[readonly] { opacity: .55; cursor: default; }
+  /* ── Lagrangian → Feynman Rules panel ── */
+  #lag-panel {
+    background: #09091a;
+    border-top: 2px solid #2a2a50;
+    padding: 28px 32px 60px;
+    flex-shrink: 0;
+    min-height: 640px;
+  }
+  .lag-title {
+    font-size: 15px; color: #7090ff; letter-spacing: 1px;
+    margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .lag-title small { font-size: 11px; color: #404068; font-weight: normal; letter-spacing: 0; }
+  .lag-grid { display: grid; grid-template-columns: 1fr 300px; gap: 28px; max-width: 1300px; }
+  .lag-section-lbl {
+    font-size: 10px; color: #404070; text-transform: uppercase;
+    letter-spacing: 1.5px; margin-bottom: 6px;
+  }
+  #lag-input {
+    width: 100%; min-height: 88px;
+    background: #06060f; border: 1px solid #22223e; color: #c8d4f0;
+    font-family: 'Courier New', monospace; font-size: 13px;
+    padding: 10px 12px; border-radius: 3px; resize: vertical; line-height: 1.65;
+  }
+  #lag-input:focus { outline: none; border-color: #4a4a90; }
+  .lag-ins-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .lag-ins-btn {
+    background: #0e0e20; border: 1px solid #252540; color: #8090c0;
+    padding: 2px 7px; font-size: 12px; font-family: 'Courier New', monospace;
+    cursor: pointer; border-radius: 3px; line-height: 1.5;
+  }
+  .lag-ins-btn:hover { background: #181830; color: #b0c0f8; border-color: #4a4a90; }
+  .lag-fields-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 30px; }
+  .lag-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #101028; border: 1px solid #252548; border-radius: 20px;
+    padding: 3px 10px 3px 12px; font-size: 12px;
+  }
+  .lag-chip .cn { color: #c0d0f8; font-size: 13px; }
+  .lag-chip select {
+    background: transparent; border: none; color: #6070a0; font-size: 10px;
+    padding: 0 2px; cursor: pointer; font-family: inherit; outline: none;
+  }
+  .lag-chip .cdel {
+    background: none; border: none; color: #ff5060; cursor: pointer;
+    font-size: 14px; padding: 0 1px; line-height: 1; min-width: 0;
+  }
+  .lag-add-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+  .lag-add-row input { width: 110px; }
+  .lag-add-row select { width: auto; font-size: 11px; }
+  #btn-lag-derive {
+    margin-top: 16px; font-size: 13px; padding: 7px 22px;
+    background: #141440; border-color: #4050b0; color: #90b0ff;
+  }
+  #btn-lag-derive:hover { background: #1e1e5a; border-color: #6070d0; color: #b0ceff; }
+  .lag-guide table { width: 100%; border-collapse: collapse; font-size: 11px; color: #5060a0; line-height: 2; }
+  .lag-guide td:first-child { color: #7080a0; white-space: nowrap; padding-right: 10px; }
+  .lag-guide code { color: #90a8d0; font-family: 'Courier New', monospace; }
+  #lag-output { margin-top: 24px; max-width: 900px; display: none; }
+  .lag-rules-box {
+    background: #06060f; border: 1px solid #20203a; border-radius: 4px; padding: 18px 22px;
+  }
+  .lag-sec-hdr {
+    font-size: 10px; color: #404068; text-transform: uppercase; letter-spacing: 1.5px;
+    border-bottom: 1px solid #14142a; padding-bottom: 5px; margin-bottom: 14px;
+  }
+  .lag-rule-row {
+    display: grid; grid-template-columns: 110px 20px 1fr;
+    align-items: start; gap: 10px; margin-bottom: 14px;
+    padding-left: 10px; border-left: 2px solid #22224a;
+  }
+  .lag-rule-lhs { font-size: 12px; color: #6070a0; line-height: 1.7; }
+  .lag-rule-lhs .fname { color: #c0d0f8; font-size: 14px; }
+  .lag-rule-arrow { color: #303060; font-size: 16px; padding-top: 2px; }
+  .lag-rule-rhs { font-size: 13px; font-family: 'Courier New', monospace; color: #d0daf8; line-height: 1.8; }
+  .lag-rule-note { font-size: 10px; color: #384060; margin-top: 2px; }
+  .lag-warn { color: #e09040; font-size: 11px; margin-top: 4px; padding-left: 10px; }
+  .lag-err { color: #ff6060; font-size: 12px; padding: 10px; background: #180808; border-radius: 3px; }
+  .lag-examples-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .lag-examples-row select { width: auto; font-size: 11px; }
+  .lag-divider { border: none; border-top: 1px solid #1a1a30; margin: 22px 0 18px; }
 </style>
 </head>
 <body>
 
+<div id="editor-shell">
 <div id="topbar">
   <h1>⬡ FEYNMAN EDITOR</h1>
   <div class="sep"></div>
@@ -570,10 +659,100 @@
       <input id="inp-dim" type="number" value="4" min="1" max="12" step="1"
         style="width:42px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
         title="Spacetime dimension d (default 4 = 3 space + 1 time)">
+      <span style="font-size:10px;color:#404060;margin-left:4px" title="Rξ gauge parameter ξ. Exported to the stepper, which shows Ward-identity steps proving |M|² is gauge-independent when ξ≠1.">ξ</span>
+      <input id="inp-xi" type="number" value="1" min="0" max="10" step="1"
+        style="width:36px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
+        title="Rξ gauge parameter (ξ=1: Feynman gauge, ξ=0: Landau gauge). Passed to the stepper to show the Ward-identity cancellation.">
       <button id="btn-to-stepper" style="font-size:11px;margin-left:auto;border-color:#304070;color:#6080b0">→ Stepper</button>
       <button id="btn-export-file" style="font-size:11px;border-color:#304070;color:#6080b0" title="Save the amplitude as a .json file you can move to any laptop/browser (Import File in the stepper)">⇩ Export File</button>
     </div>
     <div id="amp-display">Draw a diagram, set your Feynman rules, then click Build ▶</div>
+  </div>
+</div>
+</div><!-- #editor-shell -->
+
+<!-- ── Lagrangian → Feynman Rules panel ──────────────────────────────────── -->
+<div id="lag-panel">
+  <div class="lag-title">ℒ → Feynman Rules <small>scroll down to use · derive rules from any Lagrangian</small></div>
+
+  <div class="lag-grid">
+    <!-- ── Left: input area ── -->
+    <div>
+      <div class="lag-section-lbl">Quick insert</div>
+      <div class="lag-ins-row" id="lag-ins-row"></div>
+
+      <div class="lag-section-lbl">Lagrangian</div>
+      <textarea id="lag-input" spellcheck="false"
+        placeholder="e.g.  (1/2)*(d phi)^2 - (m^2/2)*phi^2 - (lam/4!)*phi^4"></textarea>
+
+      <div class="lag-examples-row">
+        <span style="font-size:10px;color:#404070">Example:</span>
+        <select id="lag-examples">
+          <option value="">— choose —</option>
+          <option value="phi4">φ⁴  scalar</option>
+          <option value="phi3">φ³  scalar</option>
+          <option value="dirac">Free Dirac</option>
+          <option value="yukawa">Yukawa (φψ̄ψ)</option>
+          <option value="qed">QED</option>
+          <option value="higgs">Higgs potential</option>
+          <option value="nlsm">σ-model (massless pion)</option>
+        </select>
+      </div>
+
+      <hr class="lag-divider">
+
+      <div class="lag-section-lbl">Field declarations</div>
+      <div style="font-size:10px;color:#2a2a48;margin-bottom:8px">
+        Tell the parser which symbols are fields. Everything else is treated as a coupling or mass parameter.
+      </div>
+      <div class="lag-fields-row" id="lag-fields-row"></div>
+      <div class="lag-add-row">
+        <input type="text" id="lag-fname" placeholder="name (e.g. phi)">
+        <select id="lag-ftype">
+          <option value="scalar">scalar</option>
+          <option value="fermion">fermion  ψ</option>
+          <option value="fermion_bar">antifermion  ψ̄</option>
+          <option value="vector">vector  A_μ</option>
+          <option value="ghost">ghost  c</option>
+        </select>
+        <button id="btn-lag-add-field">+ Field</button>
+      </div>
+
+      <button id="btn-lag-derive">▶  Derive Feynman Rules</button>
+    </div>
+
+    <!-- ── Right: notation guide ── -->
+    <div>
+      <div class="lag-section-lbl">Input notation</div>
+      <div class="lag-guide">
+        <table>
+          <tr><td>Kinetic scalar:</td><td><code>(1/2)*(d phi)^2</code></td></tr>
+          <tr><td>Kinetic fermion:</td><td><code>psib*(i*dslash-m)*psi</code></td></tr>
+          <tr><td>Field strength:</td><td><code>-(1/4)*F^2</code>  or  <code>F_mn</code></td></tr>
+          <tr><td>Mass term:</td><td><code>(m^2/2)*phi^2</code></td></tr>
+          <tr><td>Power:</td><td><code>phi^4</code>  (= φ⁴)</td></tr>
+          <tr><td>φ⁴ vertex:</td><td><code>-(lam/4!)*phi^4</code>  → <b>−iλ</b></td></tr>
+          <tr><td>φ³ vertex:</td><td><code>-(g/3!)*phi^3</code>  → <b>−ig</b></td></tr>
+          <tr><td>QED vertex:</td><td><code>-e*psib*gam^mu*psi*A</code></td></tr>
+          <tr><td>Yukawa:</td><td><code>-g*phi*psib*psi</code>  → <b>−ig</b></td></tr>
+          <tr><td>Gamma matrix:</td><td><code>gam^mu</code>  →  γ^μ</td></tr>
+          <tr><td>Fraction:</td><td><code>1/2</code>, <code>lam/4!</code>, <code>g/3!</code></td></tr>
+          <tr><td>Sign:</td><td><code>-</code> before a term flips vertex sign</td></tr>
+        </table>
+      </div>
+      <div style="font-size:10px;color:#252545;margin-top:10px;line-height:1.8">
+        Propagators come from 2-field terms.<br>
+        Vertices come from 3+ field terms.<br>
+        Identical-particle factorials are cancelled automatically<br>
+        when a 1/n! coefficient matches n copies of a field.
+      </div>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div id="lag-output">
+    <div class="lag-sec-hdr" style="margin-top:26px">Derived Feynman Rules</div>
+    <div id="lag-rules-display"></div>
   </div>
 </div>
 
@@ -654,7 +833,7 @@ function saveTemplates() {
 function builtinTemplates() {
   return [
     {
-      name: 'QED vertex',
+      name: 'QED vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'e',  style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',   style:'none', isCenter:false},
@@ -668,7 +847,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'QCD q-g vertex',
+      name: 'QCD q-g vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'q',  style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',   style:'none', isCenter:false},
@@ -682,7 +861,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'QCD 3g vertex',
+      name: 'QCD 3g vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'3g', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',  style:'none', isCenter:false},
@@ -697,7 +876,7 @@ function builtinTemplates() {
     },
     // ── Weak interaction templates ────────────────────────────────────────────
     {
-      name: 'W lepton vertex',
+      name: 'W lepton vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'lW', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',  style:'none', isCenter:false},
@@ -711,7 +890,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'W quark vertex',
+      name: 'W quark vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'qW', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',  style:'none', isCenter:false},
@@ -725,7 +904,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'Z vertex',
+      name: 'Z vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'Zf', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',  style:'none', isCenter:false},
@@ -739,7 +918,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'H–fermion vertex',
+      name: 'H–fermion vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'Hf', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',  style:'none', isCenter:false},
@@ -753,7 +932,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'WWγ triple gauge',
+      name: 'WWγ triple gauge', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'WWγ', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',   style:'none', isCenter:false},
@@ -767,7 +946,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'WWZ triple gauge',
+      name: 'WWZ triple gauge', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'WWZ', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',   style:'none', isCenter:false},
@@ -781,7 +960,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'HWW vertex',
+      name: 'HWW vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'HWW', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',   style:'none', isCenter:false},
@@ -795,7 +974,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'HZZ vertex',
+      name: 'HZZ vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'HZZ', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',   style:'none', isCenter:false},
@@ -809,7 +988,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'φ⁴ vertex',
+      name: 'φ⁴ vertex', cat: 'SM',
       verts: [
         {idx:0, x:  0, y:  0, label:'λ',  style:'dot',  isCenter:true},
         {idx:1, x:  0, y:-75, label:'',   style:'none', isCenter:false},
@@ -826,7 +1005,7 @@ function builtinTemplates() {
     },
     // ── Gravity templates (graviton = double wavy line) ─────────────────────────
     {
-      name: 'Graviton–fermion (hff)',
+      name: 'Graviton–fermion (hff)', cat: 'BSM',
       verts: [
         {idx:0, x:  0, y:  0, label:'hff', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',    style:'none', isCenter:false},
@@ -840,7 +1019,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'Graviton–scalar (hφφ)',
+      name: 'Graviton–scalar (hφφ)', cat: 'BSM',
       verts: [
         {idx:0, x:  0, y:  0, label:'hφφ', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',    style:'none', isCenter:false},
@@ -854,7 +1033,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'Graviton–photon (hAA)',
+      name: 'Graviton–photon (hAA)', cat: 'BSM',
       verts: [
         {idx:0, x:  0, y:  0, label:'hAA', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',    style:'none', isCenter:false},
@@ -868,7 +1047,7 @@ function builtinTemplates() {
       ]
     },
     {
-      name: 'Triple graviton (hhh)',
+      name: 'Triple graviton (hhh)', cat: 'BSM',
       verts: [
         {idx:0, x:  0, y:  0, label:'hhh', style:'dot',  isCenter:true},
         {idx:1, x:-75, y:-75, label:'',    style:'none', isCenter:false},
@@ -901,31 +1080,59 @@ function renderTemplates() {
   const list = document.getElementById('tmpl-list');
   const empty = document.getElementById('tmpl-empty');
   if (empty) empty.style.display = templates.length ? 'none' : 'block';
-  // Remove old template rows
-  list.querySelectorAll('.tmpl-row').forEach(r => r.remove());
-  templates.forEach((tmpl, i) => {
-    const row = document.createElement('div');
-    row.className = 'tmpl-row';
-    const btn = document.createElement('button');
-    btn.className = 'tmpl-place';
-    btn.textContent = tmpl.name;
-    btn.title = `${tmpl.verts.length} vertices · ${tmpl.edges.length} lines\nClick to stamp`;
-    btn.addEventListener('click', () => {
-      stampTemplate = tmpl;
-      setTool('stamp');
-      // Highlight active template
-      document.querySelectorAll('.tmpl-place').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+  // Remove old template rows + group headers (but keep #tmpl-empty in place)
+  list.querySelectorAll('.tmpl-row, .tmpl-grp-hdr').forEach(r => r.remove());
+  // SM templates are the built-in physics vertices — permanent: stampable, but
+  // no delete control (loadTemplates also re-syncs them from builtinTemplates()
+  // on every load, so a forced removal would not survive a reload). BSM
+  // templates (gravitons by default, plus anything saved via "Save as
+  // Template") are fully deletable.
+  const renderGroup = (cat, hdrText) => {
+    const rows = templates.map((tmpl, i) => ({ tmpl, i })).filter(({ tmpl }) => (tmpl.cat || 'BSM') === cat);
+    if (!rows.length) return;
+    const hdr = document.createElement('div');
+    hdr.className = 'fr-sub-hdr tmpl-grp-hdr';
+    hdr.textContent = hdrText;
+    list.appendChild(hdr);
+    rows.forEach(({ tmpl, i }) => {
+      const locked = cat === 'SM';
+      const row = document.createElement('div');
+      row.className = 'tmpl-row';
+      const btn = document.createElement('button');
+      btn.className = 'tmpl-place';
+      btn.textContent = tmpl.name;
+      btn.title = `${tmpl.verts.length} vertices · ${tmpl.edges.length} lines\nClick to stamp`;
+      btn.addEventListener('click', () => {
+        stampTemplate = tmpl;
+        setTool('stamp');
+        // Highlight active template
+        document.querySelectorAll('.tmpl-place').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+      row.appendChild(btn);
+      if (locked) {
+        const tag = document.createElement('span');
+        tag.className = 'tmpl-del';
+        tag.style.color = '#3a3a55'; tag.style.cursor = 'default'; tag.style.fontSize = '10px';
+        tag.textContent = 'SM';
+        tag.title = 'Built-in Standard Model template — permanent';
+        row.appendChild(tag);
+      } else {
+        const del = document.createElement('button');
+        del.className = 'tmpl-del';
+        del.textContent = '×';
+        del.title = 'Delete template';
+        del.addEventListener('click', () => {
+          if ((templates[i].cat || 'BSM') === 'SM') return;   // defense in depth — SM templates are permanent
+          templates.splice(i, 1); saveTemplates(); renderTemplates();
+        });
+        row.appendChild(del);
+      }
+      list.appendChild(row);
     });
-    const del = document.createElement('button');
-    del.className = 'tmpl-del';
-    del.textContent = '×';
-    del.title = 'Delete template';
-    del.addEventListener('click', () => { templates.splice(i, 1); saveTemplates(); renderTemplates(); });
-    row.appendChild(btn);
-    row.appendChild(del);
-    list.appendChild(row);
-  });
+  };
+  renderGroup('SM', 'Standard Model — built-in, permanent');
+  renderGroup('BSM', 'Beyond Standard Model — yours to add/edit/delete');
 }
 function connectedComponent(startId) {
   const visitedVerts = new Set([startId]);
@@ -963,7 +1170,7 @@ function saveAsTemplate() {
     fromIdx: idToIdx[e.from], toIdx: idToIdx[e.to],
     type: e.type, label: e.label, reversed: e.reversed, cx: e.cx, cy: e.cy
   }));
-  templates.push({name, verts: tVerts, edges: tEdges});
+  templates.push({name, verts: tVerts, edges: tEdges, cat: 'BSM'});
   saveTemplates();
   renderTemplates();
 }
@@ -1053,12 +1260,20 @@ function tryMergeArms(fromId, toId, type, newEdgeId) {
   const realFrom = stubFrom.from === fromId ? stubFrom.to : stubFrom.from;
   const realTo   = stubTo.from === toId     ? stubTo.to   : stubTo.from;
   if (realFrom === realTo) return; // would make a self-loop
+  // Preserve the original arrow direction (fermion-number flow) instead of
+  // always drawing the merged edge unreversed — that silently flipped
+  // particle<->antiparticle for the merged line. Effective arrow direction of
+  // stubFrom, accounting for its `reversed` flag: does it point AWAY from
+  // realFrom (continuing on toward realTo) or TOWARD realFrom (from realTo)?
+  const pointsAwayFromRealFrom = stubFrom.reversed
+    ? stubFrom.to   === realFrom
+    : stubFrom.from === realFrom;
   // Remove the two stub vertices and three edges
   verts = verts.filter(v => v.id !== fromId && v.id !== toId);
   edges = edges.filter(e => e.id !== stubFrom.id && e.id !== stubTo.id && e.id !== newEdgeId);
   // Create direct propagator, bowing it if a parallel edge already exists
   const {cx:mcx, cy:mcy} = parallelOffset(realFrom, realTo);
-  edges.push({id:nextId++, from:realFrom, to:realTo, type, label:'', reversed:false, cx:mcx, cy:mcy});
+  edges.push({id:nextId++, from:realFrom, to:realTo, type, label:'', reversed:!pointsAwayFromRealFrom, cx:mcx, cy:mcy});
   selVert = null; selEdge = null;
 }
 
@@ -2235,64 +2450,65 @@ const FR_DEFAULTS = {
     // Each vertex also carries `lag`/`lagLatex`: the interaction Lagrangian term
     // L_int whose functional derivative gives this Feynman rule. Shown by buildAmplitude.
     // ── QED / QCD ──────────────────────────────────────────────────────────────
-    { label: 'e',   sig: {fermion:2, photon:1}, text: 'iQeγ^μ',              latex: 'iQe\\gamma^{\\mu}',
+    { label: 'e',   cat: 'SM', sig: {fermion:2, photon:1}, text: 'iQeγ^μ',              latex: 'iQe\\gamma^{\\mu}',
       lag: '−Qe ψ̄γ^μψ A_μ',            lagLatex: '-Qe\\,\\bar\\psi\\gamma^{\\mu}\\psi\\,A_{\\mu}' },
-    { label: 'q',   sig: {fermion:2, gluon:1},  text: 'ig_sT^aγ^μ',          latex: 'ig_s T^a\\gamma^{\\mu}',
+    { label: 'q',   cat: 'SM', sig: {fermion:2, gluon:1},  text: 'ig_sT^aγ^μ',          latex: 'ig_s T^a\\gamma^{\\mu}',
       lag: '−g_s ψ̄γ^μT^aψ A^a_μ',      lagLatex: '-g_s\\,\\bar\\psi\\gamma^{\\mu}T^a\\psi\\,A^a_{\\mu}' },
-    { label: '3g',  sig: {gluon:3},  text: 'g_sf^{abc}[η^{μν}(p₁-p₂)^ρ+η^{νρ}(p₂-p₃)^μ+η^{ρμ}(p₃-p₁)^ν]',  latex: 'g_s f^{abc}[\\eta^{\\mu\\nu}(p_1{-}p_2)^{\\rho}+\\eta^{\\nu\\rho}(p_2{-}p_3)^{\\mu}+\\eta^{\\rho\\mu}(p_3{-}p_1)^{\\nu}]',
+    { label: '3g',  cat: 'SM', sig: {gluon:3},  text: 'g_sf^{abc}[η^{μν}(p₁-p₂)^ρ+η^{νρ}(p₂-p₃)^μ+η^{ρμ}(p₃-p₁)^ν]',  latex: 'g_s f^{abc}[\\eta^{\\mu\\nu}(p_1{-}p_2)^{\\rho}+\\eta^{\\nu\\rho}(p_2{-}p_3)^{\\mu}+\\eta^{\\rho\\mu}(p_3{-}p_1)^{\\nu}]',
       lag: '−g_s f^{abc}(∂_μ A^a_ν)A^{bμ}A^{cν}',  lagLatex: '-g_s f^{abc}(\\partial_{\\mu}A^a_{\\nu})A^{b\\mu}A^{c\\nu}' },
-    { label: '4g',  sig: {gluon:4},  text: '-ig_s²[f^{ace}f^{bde}(η^{μρ}η^{νσ}-η^{μσ}η^{νρ})+f^{ade}f^{bce}(η^{μσ}η^{νρ}-η^{μν}η^{ρσ})+f^{abe}f^{cde}(η^{μν}η^{ρσ}-η^{μρ}η^{νσ})]',  latex: '-ig_s^2[f^{ace}f^{bde}(\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma}-\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho})+f^{ade}f^{bce}(\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho}-\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma})+f^{abe}f^{cde}(\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma}-\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma})]',
+    { label: '4g',  cat: 'SM', sig: {gluon:4},  text: '-ig_s²[f^{ace}f^{bde}(η^{μρ}η^{νσ}-η^{μσ}η^{νρ})+f^{ade}f^{bce}(η^{μσ}η^{νρ}-η^{μν}η^{ρσ})+f^{abe}f^{cde}(η^{μν}η^{ρσ}-η^{μρ}η^{νσ})]',  latex: '-ig_s^2[f^{ace}f^{bde}(\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma}-\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho})+f^{ade}f^{bce}(\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho}-\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma})+f^{abe}f^{cde}(\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma}-\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma})]',
       lag: '−¼g_s² f^{abe}f^{cde} A^a_μA^b_νA^{cμ}A^{dν}',  lagLatex: '-\\tfrac14 g_s^2 f^{abe}f^{cde}A^a_{\\mu}A^b_{\\nu}A^{c\\mu}A^{d\\nu}' },
-    { label: 'λ',   sig: {scalar:4}, text: '−iλ',                            latex: '-i\\lambda',
+    { label: 'λ',   cat: 'SM', sig: {scalar:4}, text: '−iλ',                            latex: '-i\\lambda',
       lag: '−(λ/4!) φ⁴',                lagLatex: '-\\tfrac{\\lambda}{4!}\\phi^4' },
     // ── Weak charged current (W boson, draw W as photon-type line) ─────────
-    { label: 'lW',  sig: {fermion:2, photon:1}, text: 'ig/(2√2) γ^μ(1−γ⁵)',
+    { label: 'lW',  cat: 'SM', sig: {fermion:2, photon:1}, text: 'ig/(2√2) γ^μ(1−γ⁵)',
       latex: '\\frac{ig}{2\\sqrt{2}}\\gamma^{\\mu}(1-\\gamma^5)',
       lag: '−(g/2√2) W⁺_μ ν̄γ^μ(1−γ⁵)ℓ + h.c.',  lagLatex: '-\\tfrac{g}{2\\sqrt2}W^+_{\\mu}\\bar\\nu\\gamma^{\\mu}(1-\\gamma^5)\\ell + \\text{h.c.}' },
-    { label: 'qW',  sig: {fermion:2, photon:1}, text: 'iV_{CKM}g/(2√2) γ^μ(1−γ⁵)',
+    { label: 'qW',  cat: 'SM', sig: {fermion:2, photon:1}, text: 'iV_{CKM}g/(2√2) γ^μ(1−γ⁵)',
       latex: '\\frac{iV_{\\mathrm{CKM}}g}{2\\sqrt{2}}\\gamma^{\\mu}(1-\\gamma^5)',
       lag: '−(g/2√2) V_{CKM} W⁺_μ ūγ^μ(1−γ⁵)d + h.c.',  lagLatex: '-\\tfrac{g}{2\\sqrt2}V_{\\mathrm{CKM}}W^+_{\\mu}\\bar u\\gamma^{\\mu}(1-\\gamma^5)d + \\text{h.c.}' },
     // ── Weak neutral current (Z boson) ──────────────────────────────────────
-    { label: 'Zf',  sig: {fermion:2, photon:1}, text: 'ig/(2cosθ_W) γ^μ(g_V−g_Aγ⁵)',
+    { label: 'Zf',  cat: 'SM', sig: {fermion:2, photon:1}, text: 'ig/(2cosθ_W) γ^μ(g_V−g_Aγ⁵)',
       latex: '\\frac{ig}{2\\cos\\theta_W}\\gamma^{\\mu}(g_V-g_A\\gamma^5)',
       lag: '−(g/2cosθ_W) Z_μ ψ̄γ^μ(g_V−g_Aγ⁵)ψ',  lagLatex: '-\\tfrac{g}{2\\cos\\theta_W}Z_{\\mu}\\bar\\psi\\gamma^{\\mu}(g_V-g_A\\gamma^5)\\psi' },
     // ── Higgs–fermion Yukawa ────────────────────────────────────────────────
-    { label: 'Hf',  sig: {fermion:2, scalar:1}, text: '−im_f/v',
+    { label: 'Hf',  cat: 'SM', sig: {fermion:2, scalar:1}, text: '−im_f/v',
       latex: '-i\\frac{m_f}{v}',
       lag: '−(m_f/v) H ψ̄ψ',            lagLatex: '-\\tfrac{m_f}{v}H\\bar\\psi\\psi' },
     // ── Triple gauge (W/Z/γ drawn as photon-type) ───────────────────────────
-    { label: 'WWγ', sig: {photon:3}, text: 'ie[g_μν(p₁−p₂)^ρ+g_{νρ}(p₂−p₃)^μ+g_{ρμ}(p₃−p₁)^ν]',
+    { label: 'WWγ', cat: 'SM', sig: {photon:3}, text: 'ie[g_μν(p₁−p₂)^ρ+g_{νρ}(p₂−p₃)^μ+g_{ρμ}(p₃−p₁)^ν]',
       latex: 'ie[g_{\\mu\\nu}(p_1{-}p_2)^{\\rho}+g_{\\nu\\rho}(p_2{-}p_3)^{\\mu}+g_{\\rho\\mu}(p_3{-}p_1)^{\\nu}]',
       lag: '−ie(∂_μW⁺_ν−∂_νW⁺_μ)W^{−μ}A^ν + h.c.',  lagLatex: '-ie(\\partial_{\\mu}W^+_{\\nu}-\\partial_{\\nu}W^+_{\\mu})W^{-\\mu}A^{\\nu} + \\text{h.c.}' },
-    { label: 'WWZ', sig: {photon:3}, text: 'igcosθ_W[g_μν(p₁−p₂)^ρ+g_{νρ}(p₂−p₃)^μ+g_{ρμ}(p₃−p₁)^ν]',
+    { label: 'WWZ', cat: 'SM', sig: {photon:3}, text: 'igcosθ_W[g_μν(p₁−p₂)^ρ+g_{νρ}(p₂−p₃)^μ+g_{ρμ}(p₃−p₁)^ν]',
       latex: 'ig\\cos\\theta_W[g_{\\mu\\nu}(p_1{-}p_2)^{\\rho}+g_{\\nu\\rho}(p_2{-}p_3)^{\\mu}+g_{\\rho\\mu}(p_3{-}p_1)^{\\nu}]',
       lag: '−ig cosθ_W(∂_μW⁺_ν−∂_νW⁺_μ)W^{−μ}Z^ν + h.c.',  lagLatex: '-ig\\cos\\theta_W(\\partial_{\\mu}W^+_{\\nu}-\\partial_{\\nu}W^+_{\\mu})W^{-\\mu}Z^{\\nu} + \\text{h.c.}' },
     // ── Higgs–gauge couplings (H drawn as scalar, W/Z as photon) ───────────
-    { label: 'HWW', sig: {scalar:1, photon:2}, text: 'igm_W g_μν',
+    { label: 'HWW', cat: 'SM', sig: {scalar:1, photon:2}, text: 'igm_W g_μν',
       latex: 'igm_W g_{\\mu\\nu}',
       lag: 'g m_W H W⁺_μW^{−μ}',         lagLatex: 'g m_W\\,H\\,W^+_{\\mu}W^{-\\mu}' },
-    { label: 'HZZ', sig: {scalar:1, photon:2}, text: 'igm_Z/cosθ_W g_μν',
+    { label: 'HZZ', cat: 'SM', sig: {scalar:1, photon:2}, text: 'igm_Z/cosθ_W g_μν',
       latex: 'i\\frac{gm_Z}{\\cos\\theta_W}g_{\\mu\\nu}',
       lag: '(g m_Z/2cosθ_W) H Z_μZ^μ',   lagLatex: '\\tfrac{g m_Z}{2\\cos\\theta_W}H\\,Z_{\\mu}Z^{\\mu}' },
     // ── Higgs self-coupling ────────────────────────────────────────────────
-    { label: 'H³',  sig: {scalar:3}, text: '−3iλv',
+    { label: 'H³',  cat: 'SM', sig: {scalar:3}, text: '−3iλv',
       latex: '-3i\\lambda v',
       lag: '−λv H³',                     lagLatex: '-\\lambda v\\,H^3' },
     // ── Gravity (graviton h_μν couples to the stress–energy tensor T^μν) ─────
     // Coupling κ = √(32πG). Every matter vertex is −(κ/2) h_μν T^μν of that field.
-    { label: 'hff', sig: {graviton:1, fermion:2},
+    // BSM: gravity is not part of the Standard Model — user-editable/removable.
+    { label: 'hff', cat: 'BSM', sig: {graviton:1, fermion:2},
       text: '−(iκ/8)[γ^μ(p+p′)^ν+γ^ν(p+p′)^μ−2η^μν(p̸+p̸′−2m)]',
       latex: '-\\tfrac{i\\kappa}{8}\\big[\\gamma^{\\mu}(p{+}p\')^{\\nu}+\\gamma^{\\nu}(p{+}p\')^{\\mu}-2\\eta^{\\mu\\nu}(\\not p{+}\\not p\'{-}2m)\\big]',
       lag: '−(κ/2) h_μν T^μν_(ψ)',        lagLatex: '-\\tfrac{\\kappa}{2}\\,h_{\\mu\\nu}\\,T^{\\mu\\nu}_{(\\psi)}' },
-    { label: 'hφφ', sig: {graviton:1, scalar:2},
+    { label: 'hφφ', cat: 'BSM', sig: {graviton:1, scalar:2},
       text: '−iκ[p₁^μp₂^ν+p₁^νp₂^μ−η^μν(p₁·p₂−m²)]',
       latex: '-i\\kappa\\big[p_1^{\\mu}p_2^{\\nu}+p_1^{\\nu}p_2^{\\mu}-\\eta^{\\mu\\nu}(p_1\\!\\cdot\\!p_2-m^2)\\big]',
       lag: '−(κ/2) h_μν T^μν_(φ)',        lagLatex: '-\\tfrac{\\kappa}{2}\\,h_{\\mu\\nu}\\,T^{\\mu\\nu}_{(\\phi)}' },
-    { label: 'hAA', sig: {graviton:1, photon:2},
-      text: '−iκ[p₁·p₂(η^μαη^νβ+η^μβη^να−η^μνη^αβ) + (η^αβp₁^μp₂^ν − …)]',
-      latex: '-i\\kappa\\big[p_1\\!\\cdot\\!p_2(\\eta^{\\mu\\alpha}\\eta^{\\nu\\beta}+\\eta^{\\mu\\beta}\\eta^{\\nu\\alpha}-\\eta^{\\mu\\nu}\\eta^{\\alpha\\beta})+\\dots\\big]',
+    { label: 'hAA', cat: 'BSM', sig: {graviton:1, photon:2},
+      text: '−iκ[p₁·p₂(η^μρη^νσ+η^μση^νρ−η^μνη^ρσ) + (η^ρσp₁^μp₂^ν − …)]',
+      latex: '-i\\kappa\\big[p_1\\!\\cdot\\!p_2(\\eta^{\\mu\\rho}\\eta^{\\nu\\sigma}+\\eta^{\\mu\\sigma}\\eta^{\\nu\\rho}-\\eta^{\\mu\\nu}\\eta^{\\rho\\sigma})+\\dots\\big]',
       lag: '−(κ/2) h_μν T^μν_(EM)',       lagLatex: '-\\tfrac{\\kappa}{2}\\,h_{\\mu\\nu}\\,T^{\\mu\\nu}_{(\\mathrm{EM})}' },
-    { label: 'hhh', sig: {graviton:3},
+    { label: 'hhh', cat: 'BSM', sig: {graviton:3},
       text: '(iκ/2)·Sym[ momentum-dependent, ~100 terms ] (de Donder)',
       latex: '\\tfrac{i\\kappa}{2}\\,\\mathrm{Sym}\\big[\\,p\\,p\\,\\eta\\eta\\eta\\,\\big]\\ (\\text{de Donder; }\\sim\\!100\\text{ terms})',
       lag: '(2/κ²)√(−g)R at O(h³) → κ h(∂h)² + …', lagLatex: '\\tfrac{2}{\\kappa^2}\\sqrt{-g}\\,R\\big|_{O(h^3)} \\to \\kappa\\,h(\\partial h)^2+\\dots' },
@@ -2316,6 +2532,7 @@ let latexAmplitude = '';
 let lastAmplitudeFactors = [];   // saved on every iM ▶ build, used by → Stepper
 let lastAmplitudeComponents = []; // per-diagram factor lists (one entry per connected component)
 let spacetimeDim = 4;            // d = number of spacetime dimensions (3 space + 1 time)
+let spacetimeXi  = 1;            // ξ = Rξ gauge parameter (1 = Feynman/Lorenz gauge)
 
 // Mass dimension of an amplitude M with E external legs in d spacetime dimensions:
 //   [M] = d − E·(d−2)/2     (gives the familiar 4 − E in d=4)
@@ -2360,6 +2577,7 @@ function loadFRules() {
       existing.sig      = def.sig;
       existing.lag      = def.lag;       // interaction Lagrangian term (may be absent in old caches)
       existing.lagLatex = def.lagLatex;
+      existing.cat      = def.cat;       // SM = permanent/built-in, BSM = user add/delete (backfills old caches)
     } else {
       feynmanRules.vertices.push(Object.assign({}, def));
     }
@@ -2415,28 +2633,49 @@ function renderVertexRulesList() {
   const list = document.getElementById('vr-list');
   if (!list) return;
   list.innerHTML = '';
-  feynmanRules.vertices.forEach((vr, i) => {
-    const row = document.createElement('div');
-    row.className = 'fr-row';
-    row.style.marginBottom = '2px';
-    row.innerHTML = `
-      <input type="text" class="fr-inp" style="flex:0 0 50px;text-align:center" placeholder="label" value="${escHtml(vr.label)}">
-      <input type="text" class="fr-inp" placeholder="display text" value="${escHtml(vr.text)}">
-      <input type="text" class="fr-inp-latex" placeholder="LaTeX" value="${escHtml(vr.latex)}">
-      <button class="tmpl-del" title="Remove">×</button>
-    `;
-    const inputs = row.querySelectorAll('input');
-    const autoRebuild = () => { if (latexAmplitude) buildAmplitude(); };
-    inputs[0].addEventListener('input', e => { feynmanRules.vertices[i].label = e.target.value; autoRebuild(); });
-    inputs[1].addEventListener('input', e => { feynmanRules.vertices[i].text  = e.target.value; autoRebuild(); });
-    inputs[2].addEventListener('input', e => { feynmanRules.vertices[i].latex = e.target.value; autoRebuild(); });
-    row.querySelector('.tmpl-del').addEventListener('click', () => {
-      feynmanRules.vertices.splice(i, 1);
-      renderVertexRulesList();
-      autoRebuild();
+  const autoRebuild = () => { if (latexAmplitude) buildAmplitude(); };
+  // SM vertices are the built-in physics rules — permanent: shown read-only,
+  // no delete control (loadFRules also re-syncs them from FR_DEFAULTS on every
+  // load, so even a forced removal would not survive a reload). BSM vertices
+  // (gravitons by default, plus anything the user adds) are fully editable
+  // and deletable.
+  const renderGroup = (cat, hdrText, locked) => {
+    const rows = feynmanRules.vertices
+      .map((vr, i) => ({ vr, i }))
+      .filter(({ vr }) => (vr.cat || 'BSM') === cat);
+    if (!rows.length) return;
+    const hdr = document.createElement('div');
+    hdr.className = 'fr-sub-hdr';
+    hdr.textContent = hdrText;
+    list.appendChild(hdr);
+    rows.forEach(({ vr, i }) => {
+      const row = document.createElement('div');
+      row.className = 'fr-row';
+      row.style.marginBottom = '2px';
+      row.innerHTML = `
+        <input type="text" class="fr-inp" style="flex:0 0 50px;text-align:center" placeholder="label" value="${escHtml(vr.label)}" ${locked ? 'readonly title="Built-in Standard Model rule — permanent"' : ''}>
+        <input type="text" class="fr-inp" placeholder="display text" value="${escHtml(vr.text)}" ${locked ? 'readonly' : ''}>
+        <input type="text" class="fr-inp-latex" placeholder="LaTeX" value="${escHtml(vr.latex)}" ${locked ? 'readonly' : ''}>
+        ${locked ? '<span class="tmpl-del" style="color:#3a3a55;cursor:default;font-size:10px;text-align:center" title="Built-in — cannot be removed">SM</span>'
+                 : '<button class="tmpl-del" title="Remove">×</button>'}
+      `;
+      if (!locked) {
+        const inputs = row.querySelectorAll('input');
+        inputs[0].addEventListener('input', e => { feynmanRules.vertices[i].label = e.target.value; autoRebuild(); });
+        inputs[1].addEventListener('input', e => { feynmanRules.vertices[i].text  = e.target.value; autoRebuild(); });
+        inputs[2].addEventListener('input', e => { feynmanRules.vertices[i].latex = e.target.value; autoRebuild(); });
+        row.querySelector('.tmpl-del').addEventListener('click', () => {
+          if (feynmanRules.vertices[i].cat === 'SM') return;   // defense in depth — SM rules are permanent
+          feynmanRules.vertices.splice(i, 1);
+          renderVertexRulesList();
+          autoRebuild();
+        });
+      }
+      list.appendChild(row);
     });
-    list.appendChild(row);
-  });
+  };
+  renderGroup('SM', 'Standard Model — built-in, permanent', true);
+  renderGroup('BSM', 'Beyond Standard Model — yours to add/edit/delete', false);
 }
 
 function buildAmplitude() {
@@ -2447,6 +2686,8 @@ function buildAmplitude() {
   // Read the spacetime dimension d (default 4); used for the mass-dimension display.
   const dInp = document.getElementById('inp-dim');
   spacetimeDim = dInp ? (parseInt(dInp.value,10) || 4) : 4;
+  const xiInp = document.getElementById('inp-xi');
+  spacetimeXi  = xiInp ? (parseFloat(xiInp.value) ?? 1) : 1;
 
   const uSub = n => String(n).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]||c).join('');
   const uSup = n => String(n).split('').map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]||c).join('');
@@ -2711,19 +2952,38 @@ function buildAmplitude() {
 
     const intEdgeLrtz = {};
     intEdges.forEach(e => {
-      if (e.type === 'photon' || e.type === 'gluon') intEdgeLrtz[e.id] = { a: nli(), b: nli() };
+      if (e.type === 'photon' || e.type === 'gluon')   intEdgeLrtz[e.id] = { a: nli(), b: nli() };
+      else if (e.type === 'graviton')                    intEdgeLrtz[e.id] = { a: nli(), b: nli(), c: nli(), d: nli() };
     });
     const extEdgeLrtz = {};
     extEdges.forEach(e => {
-      if (e.type === 'photon' || e.type === 'gluon') extEdgeLrtz[e.id] = nli();
+      if (e.type === 'photon' || e.type === 'gluon')   extEdgeLrtz[e.id] = nli();
+      else if (e.type === 'graviton')                    extEdgeLrtz[e.id] = [nli(), nli()];
     });
 
     const vertLrtz = {};
     const pushVL = (vid, idx) => { if (!vertLrtz[vid]) vertLrtz[vid] = []; vertLrtz[vid].push(idx); };
-    [...intEdges].sort((a,b) => a.id-b.id).forEach(e => {
+    // Push graviton indices FIRST so they occupy positions 0,1 (μ,ν slots) in every vertex template.
+    // Photon/gluon indices come after, occupying positions 2,3+ (ρ,σ slots in hAA etc.).
+    const sortById = arr => [...arr].sort((a,b) => a.id-b.id);
+    sortById(intEdges).forEach(e => {
+      if (e.type === 'graviton') {
+        const li = intEdgeLrtz[e.id];
+        pushVL(e.from, li.a); pushVL(e.from, li.b);
+        pushVL(e.to,   li.c); pushVL(e.to,   li.d);
+      }
+    });
+    sortById(intEdges).forEach(e => {
       if (e.type === 'photon' || e.type === 'gluon') { pushVL(e.from, intEdgeLrtz[e.id].a); pushVL(e.to, intEdgeLrtz[e.id].b); }
     });
-    [...extEdges].sort((a,b) => a.id-b.id).forEach(e => {
+    sortById(extEdges).forEach(e => {
+      if (e.type === 'graviton') {
+        const ivid = isExtV(vbl(e.from)) ? e.to : e.from;
+        pushVL(ivid, extEdgeLrtz[e.id][0]);
+        pushVL(ivid, extEdgeLrtz[e.id][1]);
+      }
+    });
+    sortById(extEdges).forEach(e => {
       if (e.type === 'photon' || e.type === 'gluon') {
         const ivid = isExtV(vbl(e.from)) ? e.to : e.from;
         pushVL(ivid, extEdgeLrtz[e.id]);
@@ -2732,12 +2992,17 @@ function buildAmplitude() {
 
     const replLrtz = (tpl, idxArr, useLatex) => {
       const gen = useLatex ? GRKL : GRKT;
+      if (!idxArr.length) return tpl;
+      // Two-pass sentinel substitution prevents cascading:
+      // e.g. with a graviton propagator η_μρη_νσ and idxArr=[2,3,4,5]:
+      // single-pass would do μ→ρ, then ρ→κ — and the just-placed ρ would be replaced too!
+      // Instead: first encode every source letter as a unique sentinel \x00N\x00,
+      // then decode all sentinels to their final letters in one sweep.
       let s = tpl;
+      idxArr.forEach((idx, i) => { if (i < gen.length) s = s.split(gen[i]).join(`\x00${i}\x00`); });
       idxArr.forEach((idx, i) => {
-        if (i < gen.length) {
-          const rep = useLatex ? (idx < GRKL.length ? GRKL[idx] : `\\mu_{${idx}}`) : (idx < GRKT.length ? GRKT[idx] : `μ_{${idx}}`);
-          s = s.split(gen[i]).join(rep);
-        }
+        const rep = idx < gen.length ? gen[idx] : (useLatex ? `\\mu_{${idx}}` : `μ_{${idx}}`);
+        s = s.split(`\x00${i}\x00`).join(rep);
       });
       return s;
     };
@@ -2787,7 +3052,8 @@ function buildAmplitude() {
       const mand   = edgeCoeff[e.id] ? detectMandelstam(edgeCoeff[e.id]) : null;
       const pr = feynmanRules.propagators[e.type];
       if (pr) {
-        const eli = intEdgeLrtz[e.id], idxPair = eli ? [eli.a, eli.b] : [];
+        const eli = intEdgeLrtz[e.id];
+        const idxPair = eli ? (eli.d !== undefined ? [eli.a, eli.b, eli.c, eli.d] : [eli.a, eli.b]) : [];
         const commentMom = mand ? `${mom.text} [${mand}]` : mom.text;
         factors.push({ text: replLrtz(sub(pr.text, mom, momSq, false), idxPair, false), latex: replLrtz(sub(pr.latex, mom, momSq, true), idxPair, true), comment: `${e.type} prop (${commentMom}${e.label ? ', '+e.label : ''})` });
       } else {
@@ -2824,7 +3090,8 @@ function buildAmplitude() {
       }
       const er = feynmanRules.external[dirKey] || feynmanRules.external[e.type+'_in'];
       const inout = isLeft ? 'in' : 'out';   // physical, for the comment/parser
-      const eli = extEdgeLrtz[e.id], idxSingle = eli !== undefined ? [eli] : [];
+      const eli = extEdgeLrtz[e.id];
+      const idxSingle = Array.isArray(eli) ? eli : (eli !== undefined ? [eli] : []);
       if (er) {
         factors.push({ text: replLrtz(subExt(er.text, mom, false), idxSingle, false), latex: replLrtz(subExt(er.latex, mom, true), idxSingle, true), comment: `${e.type} ext ${inout} (${mom.text}${e.label ? ', '+e.label : ''})` });
       } else {
@@ -2992,6 +3259,7 @@ document.addEventListener('keydown', e => {
 document.getElementById('btn-build-amp').addEventListener('click', buildAmplitude);
 // Re-evaluate the mass dimension live when the spacetime dimension is changed.
 document.getElementById('inp-dim').addEventListener('input', () => { if (latexAmplitude) buildAmplitude(); });
+document.getElementById('inp-xi').addEventListener('input', () => { spacetimeXi = parseFloat(document.getElementById('inp-xi').value) ?? 1; });
 // Shared by both export paths: the URL-hash hand-off to the stepper tab, and
 // the downloadable .json file (manual cross-machine fallback).
 function buildStepperExportObj() {
@@ -3012,7 +3280,7 @@ function buildStepperExportObj() {
     diagrams,                       // array — the stepper sums these
     iM: combinedIM,                 // combined display string
     comments: diagrams[0].comments, // first diagram's comments (legacy single-diagram path)
-    latex: latexAmplitude, d: spacetimeDim, timestamp: Date.now()
+    latex: latexAmplitude, d: spacetimeDim, xi: spacetimeXi, timestamp: Date.now()
   };
 }
 document.getElementById('btn-to-stepper').addEventListener('click', () => {
@@ -3058,7 +3326,7 @@ document.getElementById('btn-copy-latex').addEventListener('click', () => {
   }).catch(() => { prompt('LaTeX amplitude:', latexAmplitude); });
 });
 document.getElementById('btn-add-vr').addEventListener('click', () => {
-  feynmanRules.vertices.push({ label: '', text: '', latex: '' });
+  feynmanRules.vertices.push({ label: '', text: '', latex: '', cat: 'BSM' });
   renderVertexRulesList();
 });
 document.getElementById('btn-save-fr').addEventListener('click', () => {
@@ -3126,8 +3394,512 @@ function loadSample() {
 loadTemplates();
 renderTemplates();
 loadFRules();
+populateRulesPanel();  // pre-fill panel inputs so readRulesFromPanel() in buildAmplitude() reads defaults, not empty strings
 setTool('select');
 draw();
+
+// ─── Lagrangian → Feynman Rules engine ───────────────────────────────────────
+(function() {
+
+// Quick-insert symbols for the textarea
+const INS = [
+  ['φ','φ'],['ψ','ψ'],['ψ̄','ψ̄'],['χ','χ'],['σ','σ'],['π','π'],
+  ['∂_μ','∂_μ'],['∂̸','dslash'],['γ^μ','gam^mu'],['F_{μν}','F_mn'],
+  ['η^{μν}','eta^mn'],['²','^2'],['³','^3'],['⁴','^4'],
+  ['λ','λ'],['κ','κ'],['α','α'],['β','β'],['μ','μ'],
+  ['½','1/2'],['¼','1/4'],['⅙','1/6'],
+  ['−','−'],['·','*'],['!','!'],
+];
+
+// Preset examples
+const EXAMPLES = {
+  phi4:   { lag:'(1/2)*(d phi)^2 - (m^2/2)*phi^2 - (lam/4!)*phi^4',
+              fields:[{name:'phi',type:'scalar'}] },
+  phi3:   { lag:'(1/2)*(d phi)^2 - (m^2/2)*phi^2 - (g/3!)*phi^3',
+              fields:[{name:'phi',type:'scalar'}] },
+  dirac:  { lag:'psib*(i*dslash - m)*psi',
+              fields:[{name:'psi',type:'fermion'},{name:'psib',type:'fermion_bar'}] },
+  yukawa: { lag:'psib*(i*dslash - M)*psi + (1/2)*(d phi)^2 - (mu^2/2)*phi^2 - g*phi*psib*psi',
+              fields:[{name:'psi',type:'fermion'},{name:'psib',type:'fermion_bar'},{name:'phi',type:'scalar'}] },
+  qed:    { lag:'psib*(i*dslash - m)*psi - (1/4)*F^2 - e*psib*gam^mu*psi*A',
+              fields:[{name:'psi',type:'fermion'},{name:'psib',type:'fermion_bar'},{name:'A',type:'vector'}] },
+  higgs:  { lag:'(d H)^2 - mu^2*H^2 - lam*H^4',
+              fields:[{name:'H',type:'scalar'}] },
+  nlsm:   { lag:'(f^2/2)*(d pi)^2 - (f^2*mpi^2/2)*pi^2',
+              fields:[{name:'pi',type:'scalar'}] },
+};
+
+const TYPE_LABELS = { scalar:'scalar',fermion:'ψ',fermion_bar:'ψ̄',vector:'A_μ',ghost:'c' };
+
+let lagFields = [];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function sup(n) { return String(n).split('').map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]||c).join(''); }
+
+function fact(n) { let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
+
+// Preprocess raw input: strip "L =" prefix, normalise unicode operators, expand superscripts
+function prep(txt) {
+  return txt
+    .replace(/^[ℒL][_\s]*(?:int|free|kin|mass|eff|total|I)?\s*[=:]\s*/i, '')
+    .replace(/[−−]/g,'-').replace(/[×·]/g,'*')
+    .replace(/²/g,'^2').replace(/³/g,'^3')
+    .replace(/⁴/g,'^4').replace(/⁵/g,'^5').replace(/⁶/g,'^6')
+    .trim();
+}
+
+// Split Lagrangian into top-level signed terms
+function splitTerms(txt) {
+  const out = []; let depth=0, body='', sign=1;
+  for (let i=0;i<txt.length;i++) {
+    const c = txt[i];
+    if ('([{'.includes(c)) depth++;
+    else if (')]}'.includes(c)) depth--;
+    if (depth===0 && (c==='+'||c==='-')) {
+      if (body.trim()) out.push({sign, body:body.trim()});
+      sign = c==='-'?-1:1; body='';
+    } else body+=c;
+  }
+  if (body.trim()) out.push({sign, body:body.trim()});
+  return out;
+}
+
+// Count how many times each declared field appears in a term body,
+// and whether any occurrence is inside a derivative pattern.
+function countFields(body, fields) {
+  const res = {};
+  for (const f of fields) res[f.name] = {count:0, kinetic:false};
+
+  for (const f of fields) {
+    const esc = f.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    let work = body;
+
+    // 1. Derivative patterns: (d field)^n, (d_mu field)^n, (∂ field)^n
+    const dp = new RegExp(
+      `\\((?:d|∂)[_^\\s]*(?:[a-zA-Z_0-9]*)?\\s*${esc}\\s*\\)(?:\\s*\\^\\s*(\\d+))?`, 'gi');
+    let m;
+    while ((m=dp.exec(body))!==null) {
+      res[f.name].count += m[1]?parseInt(m[1]):1;
+      res[f.name].kinetic = true;
+      work = work.slice(0,m.index)+'_'.repeat(m[0].length)+work.slice(m.index+m[0].length);
+    }
+
+    // 2. dslash field / dslash(field)
+    const dsp = new RegExp(`dslash\\s*\\(?\\s*${esc}\\s*\\)?`,'gi');
+    while ((m=dsp.exec(body))!==null) {
+      res[f.name].count += 1; res[f.name].kinetic = true;
+      work = work.slice(0,m.index)+'_'.repeat(m[0].length)+work.slice(m.index+m[0].length);
+    }
+
+    // 3. Plain field with optional power: field^n (not part of longer identifier)
+    const pp = new RegExp(`(?<![a-zA-Z_])${esc}(?:\\s*\\^\\s*(\\d+))?(?![a-zA-Z_])`,'g');
+    while ((m=pp.exec(work))!==null) {
+      if (work[m.index]!=='_') res[f.name].count += m[1]?parseInt(m[1]):1;
+    }
+
+    // 4. If dslash appears anywhere and this fermion is counted, mark kinetic
+    if ((f.type==='fermion'||f.type==='fermion_bar') && res[f.name].count>0) {
+      if (/dslash|∂̸/i.test(body)) res[f.name].kinetic = true;
+    }
+  }
+  return res;
+}
+
+// Does this term contain a field-strength tensor (photon kinetic term)?
+function hasFieldStrength(body) {
+  return /\bF(?:[_^]|mn|mu|[\d])|\bF\^2|\bF2\b/i.test(body);
+}
+
+// Extract the mass/coupling symbol from a term after removing the field parts.
+// Returns a cleaned string representing everything that's not a field or derivative operator.
+function extractCoeffStr(body, fieldCounts) {
+  let rem = body;
+  for (const [name, info] of Object.entries(fieldCounts)) {
+    if (!info.count) continue;
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    rem = rem
+      .replace(new RegExp(`\\((?:d|∂)[_^\\s]*\\w*\\s*${esc}\\)(?:\\^\\d+)?`,'gi'),'')
+      .replace(new RegExp(`dslash\\s*\\(?\\s*${esc}\\s*\\)?`,'gi'),'')
+      .replace(new RegExp(`(?<![a-zA-Z_])${esc}(?:\\^\\d+)?(?![a-zA-Z_])`,'g'),'');
+  }
+  // Remove field-strength placeholders
+  rem = rem.replace(/\bF(?:[_^]\w+|\^2|mn|2)?\b/gi,'');
+  // Remove i prefixes commonly written as explicit factor
+  rem = rem.replace(/\bi\b/g,'');
+  // Remove gamma matrices (captured separately)
+  rem = rem.replace(/(?:gam(?:ma)?)(?:\^\w+|_\w+)?/gi,'');
+  // Remove Lorentz index notation (_mu, ^mu, ^{μν}) but keep numerical powers (^2 in g^2 etc.)
+  rem = rem.replace(/[_^]\{?[a-zA-Z][a-zA-Z0-9,\s]*\}?/g,'');
+  // Clean up operators and brackets
+  rem = rem.replace(/\*+/g,'*').replace(/^\*|\*$/g,'').replace(/[*()\s]/g,'').trim();
+  return rem || '1';
+}
+
+// Extract gamma-matrix factors from term (returned separately for vertex display)
+function extractGammas(body) {
+  const gammas = [];
+  const grk = {mu:'μ',nu:'ν',rho:'ρ',sigma:'σ',alpha:'α',beta:'β',lambda:'λ',kappa:'κ',tau:'τ'};
+  const gp = /(?:gam(?:ma)?)([\^_]?\w*)/gi;
+  let m;
+  while ((m=gp.exec(body))!==null) {
+    let idx = m[1]||'';
+    // Normalise: ^mu → ^μ
+    idx = idx.replace(/([_^]?)([a-z]+)/i, (_, pfx, nm) => pfx+(grk[nm.toLowerCase()]||nm));
+    gammas.push('γ'+idx);
+  }
+  return gammas;
+}
+
+// Parse a coefficient string like "lam/4!" → {numer:"lam", denomVal:24, denomFact:true}
+// or "m^2/2" → {numer:"m^2", denomVal:2} or "g" → {numer:"g", denomVal:1}
+function parseCoeff(s) {
+  if (!s || s==='1') return {numer:'', denomVal:1, hasFact:false};
+  // Handle fraction: numer/denom or numer/denom!
+  const fi = s.indexOf('/');
+  if (fi>0) {
+    const n = s.slice(0,fi).trim();
+    const d = s.slice(fi+1).trim();
+    const factM = d.match(/^(\d+)!$/);
+    if (factM) return {numer:n, denomVal:fact(parseInt(factM[1])), hasFact:true, denomN:parseInt(factM[1])};
+    const numD = parseFloat(d);
+    return {numer:n, denomVal:isNaN(numD)?1:numD, hasFact:false};
+  }
+  return {numer:s, denomVal:1, hasFact:false};
+}
+
+// Extract mass symbol from a quadratic (mass) term.
+// After stripping the field name, grab the first identifier (e.g. "m" from "(m^2/2)*phi^2").
+function extractMass(body, fieldName) {
+  const esc = fieldName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  let rem = body
+    .replace(new RegExp(`\\((?:d|∂)[_^\\s]*\\w*\\s*${esc}\\)(?:\\^\\d+)?`,'gi'),'')
+    .replace(new RegExp(`(?<![a-zA-Z_])${esc}(?:\\^\\d+)?(?![a-zA-Z_])`,'g'),'')
+    .replace(/[*()\s]/g,'').trim();
+  // Extract leading identifier (e.g. "m" from "m^2/2", "M" from "M", "mu" from "mu^2/2")
+  const id = rem.match(/^([a-zA-Z_]\w*)/);
+  let sym = id ? id[1] : 'm';
+  // Normalise common ASCII Greek names
+  const norm = {mu:'μ',nu:'ν',rho:'ρ',sigma:'σ',tau:'τ',alpha:'α',beta:'β',
+                pi:'π',eta:'η',xi:'ξ',omega:'ω',phi:'φ',chi:'χ',kap:'κ',lam:'λ'};
+  return norm[sym.toLowerCase()] || sym;
+}
+
+// For fermion combined term (psib*(i*dslash-M)*psi), extract embedded mass symbol
+function extractFermionMass(body) {
+  // Pattern: (i * dslash - MASS) anywhere in term
+  let m = body.match(/\(\s*i\s*[*·]?\s*(?:dslash|∂̸)\s*[-−]\s*([a-zA-Z_]\w*)\s*\)/i);
+  if (m) return m[1];
+  // Pattern: -MASS*psib*psi: just the minus and a symbol
+  m = body.match(/[-−]\s*([a-zA-Z_]\w*)\s*\*?\s*(?:psi|ψ)/i);
+  if (m) return m[1];
+  return null;
+}
+
+// Propagator text by field type and mass information
+function propText(type, massSymbol, massless) {
+  const m = massSymbol || 'm';
+  switch(type) {
+    case 'scalar': case 'ghost':
+      return massless ? 'i / p²' : `i / (p² − ${m}²)`;
+    case 'fermion': case 'fermion_bar':
+      return massless ? 'i p̸ / p²' : `i(p̸ + ${m}) / (p² − ${m}²)`;
+    case 'vector':
+      return massless ? '−i g_{μν} / p²' : `−i(g_{μν} − p_μp_ν/${m}²) / (p² − ${m}²)`;
+    default:
+      return massless ? 'i / p²' : `i / (p² − ${m}²)`;
+  }
+}
+
+// Build vertex rule string from components
+function vertexStr(sign, coeffParsed, gammas, fieldCounts) {
+  const {numer, denomVal, hasFact, denomN} = coeffParsed;
+  // Identical-particle factorial correction
+  const fieldFact = Object.values(fieldCounts).reduce((p,v)=>p*fact(v.count),1);
+
+  // Simplify coupling name: normalise ASCII Greek and render numeric powers as superscripts
+  const SUPS = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+  let coup = String(numer||'')
+    .replace(/lam(?:bda)?/gi,'λ').replace(/kap(?:pa)?/gi,'κ')
+    .replace(/alpha/gi,'α').replace(/beta/gi,'β').replace(/omega/gi,'ω')
+    .replace(/\^(\d+)/g, (_,n) => n.split('').map(c=>SUPS[c]||c).join(''))
+    .replace(/^-/,'');
+
+  const signCh = sign<0 ? '−' : '';
+  let parts = [`${signCh}i`];
+  if (coup && coup!=='1') parts.push(coup);
+  if (gammas.length) parts.push(gammas.join(''));
+
+  // Factorial: fieldFact / denomVal — if hasFact, the 1/n! in Lagrangian cancels identical fields
+  let ratio = 1;
+  if (denomVal>1) {
+    ratio = fieldFact / denomVal;
+    const r = Math.round(ratio*100)/100;
+    if (Math.abs(r-1)<0.01) { /* cancels perfectly */ }
+    else if (Math.abs(r-Math.round(r))<0.01 && Math.round(r)>1) parts.push(String(Math.round(r)));
+    else if (r!==1) parts.push(`(${fieldFact}/${denomVal})`);
+  } else if (fieldFact>1 && denomVal===1) {
+    parts.push(String(fieldFact));
+  }
+
+  return parts.join('·').replace('i·','i');
+}
+
+// ── Main derivation ───────────────────────────────────────────────────────────
+
+function deriveLag(lagText, fields) {
+  if (!lagText.trim()) return {error:'Enter a Lagrangian.'};
+  if (!fields.length) return {error:'Declare at least one field.'};
+  const text = prep(lagText);
+  const terms = splitTerms(text);
+
+  // Per-field propagator data
+  const propMap = {};
+  for (const f of fields) {
+    if (f.type!=='fermion'&&f.type!=='fermion_bar')
+      propMap[f.name] = {type:f.type, field:f, kinetic:false, hasMass:false, massSymbol:'m'};
+  }
+  // Pair fermions: match ψ̄ to ψ by name proximity
+  const fermions    = fields.filter(f=>f.type==='fermion');
+  const antifermions= fields.filter(f=>f.type==='fermion_bar');
+  const fermPairs   = [];
+  for (const fb of antifermions) {
+    const fp = fermions.find(f=>
+      fb.name===f.name+'b'||fb.name===f.name+'bar'||fb.name.replace(/bar$/i,'')===f.name
+    ) || fermions[0];
+    if (fp && !fermPairs.some(p=>p.psi===fp&&p.psib===fb)) {
+      const key = fb.name+'/'+fp.name;
+      fermPairs.push({psi:fp, psib:fb, key});
+      propMap[key] = {type:'fermion', psi:fp, psib:fb, kinetic:false, hasMass:false, massSymbol:'m'};
+    }
+  }
+
+  const vertices = [];
+  const warnings = [];
+
+  for (const {sign, body} of terms) {
+    const fc = countFields(body, fields);
+    const total = Object.values(fc).reduce((s,v)=>s+v.count,0);
+
+    if (total===0) {
+      // May be a field-strength kinetic term
+      if (hasFieldStrength(body)) {
+        const vf = fields.find(f=>f.type==='vector');
+        if (vf) { propMap[vf.name].kinetic=true; }
+      }
+      continue;
+    }
+
+    if (total===1) {
+      warnings.push(`Tadpole/linear term skipped: "${body.slice(0,50)}…"`);
+      continue;
+    }
+
+    if (total===2) {
+      const active = Object.entries(fc).filter(([,v])=>v.count>0);
+
+      if (active.length===1) {
+        // Same-field pair: scalar kinetic/mass or vector mass
+        const [fname, info] = active[0];
+        const pd = propMap[fname];
+        if (pd) {
+          if (info.kinetic) { pd.kinetic=true; }
+          else { pd.hasMass=true; pd.massSymbol=extractMass(body,fname); }
+        }
+
+      } else if (active.length===2) {
+        // Two different fields: check for fermion pair
+        const names = active.map(([n])=>n);
+        const fTypes = names.map(n=>fields.find(f=>f.name===n)?.type);
+        const isFermPair = fTypes.includes('fermion')&&fTypes.includes('fermion_bar');
+        if (isFermPair) {
+          const pair = fermPairs.find(p=>names.includes(p.psi.name)&&names.includes(p.psib.name));
+          if (pair) {
+            const pd = propMap[pair.key];
+            const isKin = active.some(([,v])=>v.kinetic);
+            if (isKin) {
+              pd.kinetic = true;
+              // Try to extract embedded mass from combined bracket (i*dslash-m)
+              const embMass = extractFermionMass(body);
+              if (embMass) { pd.hasMass=true; pd.massSymbol=embMass; }
+            } else {
+              pd.hasMass=true;
+              // Remove both field names to isolate mass symbol
+              let rem = body;
+              for (const [n] of active) {
+                const esc=n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+                rem=rem.replace(new RegExp(`(?<![a-zA-Z_])${esc}(?![a-zA-Z_])`,'g'),'');
+              }
+              rem=rem.replace(/[*()\si]/g,'').replace(/[-−]/g,'').trim();
+              pd.massSymbol = rem||'m';
+            }
+          }
+        } else {
+          warnings.push(`Mixed 2-field term (${names.join(', ')}) not a standard propagator — treated as vertex.`);
+          // Fall through to vertex
+          const allActive = Object.entries(fc).filter(([,v])=>v.count>0).map(([n,v])=>({name:n,...v,ftype:fields.find(f=>f.name===n)?.type}));
+          const cStr = extractCoeffStr(body, fc);
+          const gammas = extractGammas(body);
+          vertices.push({sign, fields:allActive, total:2, coeff:parseCoeff(cStr), gammas, raw:body});
+        }
+      }
+      continue;
+    }
+
+    // Interaction term (3+ fields)
+    const activeFields = Object.entries(fc).filter(([,v])=>v.count>0)
+      .map(([n,v])=>({name:n,count:v.count,kinetic:v.kinetic,ftype:fields.find(f=>f.name===n)?.type}));
+    const cStr = extractCoeffStr(body, fc);
+    const gammas = extractGammas(body);
+    vertices.push({sign, fields:activeFields, total, coeff:parseCoeff(cStr), gammas, raw:body});
+  }
+
+  return {propMap, vertices, warnings, fields};
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+function renderRules(result) {
+  if (result.error) return `<div class="lag-err">${escH(result.error)}</div>`;
+  const {propMap, vertices, warnings} = result;
+  let h='';
+
+  // Propagators
+  const props = Object.entries(propMap).filter(([,pd])=>pd.kinetic||pd.hasMass);
+  if (props.length) {
+    h+=`<div class="lag-sec-hdr">Propagators</div>`;
+    for (const [key,pd] of props) {
+      const label = pd.psi ? `${pd.psib.name} / ${pd.psi.name}` : (pd.field?.name||key);
+      const massless = !pd.hasMass;
+      const rule = propText(pd.type, pd.massSymbol, massless);
+      const typeL = {scalar:'scalar',fermion:'fermion',vector:'vector (gauge)',ghost:'ghost'}[pd.type]||pd.type;
+      h+=`<div class="lag-rule-row">
+        <div class="lag-rule-lhs"><span class="fname">${escH(label)}</span><br>${escH(typeL)}</div>
+        <div class="lag-rule-arrow">→</div>
+        <div class="lag-rule-rhs">${escH(rule)}</div>
+      </div>`;
+    }
+  }
+
+  // Vertices
+  if (vertices.length) {
+    if (props.length) h+=`<div style="margin-top:18px"></div>`;
+    h+=`<div class="lag-sec-hdr">Vertices</div>`;
+    for (const v of vertices) {
+      const fieldStr = v.fields.map(f=>`${escH(f.name)}${f.count>1?sup(f.count):''}`).join('·');
+      const fc = Object.fromEntries(v.fields.map(f=>[f.name,{count:f.count}]));
+      const rule = vertexStr(v.sign, v.coeff, v.gammas, fc);
+      const nPt = v.total+'-point';
+      const hasKin = v.fields.some(f=>f.kinetic);
+      const momNote = hasKin ? '<div class="lag-rule-note">each ∂ → −ip^μ (one momentum factor per derivative leg)</div>' : '';
+      h+=`<div class="lag-rule-row">
+        <div class="lag-rule-lhs"><span class="fname">${fieldStr}</span><br>${nPt}</div>
+        <div class="lag-rule-arrow">→</div>
+        <div class="lag-rule-rhs">${escH(rule)}${momNote}</div>
+      </div>`;
+    }
+  }
+
+  if (!props.length && !vertices.length) {
+    h+=`<div style="color:#303050;font-size:12px;padding:8px 0">
+      No rules derived. Check field declarations match names used in the Lagrangian.
+    </div>`;
+  }
+
+  if (warnings.length) {
+    h+=`<div style="margin-top:12px">`;
+    for (const w of warnings) h+=`<div class="lag-warn">⚠ ${escH(w)}</div>`;
+    h+=`</div>`;
+  }
+
+  return h;
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+
+function renderFieldChips() {
+  const row = document.getElementById('lag-fields-row');
+  if (!row) return;
+  row.innerHTML='';
+  lagFields.forEach((f,i)=>{
+    const chip = document.createElement('div');
+    chip.className='lag-chip';
+    chip.innerHTML=`<span class="cn">${escH(f.name)}</span>
+      <select title="type">${Object.keys(TYPE_LABELS).map(t=>
+        `<option value="${t}"${f.type===t?' selected':''}>${TYPE_LABELS[t]}</option>`).join('')}</select>
+      <button class="cdel" title="remove">&times;</button>`;
+    chip.querySelector('select').onchange=e=>{ lagFields[i].type=e.target.value; };
+    chip.querySelector('.cdel').onclick=()=>{ lagFields.splice(i,1); renderFieldChips(); };
+    row.appendChild(chip);
+  });
+}
+
+function initLagPanel() {
+  // Insert-symbol buttons
+  const insRow = document.getElementById('lag-ins-row');
+  if (insRow) {
+    for (const [sym, hint] of INS) {
+      const b = document.createElement('button');
+      b.className='lag-ins-btn'; b.textContent=sym; b.title=hint;
+      b.onclick=()=>{
+        const ta=document.getElementById('lag-input');
+        const s=ta.selectionStart, e=ta.selectionEnd;
+        const ins = hint.length<sym.length ? hint : sym; // prefer short ASCII hint if shorter
+        ta.value=ta.value.slice(0,s)+sym+ta.value.slice(e);
+        ta.selectionStart=ta.selectionEnd=s+sym.length;
+        ta.focus();
+      };
+      insRow.appendChild(b);
+    }
+  }
+
+  // Example presets
+  document.getElementById('lag-examples')?.addEventListener('change', e=>{
+    const ex=EXAMPLES[e.target.value];
+    if (!ex) return;
+    document.getElementById('lag-input').value=ex.lag;
+    lagFields=[...ex.fields.map(f=>({...f}))];
+    renderFieldChips();
+    e.target.value='';
+  });
+
+  // Add field button
+  document.getElementById('btn-lag-add-field')?.addEventListener('click',()=>{
+    const nameEl=document.getElementById('lag-fname');
+    const typeEl=document.getElementById('lag-ftype');
+    const name=nameEl.value.trim();
+    if (!name) { nameEl.focus(); return; }
+    if (lagFields.some(f=>f.name===name)) {
+      nameEl.style.borderColor='#ff4040';
+      setTimeout(()=>nameEl.style.borderColor='',1200);
+      return;
+    }
+    lagFields.push({name, type:typeEl.value});
+    nameEl.value='';
+    renderFieldChips();
+  });
+  document.getElementById('lag-fname')?.addEventListener('keydown',e=>{
+    if (e.key==='Enter') document.getElementById('btn-lag-add-field').click();
+  });
+
+  // Derive button
+  document.getElementById('btn-lag-derive')?.addEventListener('click',()=>{
+    const lagTxt=document.getElementById('lag-input').value;
+    const result=deriveLag(lagTxt, lagFields);
+    const disp=document.getElementById('lag-rules-display');
+    const out=document.getElementById('lag-output');
+    if (disp) disp.innerHTML='<div class="lag-rules-box">'+renderRules(result)+'</div>';
+    if (out) out.style.display='block';
+  });
+}
+
+// Run after DOM is ready
+if (document.readyState==='loading') document.addEventListener('DOMContentLoaded',initLagPanel);
+else initLagPanel();
+
+})(); // end Lagrangian engine IIFE
 </script>
 </body>
 </html>
