@@ -8,7 +8,7 @@ Two files. Open both in your browser. No setup required.
 
 | File | What it does |
 |---|---|
-| `feynman_editor.html` | Draw Feynman diagrams, generate amplitude iM |
+| `feynman_editor.html` | Draw Feynman diagrams, generate amplitude iM — also has an automatic diagram generator (work in progress, see below) |
 | `amplitude_stepper.html` | Take an amplitude, compute \|M\|² step by step |
 
 ---
@@ -134,6 +134,38 @@ Click **→ Stepper** (top bar). This saves your amplitude to browser storage.
 Open `amplitude_stepper.html` → click **Import from Editor**.
 
 The amplitude loads and solves automatically.
+
+---
+
+## Generating Diagrams Automatically (⚛ Generate) — Work in Progress
+
+> This feature is still being built out. The generator and its physics filters (see below) are working, but it only covers 2→2 processes so far, doesn't compute symmetry factors, and very busy theories at 2 loops can hit a search cap. Treat its output as a helpful starting point, not a final, complete answer.
+
+Instead of drawing a diagram by hand, you can have the editor find every diagram for you from a Lagrangian.
+
+### Switching modes
+
+Click **⚛ Generate** in the top bar. The canvas, sidebar, and properties panel disappear and are replaced by a Lagrangian input panel (the same one used by "Derive Feynman Rules" — you can use the Quick Insert buttons, the field-declaration chips, and the built-in φ³/φ⁴/QED/Yukawa examples exactly as before). Click **✎ Draw** to switch back to the normal canvas at any time.
+
+### Generating
+
+1. Write your Lagrangian and declare its fields, same as for "Derive Feynman Rules".
+2. Choose a **loop order**: 0 (tree), 1, or 2.
+3. Click **⚛ Generate Diagrams**.
+
+The tool finds every distinct Feynman diagram for a **2-in → 2-out** process in that theory, trying **every combination of the theory's fields** on the four external legs — you don't pick a specific process. For QED, for example, one click produces separate groups for Bhabha, Møller, Compton, and pair production. Diagrams appear as a gallery of small thumbnails, grouped by process, with a tree/1-loop/2-loop badge on each.
+
+### Loading a generated diagram
+
+Click any thumbnail. It switches back to Draw mode with that diagram on the canvas, fully editable — drag vertices, tweak labels, then click **iM ▶** just like a hand-drawn diagram.
+
+### What's excluded, and why
+
+The generator only shows diagrams that actually contribute to the amplitude:
+- **No "bubble" diagrams.** Any self-energy-type loop sitting on a line — whether it's an external leg or an internal propagator — is left out. These dress a propagator rather than being a new diagram (they belong to renormalization, not the diagram count), so including them would just clutter the results without adding real information.
+- **No duplicate diagrams.** Diagrams that are really the same graph (e.g. under a relabeling of interchangeable internal vertices) are combined into one entry.
+
+If a theory produces more diagrams than the search budget allows (mainly at 2 loops), you'll see a "search truncated, showing a partial set" note under the diagram count.
 
 ---
 

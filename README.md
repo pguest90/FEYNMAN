@@ -1,6 +1,6 @@
 # FEYNMAN
 
-A browser-based toolkit for drawing Feynman diagrams and computing scattering amplitudes step by step. No installation required — open either HTML file directly in a browser.
+A browser-based toolkit for drawing Feynman diagrams and computing scattering amplitudes step by step. No installation required — open either HTML file directly in a browser. Also includes an experimental (work in progress) automatic diagram generator: type a Lagrangian and it derives every diagram for a given process and loop order — see "Diagram Generation mode" under `feynman_editor.html` below.
 
 ---
 
@@ -492,6 +492,26 @@ Save any connected component as a reusable template. Stamp templates with 90° r
 **Export**
 - Export diagram as PNG
 - **→ Stepper** exports amplitude to `amplitude_stepper.html` via localStorage
+
+**Diagram Generation mode (⚛ Generate) — work in progress**
+
+> ⚠️ This mode is under active development. The core algorithm and physics filters are working and tested, but scope and polish are still limited — expect rough edges and treat results as a starting point to inspect, not a final answer.
+
+Click **⚛ Generate** in the top bar to switch away from manual drawing into an automatic diagram generator. Instead of drawing, you:
+
+1. Type a Lagrangian and declare its fields (the same input used by the **ℒ → Feynman Rules** panel below the canvas — Quick Insert symbols, field-type dropdown, and the built-in φ³/φ⁴/QED/Yukawa/etc. examples all work here too).
+2. Pick a **loop order** (0, 1, or 2).
+3. Click **⚛ Generate Diagrams**.
+
+The tool then enumerates **every distinct Feynman diagram** for a 2-in → 2-out process in that theory, across **all field-content combinations** the theory allows — for QED this produces Bhabha, Møller, Compton, and pair-production diagram groups all at once, without you specifying a process. Results are shown as a gallery of small thumbnails grouped by process; click one to load it onto the normal editable canvas, where it behaves exactly like a hand-drawn diagram (edit it, click **iM ▶**, send it to the Stepper, etc.).
+
+Algorithm, in brief: it searches vertex-count combinations satisfying the loop equation, enumerates valid half-edge pairings (a Wick-contraction-style construction), keeps only connected results, deduplicates isomorphic diagrams, and — importantly — **excludes "bubble" diagrams**: self-energy-type loop insertions on any propagator (an external leg or an internal line) are filtered out, since they don't contribute new diagrams in the standard skeleton-diagram expansion (they dress a propagator that's renormalized separately, or cancel via the tadpole renormalization condition). What remains are genuine new topologies — vertex corrections, boxes, triangles, sunsets — not propagator corrections.
+
+**Known limitations (v1, work in progress):**
+- Only 2→2 processes (fixed shape); 1→2, 1→3, etc. are not supported yet.
+- No symmetry factors are computed or displayed.
+- 2-loop searches are capped (a global diagram budget and a time/iteration budget) — for theories with many vertex types you may see a "search truncated" notice rather than the complete set.
+- The generated diagram's layout is automatic and not always the most readable arrangement; you can drag vertices around after loading it onto the canvas.
 
 ---
 

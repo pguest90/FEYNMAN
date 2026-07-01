@@ -13,26 +13,26 @@
   button:hover { background:#22224a; border-color:#6070c0; color:#dde0ff; }
   button.active, button:disabled { opacity:0.4; cursor:default; }
   #input-area { background:#0f0f1c; border-bottom:1px solid #2a2a44; padding:10px 16px; flex-shrink:0; }
-  #input-area .lbl { font-size:10px; color:#404070; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px; }
+  #input-area .lbl { font-size:10px; color:#95a5d0; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px; }
   #amp-input { width:100%; background:#07070f; border:1px solid #2a2a44; color:#c0d0e8; font-family:'Courier New',monospace; font-size:13px; padding:7px 10px; border-radius:3px; resize:none; height:52px; }
   #amp-input:focus { outline:none; border-color:#4050a0; }
   .input-row { display:flex; gap:6px; margin-top:7px; align-items:center; flex-wrap:wrap; }
-  .ex { background:#0c0c1c; border-color:#1e1e40; color:#404070; font-size:11px; padding:3px 7px; }
+  .ex { background:#0c0c1c; border-color:#1e1e40; color:#95a5d0; font-size:11px; padding:3px 7px; }
   .ex:hover { color:#7080c0; border-color:#304070; background:#0c0c1c; }
-  #syntax-help { font-size:10px; color:#242445; line-height:1.9; margin-top:6px; background:#07070f; border:1px solid #121230; border-radius:3px; padding:6px 10px; display:none; }
+  #syntax-help { font-size:10px; color:#7888c0; line-height:1.9; margin-top:6px; background:#07070f; border:1px solid #121230; border-radius:3px; padding:6px 10px; display:none; }
   #step-area { flex:1; overflow-y:auto; background:#090912; padding:14px 18px 24px; }
   .step-card { background:#0f0f1c; border:1px solid #1a1a38; border-radius:4px; padding:14px 16px; margin-bottom:10px; }
   .step-card.final-card { border-color:#304060; background:#0c1018; }
-  .step-num { font-size:10px; color:#303060; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
-  .step-num .n { background:#151538; border:1px solid #252560; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#5060a0; flex-shrink:0; }
-  .step-num .ttl { color:#606090; }
-  .rule-box { background:#07070f; border:1px solid #141438; border-radius:3px; padding:8px 12px; font-size:12px; color:#4a5888; line-height:2; margin-bottom:8px; }
-  .rule-box strong { color:#6070a8; }
+  .step-num { font-size:10px; color:#7888c0; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+  .step-num .n { background:#151538; border:1px solid #252560; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#95a5d0; flex-shrink:0; }
+  .step-num .ttl { color:#95a5d0; }
+  .rule-box { background:#07070f; border:1px solid #141438; border-radius:3px; padding:8px 12px; font-size:12px; color:#95a5d0; line-height:2; margin-bottom:8px; }
+  .rule-box strong { color:#95a5d0; }
   .expr-box { background:#0c0c20; border:1px solid #1a1a40; border-radius:4px; padding:12px 16px; font-size:15px; color:#b8cce8; line-height:2.6; min-height:48px; word-break:break-all; }
   .expr-box.final { border-color:#304870; background:#0a0e18; }
-  .arr { text-align:center; color:#1e2050; font-size:16px; line-height:1.2; margin:4px 0; }
-  .expl { font-size:12px; color:#404868; line-height:1.8; padding:6px 10px; background:#07070f; border-left:2px solid #1a1a48; border-radius:0 3px 3px 0; margin-top:6px; }
-  .empty { color:#252550; text-align:center; padding:50px 20px; }
+  .arr { text-align:center; color:#7888c0; font-size:16px; line-height:1.2; margin:4px 0; }
+  .expl { font-size:12px; color:#95a5d0; line-height:1.8; padding:6px 10px; background:#07070f; border-left:2px solid #1a1a48; border-radius:0 3px 3px 0; margin-top:6px; }
+  .empty { color:#95a5d0; text-align:center; padding:50px 20px; }
   /* expression element colors */
   .gm { color:#70b0d0; }
   .mo { color:#70d890; }
@@ -50,18 +50,18 @@
 <div id="topbar">
   <h1>⬡ STEP SOLVER</h1>
   <div class="sep"></div>
-  <span style="font-size:11px;color:#252548">type amplitude → step-by-step simplification</span>
+  <span style="font-size:11px;color:#95a5d0">type amplitude → step-by-step simplification</span>
   <div class="sep"></div>
   <button id="btn-copy">Copy LaTeX</button>
   <button onclick="toggleSyntax()" style="font-size:11px">Syntax ?</button>
   <button id="btn-help" onclick="toggleHelp()" style="font-size:11px" title="Show all controls">Help ?</button>
   <div class="sep"></div>
-  <span style="font-size:10px;color:#404060" title="Spacetime dimension d used in the trace algebra (g^μ_μ=d, γ^μγ_μ=d). Default 4.">dim&nbsp;d</span>
+  <span style="font-size:10px;color:#95a5d0" title="Spacetime dimension d used in the trace algebra (g^μ_μ=d, γ^μγ_μ=d). Default 4.">dim&nbsp;d</span>
   <input id="inp-dim" type="number" value="4" min="1" max="12" step="1"
     style="width:42px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
     title="Spacetime dimension d. Changing it alters traces: γ^μγ_μ=d, the (d−4) dim-reg term, etc. Re-run to apply.">
   <div class="sep"></div>
-  <span style="font-size:10px;color:#404060" title="Rξ gauge parameter ξ. ξ=1 = Feynman/Lorenz gauge (default). ξ≠1 appends Ward-identity steps showing the result is independent of gauge.">gauge&nbsp;ξ</span>
+  <span style="font-size:10px;color:#95a5d0" title="Rξ gauge parameter ξ. ξ=1 = Feynman/Lorenz gauge (default). ξ≠1 appends Ward-identity steps showing the result is independent of gauge.">gauge&nbsp;ξ</span>
   <input id="inp-xi" type="number" value="1" min="0" max="10" step="1"
     style="width:42px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
     title="Rξ gauge parameter ξ (ξ=1: Feynman gauge, ξ=0: Landau gauge). Set ξ≠1 to see the Ward-identity proof that |M|² is gauge-independent.">
@@ -84,7 +84,7 @@
   .help-body li { margin:2px 0; }
   .help-body code { background:#07070f; border:1px solid #20203a; border-radius:3px; padding:0 4px; color:#90c8f0; font-size:11.5px; }
   .help-body .hk { background:#1a1a30; border:1px solid #2e2e50; border-radius:3px; padding:0 5px; font-size:11px; color:#90a0d0; font-family:monospace; }
-  .help-foot { font-size:11px; color:#56608a; margin-top:14px; border-top:1px solid #1c1c34; padding-top:8px; }
+  .help-foot { font-size:11px; color:#95a5d0; margin-top:14px; border-top:1px solid #1c1c34; padding-top:8px; }
 </style>
 <div id="help-modal" class="help-overlay" style="display:none">
   <div class="help-box">
@@ -132,13 +132,13 @@
   #btn-presets.open { color:#7080c0; border-color:#304060; }
   #extra-diags { margin-top:0; }
   .extra-diag-row { margin-top:6px; }
-  .extra-diag-hdr { display:flex; align-items:center; gap:6px; margin-bottom:3px; font-size:11px; color:#5060a0; }
+  .extra-diag-hdr { display:flex; align-items:center; gap:6px; margin-bottom:3px; font-size:11px; color:#95a5d0; }
   .extra-diag-input { width:100%; box-sizing:border-box; background:#07070f; border:1px solid #2a2a44; color:#c0d0e8; font-family:'Courier New',monospace; font-size:13px; padding:7px 10px; border-radius:3px; resize:none; height:44px; }
   .extra-diag-input:focus { outline:none; border-color:#405060; }
   .diag-sign-lbl { color:#7080c0; font-weight:bold; min-width:32px; }
   .sign-toggle { padding:2px 8px; font-size:11px; background:#0a0a14; border:1px solid #304060; color:#6080c0; cursor:pointer; border-radius:2px; }
   .sign-toggle:hover { border-color:#5080a0; color:#90b0d0; }
-  .remove-diag { padding:2px 8px; font-size:11px; background:#0a0a14; border:1px solid #402020; color:#804040; cursor:pointer; border-radius:2px; }
+  .remove-diag { padding:2px 8px; font-size:11px; background:#0a0a14; border:1px solid #402020; color:#c36d6d; cursor:pointer; border-radius:2px; }
   .remove-diag:hover { border-color:#804040; color:#c06060; }
   #btn-add-diag { font-size:11px; }
   #btn-add-diag.active { background:#1a2a1a; border-color:#408040; color:#80c080; }
@@ -158,7 +158,7 @@
     <button id="btn-import-file" onclick="document.getElementById('file-import-input').click()" style="border-color:#304070;color:#6080b0" title="Load a .json file saved from the editor's ⇩ Export File button — works on any laptop/browser, no shared storage needed">⇧ Import File</button>
     <input type="file" id="file-import-input" accept=".json,application/json" style="display:none">
     <div class="sep"></div>
-    <button id="btn-presets" onclick="togglePresets()" style="font-size:11px;border-color:#252545;color:#404068">Examples ▾</button>
+    <button id="btn-presets" onclick="togglePresets()" style="font-size:11px;border-color:#252545;color:#95a5d0">Examples ▾</button>
   </div>
   <div id="preset-drawer">
     <button class="ex" onclick="eg('from_editor')">From Editor (iM)</button>
@@ -174,7 +174,7 @@
     <button class="ex" onclick="eg('yukawa_ffbar_t')" style="border-color:#204030;color:#60a070">Yukawa ff̄→ff̄ (t)</button>
     <button class="ex" onclick="eg('yukawa_ffbar_s')" style="border-color:#402010;color:#c07040">Yukawa ff̄ helicity</button>
     <div class="sep" style="width:100%;height:1px;margin:4px 0"></div>
-    <button class="ex" onclick="eg('bhabha')" style="border-color:#402060;color:#9060c0">Bhabha (t+s)</button>
+    <button class="ex" onclick="eg('bhabha')" style="border-color:#402060;color:#a16fd4">Bhabha (t+s)</button>
     <button class="ex" onclick="eg('moller')" style="border-color:#204060;color:#6090c0">Møller (t+u)</button>
   </div>
 </div>
@@ -531,7 +531,7 @@ function stepsDouble4(parsed, pat) {
       ${TR('Tr')}[${slash('A')}${gmu('μ')}${slash('B')}${gmu('ν')}] × ${TR('Tr')}[${slash('C')}${G('γ')}<sub>μ</sub>${slash('D')}${G('γ')}<sub>ν</sub>] = 32[(A·C)(B·D)+(A·D)(B·C)]<br>
       ${hasMass ? `<strong>With mass correction (P = A·B−σ<sub>A</sub>σ<sub>B</sub>m², Q = C·D−σ<sub>C</sub>σ<sub>D</sub>m²):</strong><br>
       32[(A·C)(B·D)+(A·D)(B·C)] + 32[−Q·A·B−P·C·D+2PQ]` : ''}
-      <span style="color:#303058">Derivation: expand 4×4=16 metric-contraction terms. g<sup>μν</sup>g<sub>μν</sub>=4 in d=4. Cross-terms cancel leaving exactly 2 dot-product terms.</span>`,
+      <span style="color:#7888c0">Derivation: expand 4×4=16 metric-contraction terms. g<sup>μν</sup>g<sub>μν</sub>=4 in d=4. Cross-terms cancel leaving exactly 2 dot-product terms.</span>`,
     expr:`${sc}${ev.step3html}${hasMass ? ` + 32[mass corrections involving ${M('m')}²]` : ''}`,
     expl:`A=${M(A)}, B=${M(B)}, C=${M(C)}, D=${M(D)}. ${hasMass?'Mass corrections written separately below.':'Dot products → Mandelstam next.'}`
   });
@@ -587,18 +587,18 @@ function stepsErrSameIndex(parsed, pat) {
   const steps = [
     {title:`⚠ Index error in Trace ${bad}: same index inside one trace`,
      rule:``,
-     expr:`<span style="color:#904040">${traceHTMLs.join(' × ')}</span>`,
+     expr:`<span style="color:#ca6868">${traceHTMLs.join(' × ')}</span>`,
      expl:`Index "<strong>${idx}</strong>" appears <em>twice inside the same trace</em>. That's an internal contraction — the two gammas with the same label are summed within the trace, giving a scalar via γ<sup>${idx}</sup>p̸γ<sub>${idx}</sub> = −2p̸. This is a different calculation (single-trace contraction), not what you want for squaring a two-current amplitude.`},
     {title:'What you almost certainly want instead',
      rule:`For squaring a two-current amplitude (e.g. e⁺e⁻→μ⁺μ⁻), the index must span <em>between</em> the two traces:<br>
        <code style="color:#6080c0">${rTrace(parsed.traces[0]).replace(new RegExp('g'+idx,'g'),'g<span style="color:#e06060">'+idx+'</span>').replace(new RegExp('g'+idx),'g<span style="color:#e06060">'+idx+'</span>')}</code> is wrong<br>
        You want: <code style="color:#50a050">${fixed1} * ${fixed2}</code> — use <strong>two different index labels</strong> (e.g. <code>g${idx}</code> and <code>g${nextIdx}</code>), one per trace, matching between the traces.`,
-     expr:`<span style="color:#406040">${TR('Tr')}[${slash('p1')} ${gmu(idx)} ${slash('p2')} ${gmu(nextIdx)}] × ${TR('Tr')}[${slash('p3')} ${G('γ')}<sub>${idx}</sub> ${slash('p4')} ${G('γ')}<sub>${nextIdx}</sub>]</span>`,
+     expr:`<span style="color:#589358">${TR('Tr')}[${slash('p1')} ${gmu(idx)} ${slash('p2')} ${gmu(nextIdx)}] × ${TR('Tr')}[${slash('p3')} ${G('γ')}<sub>${idx}</sub> ${slash('p4')} ${G('γ')}<sub>${nextIdx}</sub>]</span>`,
      expl:`Each trace has ONE occurrence of each index label. The contraction is then between the two traces, giving the master formula 32[(A·C)(B·D)+(A·D)(B·C)] where A,B are the momenta in trace 1 and C,D in trace 2.`},
     {title:'How to re-enter this expression',
      rule:'',
-     expr:`<span style="color:#404060">Try: <span style="color:#6080b0">(e4/s2) * Tr[p1 g${idx} p2 g${nextIdx}] * Tr[p3 g${idx} p4 g${nextIdx}]</span></span>`,
-     expl:`Or with masses: <span style="color:#507090">(e4/s2) * Tr[(p1+m) g${idx} (p2-m) g${nextIdx}] * Tr[(p3+m) g${idx} (p4-m) g${nextIdx}]</span>`},
+     expr:`<span style="color:#95a5d0">Try: <span style="color:#6080b0">(e4/s2) * Tr[p1 g${idx} p2 g${nextIdx}] * Tr[p3 g${idx} p4 g${nextIdx}]</span></span>`,
+     expl:`Or with masses: <span style="color:#5e88b3">(e4/s2) * Tr[(p1+m) g${idx} (p2-m) g${nextIdx}] * Tr[(p3+m) g${idx} (p4-m) g${nextIdx}]</span>`},
   ];
   return {steps, latex:''};
 }
@@ -674,7 +674,7 @@ function stepsSingle4(parsed, pat) {
      rule:`If your amplitude has a second current ${TR('Tr')}[...${gmu(g1.idx+'...')}...${gmu(g2.idx)}...], use the <strong>double-trace master formula</strong>.<br>
        If contracting with metric −g<sub>${g1.idx}${g2.idx}</sub> (photon propagator): use g<sub>μν</sub>×4(...):<br>
        &nbsp;&nbsp;g<sub>${g1.idx}${g2.idx}</sub>×4(A<sup>${g1.idx}</sup>B<sup>${g2.idx}</sup>+A<sup>${g2.idx}</sup>B<sup>${g1.idx}</sup>−g<sup>${g1.idx}${g2.idx}</sup>A·B) = 4(A·B+A·B−4A·B) = −8A·B`,
-     expr:`<span style="color:#303060">Contract with your other factor and then use the double-trace example, or try the "Tr[p1 gm p2 gm]" example to see metric contraction.</span>`,
+     expr:`<span style="color:#7888c0">Contract with your other factor and then use the double-trace example, or try the "Tr[p1 gm p2 gm]" example to see metric contraction.</span>`,
      expl:``},
   ];
   return {steps, latex:`4(A^\\mu B^\\nu + A^\\nu B^\\mu - g^{\\mu\\nu}A\\cdot B)`};
@@ -709,7 +709,7 @@ function stepsSpinor(parsed, pat) {
      expl:`The spin sum Σ u_α ū_β = (p̸)_αβ closes the Dirac index loop into a trace. Now identify the pattern — if this has two contracted gammas, use the double-trace formula.`},
     {title:'Identify and apply trace formula',
      rule:`Now enter the resulting trace in the input and click Solve to continue step-by-step.`,
-     expr:`<span style="color:#404060">e.g. type: <span style="color:#6070a0">Tr[${rChain(parseChain(gamStr+' '+sp.lMom+' '+gamStr+' '+sp.rMom))}]</span> and solve</span>`,
+     expr:`<span style="color:#95a5d0">e.g. type: <span style="color:#95a5d0">Tr[${rChain(parseChain(gamStr+' '+sp.lMom+' '+gamStr+' '+sp.rMom))}]</span> and solve</span>`,
      expl:`The resulting trace will match one of the known patterns (double-trace contraction or single-trace with internal index).`},
   ];
   return {steps, latex:`\\text{Tr}[\\cdots]`};
@@ -720,7 +720,7 @@ function stepsUnknown(parsed) {
   const steps = [{
     title:'Expression received',
     rule:'',
-    expr:`<span style="color:#404060">${esc(raw)}</span>`,
+    expr:`<span style="color:#95a5d0">${esc(raw)}</span>`,
     expl:`Pattern not automatically recognized. Supported forms:<br>
       · <strong>Double trace:</strong> (e4/s2) * Tr[p1 gm p2 gn] * Tr[p3 gm p4 gn]<br>
       · <strong>Internal contraction:</strong> Tr[p1 gm p2 gm]<br>
@@ -2623,9 +2623,9 @@ function buildRenormalisationStep({loopClass, E, isUVdivergent, nProp, coupHTML,
       <div style="margin-top:10px;padding-top:8px;border-top:1px solid #1c1c34">
       <strong>What "squaring" means here:</strong> Σ(p) is a propagator correction, not a scattering amplitude — there is no |M|². Instead it shifts the propagator's pole (δm) and residue (δZ), read directly off the closed form from Step 5d at p²→m²:<br><br>
       δm = Σ(m²) = ${os.dm}<br>
-      <span style="color:#5a6890;font-size:11px">${os.dmNote}</span><br><br>
+      <span style="color:#95a5d0;font-size:11px">${os.dmNote}</span><br><br>
       δZ = dΣ/dp²|<sub>p²=m²</sub> = ${os.dzDivergent ? '<strong>diverges</strong> (see note)' : os.dz}<br>
-      <span style="color:#5a6890;font-size:11px">${os.dzNote}</span>
+      <span style="color:#95a5d0;font-size:11px">${os.dzNote}</span>
       </div>` : '';
 
     return {title:'Step 7 — Renormalisation: self-energy → mass + field-strength counterterms (δm, δZ)',
@@ -2787,7 +2787,7 @@ function stepsSquareTwoCurrent(topo, text, iMDisplay) {
   // Step 1 display: show the actual math expression if we have it, else fallback
   const step1expr = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
-    : `<div style="font-size:11px;color:#4a5888;white-space:pre;line-height:1.8;max-height:120px;overflow-y:auto;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,8).join('\n'))}</div>`;
+    : `<div style="font-size:11px;color:#95a5d0;white-space:pre;line-height:1.8;max-height:120px;overflow-y:auto;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,8).join('\n'))}</div>`;
 
   const allSteps = [
     {title:'Input amplitude iM',
@@ -2913,7 +2913,7 @@ function stepsFermionBosonScattering(topo, text, iMDisplay) {
   const {fermDenom, processType} = topo;
   const step0 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
-    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px;white-space:pre-wrap">${esc(text.split('\n').filter(l=>l.trim()).slice(0,8).join('\n'))}</div>`;
+    : `<div style="font-size:11px;color:#95a5d0;background:#07070f;padding:6px 10px;border-radius:3px;white-space:pre-wrap">${esc(text.split('\n').filter(l=>l.trim()).slice(0,8).join('\n'))}</div>`;
 
   // ── Extract actual diagram data ─────────────────────────────────────────────
   const factors = parseIMFactors(text);
@@ -3432,7 +3432,7 @@ function stepsVectorBosonFermionDecay(topo, text, iMDisplay) {
   const coupHTML = isGluon ? CP('g<sub>s</sub>') : CP('g<sub>Z</sub>');
   const step1 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
-    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,6).join('\n'))}</div>`;
+    : `<div style="font-size:11px;color:#95a5d0;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,6).join('\n'))}</div>`;
 
   return {steps:[
     {title:'1→2 decay identified: spin-1 boson → fermion pair',
@@ -3485,7 +3485,7 @@ function stepsVectorBosonFermionDecay(topo, text, iMDisplay) {
 function stepsScalarFermionPairDecay(topo, text, iMDisplay) {
   const step1 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
-    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,5).join('\n'))}</div>`;
+    : `<div style="font-size:11px;color:#95a5d0;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,5).join('\n'))}</div>`;
 
   return {steps:[
     {title:'1→2 scalar decay identified: H → ff̄',
@@ -3524,7 +3524,7 @@ function stepsTwoToThreeRadiation(topo, text, iMDisplay) {
   const coupHTML = isGluon ? CP('g<sub>s</sub>') : CP('e');
   const step1 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
-    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,8).join('\n'))}</div>`;
+    : `<div style="font-size:11px;color:#95a5d0;background:#07070f;padding:6px 10px;border-radius:3px">${esc(text.split('\n').filter(l=>l.trim()).slice(0,8).join('\n'))}</div>`;
 
   return {steps:[
     {title:`2→3 process: radiation of one real ${particleName} (5 external legs)`,
@@ -3595,7 +3595,7 @@ function stepsTwoToThreeRadiation(topo, text, iMDisplay) {
 function stepsScalarToTwoBosonsDecay(topo, text, iMDisplay) {
   const step0 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
-    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
+    : `<div style="font-size:11px;color:#95a5d0;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
 
   return {steps:[
     {title:'H→VV decay (metric vertex: HWW or HZZ)',
@@ -3651,7 +3651,7 @@ function stepsScalarContactTerm(topo, text, iMDisplay) {
   const {nScalarExt, nVerts} = topo;
   const step0 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
-    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
+    : `<div style="font-size:11px;color:#95a5d0;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
 
   // Extract coupling label from vertex factor in the text
   const subSub = s => s.replace(/[₀-₉]/g,c=>'0123456789'[c.charCodeAt(0)-0x2080]||c);
@@ -3703,7 +3703,7 @@ function stepsGaugeBosonContactTerm(topo, text, iMDisplay) {
   const coupH = isGluon ? CP('g<sub>s</sub>') : CP('g');
   const step0 = iMDisplay
     ? `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(iMDisplay)}</div>`
-    : `<div style="font-size:11px;color:#4a5888;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
+    : `<div style="font-size:11px;color:#95a5d0;background:#07070f;padding:6px 10px;border-radius:3px">${esc((text||'').substring(0,200))}</div>`;
 
   return {steps:[
     {title:`Quartic gauge contact amplitude — 4 external ${particleName}s`,
@@ -3774,7 +3774,7 @@ function stepsFromIM(text, iMDisplay) {
   // ── Pure boson ────────────────────────────────────────────────────────────
   if (topo.topo==='pure_boson')    return {steps:[{
     title:'Pure gauge boson amplitude — use Helicity tab',
-    rule:'', expr:`<span style="color:#505080">No fermion lines detected. For massless gluons/photons use the Helicity (n-gluon) examples.</span>`, expl:''
+    rule:'', expr:`<span style="color:#7f7fb9">No fermion lines detected. For massless gluons/photons use the Helicity (n-gluon) examples.</span>`, expl:''
   }], latex:''};
 
   // ── Fallback → general Wick engine ───────────────────────────────────────
@@ -3880,7 +3880,7 @@ function stepsInterference(exprs, signs) {
   });
   const badIdx = parsed.findIndex(({pat}) => pat.type !== 'double4');
   if (badIdx >= 0) return {steps:[{title:`Diagram ${badIdx+1}: not a double-trace expression`,
-    rule:'', expr:`<span style="color:#806040">All inputs must be (coupling/channel²)×Tr[…]×Tr[…].</span>`, expl:''}], latex:''};
+    rule:'', expr:`<span style="color:#ae7b47">All inputs must be (coupling/channel²)×Tr[…]×Tr[…].</span>`, expl:''}], latex:''};
 
   // Diagram info: scalar, denom for each
   const diagInfo = parsed.map(({p, pat}) => {

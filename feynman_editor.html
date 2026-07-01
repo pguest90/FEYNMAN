@@ -49,7 +49,7 @@
   #status {
     margin-left: auto;
     font-size: 11px;
-    color: #5060a0;
+    color: #95a5d0;
     min-width: 200px;
     text-align: right;
   }
@@ -71,7 +71,7 @@
   }
   .section-label {
     font-size: 10px;
-    color: #404070;
+    color: #95a5d0;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     margin-top: 6px;
@@ -100,7 +100,7 @@
     flex-shrink: 0;
     overflow-y: auto;
   }
-  label { font-size: 11px; color: #7080b0; display: block; margin-bottom: 2px; }
+  label { font-size: 11px; color: #95a5d0; display: block; margin-bottom: 2px; }
   input[type=text], input[type=number], select {
     width: 100%;
     background: #12122a;
@@ -117,7 +117,7 @@
   .tmpl-row .tmpl-place { flex: 1; font-size: 11px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tmpl-row .tmpl-place.active { background: #1a3a1a; border-color: #40a040; color: #80e080; }
   .tmpl-del { flex: 0 0 20px !important; padding: 0 !important; font-size: 13px; color: #ff6060; min-width: 0; }
-  #tmpl-empty { font-size: 10px; color: #303050; }
+  #tmpl-empty { font-size: 10px; color: #7888c0; }
   .kbd {
     display: inline-block;
     background: #1a1a30;
@@ -125,10 +125,10 @@
     border-radius: 2px;
     padding: 0 4px;
     font-size: 10px;
-    color: #7080b0;
+    color: #95a5d0;
     margin-left: 3px;
   }
-  #shortcut-list { font-size: 10px; color: #404060; line-height: 1.9; }
+  #shortcut-list { font-size: 10px; color: #95a5d0; line-height: 1.9; }
   .prop-section { border-top: 1px solid #1c1c34; padding-top: 8px; margin-top: 2px; }
   /* ── Component Inspector ── */
   .insp-header { font-size:11px; font-weight:bold; letter-spacing:1px; text-transform:uppercase;
@@ -141,20 +141,20 @@
   .insp-ghost   { background:#1a0c0c; border:1px solid #602020; color:#ff9060; }
   .insp-graviton{ background:#0a1a18; border:1px solid #1f5048; color:#5ad0c0; }
   .insp-multi   { background:#101028; border:1px solid #303060; color:#8090c0; }
-  .insp-none    { background:#0c0c18; border:1px solid #202040; color:#404060; }
+  .insp-none    { background:#0c0c18; border:1px solid #202040; color:#95a5d0; }
   .insp-dot     { width:8px; height:8px; border-radius:50%; background:currentColor; flex-shrink:0; }
   .insp-section { margin-top:10px; }
-  .insp-section-lbl { font-size:9px; color:#303055; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px; }
+  .insp-section-lbl { font-size:9px; color:#7888c0; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px; }
   .insp-readout { background:#07070f; border:1px solid #141430; border-radius:3px;
-    padding:6px 8px; font-size:11px; color:#5060a0; line-height:1.9; margin:4px 0; }
+    padding:6px 8px; font-size:11px; color:#95a5d0; line-height:1.9; margin:4px 0; }
   .insp-readout .hl { color:#8090c0; }
   .insp-readout .rule-text { color:#a090d0; font-size:11px; }
-  .insp-conn-item { font-size:11px; color:#404868; padding:2px 0; display:flex; gap:6px; align-items:center; }
+  .insp-conn-item { font-size:11px; color:#95a5d0; padding:2px 0; display:flex; gap:6px; align-items:center; }
   .insp-conn-dot  { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
   .insp-badge { display:inline-block; padding:1px 6px; border-radius:2px; font-size:10px; margin-left:4px; }
   .insp-badge-ext  { background:#102018; border:1px solid #205030; color:#50a060; }
-  .insp-badge-int  { background:#181020; border:1px solid #402860; color:#9060b0; }
-  .insp-badge-none { background:#101018; border:1px solid #202040; color:#404868; }
+  .insp-badge-int  { background:#181020; border:1px solid #402860; color:#a370c5; }
+  .insp-badge-none { background:#101018; border:1px solid #202040; color:#95a5d0; }
   /* ── Feynman Rules panel ── */
   #rules-panel {
     border-top: 1px solid #2a2a44;
@@ -197,28 +197,57 @@
     min-height: 0;
   }
   .fr-row { display: flex; align-items: center; gap: 4px; }
-  .fr-lbl { width: 68px; font-size: 10px; color: #5060a0; flex-shrink: 0; text-align: right; padding-right: 4px; }
+  .fr-lbl { width: 68px; font-size: 10px; color: #95a5d0; flex-shrink: 0; text-align: right; padding-right: 4px; }
   .fr-inp  { flex: 1; font-size: 11px !important; padding: 2px 5px !important; min-width: 0; }
-  .fr-inp-latex { flex: 1; font-size: 10px !important; padding: 2px 4px !important; min-width: 0; color: #607090 !important; font-family: 'Courier New', monospace; }
-  .fr-sub-hdr { font-size: 9px; color: #303050; text-transform: uppercase; letter-spacing: 1px; padding: 4px 0 1px; margin-top: 3px; border-top: 1px solid #16162a; }
+  .fr-inp-latex { flex: 1; font-size: 10px !important; padding: 2px 4px !important; min-width: 0; color: #95a5d0 !important; font-family: 'Courier New', monospace; }
+  .fr-sub-hdr { font-size: 9px; color: #7888c0; text-transform: uppercase; letter-spacing: 1px; padding: 4px 0 1px; margin-top: 3px; border-top: 1px solid #16162a; }
   .fr-sub-hdr:first-child { margin-top: 0; border-top: none; }
   .fr-inp[readonly], .fr-inp-latex[readonly] { opacity: .55; cursor: default; }
-  /* ── Lagrangian → Feynman Rules panel ── */
+  /* ── Lagrangian → Feynman Rules / Diagram Generation panel ── */
   #lag-panel {
     background: #09091a;
     border-top: 2px solid #2a2a50;
-    padding: 28px 32px 60px;
-    flex-shrink: 0;
-    min-height: 640px;
+    padding: 22px 32px 60px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
   .lag-title {
     font-size: 15px; color: #7090ff; letter-spacing: 1px;
     margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
   }
-  .lag-title small { font-size: 11px; color: #404068; font-weight: normal; letter-spacing: 0; }
+  /* ── Diagram generation controls + gallery ── */
+  .gen-controls {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid #1a1a30;
+  }
+  .gen-controls select { width: auto; font-size: 11px; }
+  #btn-gen-diagrams {
+    margin-left: auto; font-size: 13px; padding: 7px 18px;
+    background: #142810; border-color: #40a040; color: #80e080;
+  }
+  #btn-gen-diagrams:hover { background: #1c3a18; border-color: #60c060; color: #a0f8a0; }
+  #btn-gen-diagrams:disabled { opacity: .5; cursor: default; }
+  #gen-output { margin-top: 22px; max-width: 1300px; }
+  #gen-status { font-size: 11px; color: #95a5d0; margin-bottom: 12px; min-height: 14px; }
+  .gen-group { margin-bottom: 24px; }
+  .gen-group-hdr {
+    font-size: 12px; color: #90a8d0; margin-bottom: 10px; padding-bottom: 5px;
+    border-bottom: 1px solid #1c1c34; letter-spacing: .5px;
+  }
+  .gen-grid { display: flex; flex-wrap: wrap; gap: 14px; }
+  .gen-item {
+    width: 150px; cursor: pointer; background: #0a0a16; border: 1px solid #20203a;
+    border-radius: 4px; padding: 6px; text-align: center; transition: all .1s;
+  }
+  .gen-item:hover { border-color: #5070c0; background: #10101e; }
+  .gen-item canvas { width: 100%; height: 100px; background: #090912; border-radius: 2px; display: block; }
+  .gen-badge { font-size: 9px; color: #95a5d0; margin-top: 4px; }
+  .gen-truncated { font-size: 10px; color: #c08040; margin-top: 6px; }
+  .lag-title small { font-size: 11px; color: #95a5d0; font-weight: normal; letter-spacing: 0; }
   .lag-grid { display: grid; grid-template-columns: 1fr 300px; gap: 28px; max-width: 1300px; }
   .lag-section-lbl {
-    font-size: 10px; color: #404070; text-transform: uppercase;
+    font-size: 10px; color: #95a5d0; text-transform: uppercase;
     letter-spacing: 1.5px; margin-bottom: 6px;
   }
   #lag-input {
@@ -243,7 +272,7 @@
   }
   .lag-chip .cn { color: #c0d0f8; font-size: 13px; }
   .lag-chip select {
-    background: transparent; border: none; color: #6070a0; font-size: 10px;
+    background: transparent; border: none; color: #95a5d0; font-size: 10px;
     padding: 0 2px; cursor: pointer; font-family: inherit; outline: none;
   }
   .lag-chip .cdel {
@@ -258,15 +287,15 @@
     background: #141440; border-color: #4050b0; color: #90b0ff;
   }
   #btn-lag-derive:hover { background: #1e1e5a; border-color: #6070d0; color: #b0ceff; }
-  .lag-guide table { width: 100%; border-collapse: collapse; font-size: 11px; color: #5060a0; line-height: 2; }
-  .lag-guide td:first-child { color: #7080a0; white-space: nowrap; padding-right: 10px; }
+  .lag-guide table { width: 100%; border-collapse: collapse; font-size: 11px; color: #95a5d0; line-height: 2; }
+  .lag-guide td:first-child { color: #95a5d0; white-space: nowrap; padding-right: 10px; }
   .lag-guide code { color: #90a8d0; font-family: 'Courier New', monospace; }
   #lag-output { margin-top: 24px; max-width: 900px; display: none; }
   .lag-rules-box {
     background: #06060f; border: 1px solid #20203a; border-radius: 4px; padding: 18px 22px;
   }
   .lag-sec-hdr {
-    font-size: 10px; color: #404068; text-transform: uppercase; letter-spacing: 1.5px;
+    font-size: 10px; color: #95a5d0; text-transform: uppercase; letter-spacing: 1.5px;
     border-bottom: 1px solid #14142a; padding-bottom: 5px; margin-bottom: 14px;
   }
   .lag-rule-row {
@@ -274,11 +303,11 @@
     align-items: start; gap: 10px; margin-bottom: 14px;
     padding-left: 10px; border-left: 2px solid #22224a;
   }
-  .lag-rule-lhs { font-size: 12px; color: #6070a0; line-height: 1.7; }
+  .lag-rule-lhs { font-size: 12px; color: #95a5d0; line-height: 1.7; }
   .lag-rule-lhs .fname { color: #c0d0f8; font-size: 14px; }
-  .lag-rule-arrow { color: #303060; font-size: 16px; padding-top: 2px; }
+  .lag-rule-arrow { color: #7888c0; font-size: 16px; padding-top: 2px; }
   .lag-rule-rhs { font-size: 13px; font-family: 'Courier New', monospace; color: #d0daf8; line-height: 1.8; }
-  .lag-rule-note { font-size: 10px; color: #384060; margin-top: 2px; }
+  .lag-rule-note { font-size: 10px; color: #7888c0; margin-top: 2px; }
   .lag-warn { color: #e09040; font-size: 11px; margin-top: 4px; padding-left: 10px; }
   .lag-err { color: #ff6060; font-size: 12px; padding: 10px; background: #180808; border-radius: 3px; }
   .lag-examples-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
@@ -301,6 +330,8 @@
   <label class="check-row"><input type="checkbox" id="chk-snap" checked> Snap</label>
   <div class="sep"></div>
   <button id="btn-toggle-rules">Feynman Rules ▾</button>
+  <div class="sep"></div>
+  <button id="btn-mode-toggle" title="Switch between manual drawing and automatic diagram generation from a Lagrangian">⚛ Generate</button>
   <button id="btn-help" title="Show all controls">Help ?</button>
   <div id="status">Select tool and click to place vertices</div>
 </div>
@@ -321,13 +352,13 @@
   .help-body ul { margin:4px 0; padding-left:18px; }
   .help-body li { margin:2px 0; }
   .help-body .hk { background:#1a1a30; border:1px solid #2e2e50; border-radius:3px; padding:0 5px; font-size:11px; color:#90a0d0; font-family:monospace; }
-  .help-foot { font-size:11px; color:#56608a; margin-top:14px; border-top:1px solid #1c1c34; padding-top:8px; }
+  .help-foot { font-size:11px; color:#95a5d0; margin-top:14px; border-top:1px solid #1c1c34; padding-top:8px; }
 </style>
 <div id="help-modal" class="help-overlay" style="display:none">
   <div class="help-box">
     <div class="help-hd"><span>⬡ Feynman Editor — Controls</span><button id="help-close" class="help-x">×</button></div>
     <div class="help-body">
-      <h3>Drawing tools <span style="color:#56608a;font-weight:normal">(toolbar, or press the key)</span></h3>
+      <h3>Drawing tools <span style="color:#95a5d0;font-weight:normal">(toolbar, or press the key)</span></h3>
       <table>
         <tr><td><b>Select</b> <span class="hk">Q</span></td><td>Click a vertex/line to select. Drag empty canvas = box-select. Drag a selection = move the group. Double-click a vertex/line to label it.</td></tr>
         <tr><td><b>Move</b> <span class="hk">M</span></td><td>Click-drag anywhere to pan the canvas.</td></tr>
@@ -441,7 +472,7 @@
     <!-- Nothing selected -->
     <div id="no-sel">
       <div class="insp-header insp-none"><span class="insp-dot"></span>Nothing selected</div>
-      <div style="font-size:10px;color:#252545;line-height:1.9;margin-top:4px">
+      <div style="font-size:10px;color:#7888c0;line-height:1.9;margin-top:4px">
         Click a vertex or line<br>to inspect its properties
       </div>
     </div>
@@ -504,7 +535,7 @@
 
       <div class="insp-section">
         <label class="check-row"><input type="checkbox" id="ep-rev">
-          <span style="margin-left:5px">Reverse arrow <span style="color:#404060;font-size:10px">(marks antiparticle)</span></span>
+          <span style="margin-left:5px">Reverse arrow <span style="color:#95a5d0;font-size:10px">(marks antiparticle)</span></span>
         </label>
       </div>
 
@@ -524,7 +555,7 @@
       </div>
 
       <div class="insp-section" id="ep-curve-row">
-        <div class="insp-section-lbl">Curvature <span id="ep-curve-vals" style="color:#303058;font-weight:normal"></span></div>
+        <div class="insp-section-lbl">Curvature <span id="ep-curve-vals" style="color:#7888c0;font-weight:normal"></span></div>
         <button id="btn-reset-curve" style="width:100%;font-size:11px">Reset curve</button>
       </div>
     </div>
@@ -646,20 +677,20 @@
 
     <div style="display:flex;gap:4px;margin-top:6px">
       <button id="btn-save-fr" style="flex:1;font-size:11px">Save rules</button>
-      <button id="btn-reset-fr" style="flex:0 0 auto;font-size:10px;color:#806060">Reset defaults</button>
+      <button id="btn-reset-fr" style="flex:0 0 auto;font-size:10px;color:#a47c7c">Reset defaults</button>
     </div>
   </div>
 
   <div id="rules-right">
     <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-      <span style="font-size:10px;color:#404060;text-transform:uppercase;letter-spacing:1px">Amplitude</span>
+      <span style="font-size:10px;color:#95a5d0;text-transform:uppercase;letter-spacing:1px">Amplitude</span>
       <button id="btn-build-amp" style="font-size:11px">iM ▶</button>
       <button id="btn-copy-latex" style="font-size:11px">Copy LaTeX</button>
-      <span style="font-size:10px;color:#404060;margin-left:8px" title="Spacetime dimension d (3 space + 1 time = 4). Affects the mass-dimension formula.">dim&nbsp;d</span>
+      <span style="font-size:10px;color:#95a5d0;margin-left:8px" title="Spacetime dimension d (3 space + 1 time = 4). Affects the mass-dimension formula.">dim&nbsp;d</span>
       <input id="inp-dim" type="number" value="4" min="1" max="12" step="1"
         style="width:42px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
         title="Spacetime dimension d (default 4 = 3 space + 1 time)">
-      <span style="font-size:10px;color:#404060;margin-left:4px" title="Rξ gauge parameter ξ. Exported to the stepper, which shows Ward-identity steps proving |M|² is gauge-independent when ξ≠1.">ξ</span>
+      <span style="font-size:10px;color:#95a5d0;margin-left:4px" title="Rξ gauge parameter ξ. Exported to the stepper, which shows Ward-identity steps proving |M|² is gauge-independent when ξ≠1.">ξ</span>
       <input id="inp-xi" type="number" value="1" min="0" max="10" step="1"
         style="width:36px;background:#0c0c18;border:1px solid #2a2a44;color:#90c8f0;font-family:inherit;font-size:11px;padding:2px 4px;border-radius:3px"
         title="Rξ gauge parameter (ξ=1: Feynman gauge, ξ=0: Landau gauge). Passed to the stepper to show the Ward-identity cancellation.">
@@ -669,11 +700,10 @@
     <div id="amp-display">Draw a diagram, set your Feynman rules, then click Build ▶</div>
   </div>
 </div>
-</div><!-- #editor-shell -->
 
-<!-- ── Lagrangian → Feynman Rules panel ──────────────────────────────────── -->
-<div id="lag-panel">
-  <div class="lag-title">ℒ → Feynman Rules <small>scroll down to use · derive rules from any Lagrangian</small></div>
+<!-- ── Lagrangian → Feynman Rules / Diagram Generation panel ─────────────── -->
+<div id="lag-panel" style="display:none">
+  <div class="lag-title">ℒ → Feynman Rules &amp; Diagram Generation <small>derive rules, or generate every diagram for a 2→2 process</small></div>
 
   <div class="lag-grid">
     <!-- ── Left: input area ── -->
@@ -686,7 +716,7 @@
         placeholder="e.g.  (1/2)*(d phi)^2 - (m^2/2)*phi^2 - (lam/4!)*phi^4"></textarea>
 
       <div class="lag-examples-row">
-        <span style="font-size:10px;color:#404070">Example:</span>
+        <span style="font-size:10px;color:#95a5d0">Example:</span>
         <select id="lag-examples">
           <option value="">— choose —</option>
           <option value="phi4">φ⁴  scalar</option>
@@ -702,7 +732,7 @@
       <hr class="lag-divider">
 
       <div class="lag-section-lbl">Field declarations</div>
-      <div style="font-size:10px;color:#2a2a48;margin-bottom:8px">
+      <div style="font-size:10px;color:#7888c0;margin-bottom:8px">
         Tell the parser which symbols are fields. Everything else is treated as a coupling or mass parameter.
       </div>
       <div class="lag-fields-row" id="lag-fields-row"></div>
@@ -719,6 +749,18 @@
       </div>
 
       <button id="btn-lag-derive">▶  Derive Feynman Rules</button>
+
+      <div class="gen-controls">
+        <label style="font-size:11px;color:#95a5d0">Loop order
+          <select id="gen-loop-order">
+            <option value="0">0 (tree)</option>
+            <option value="1">1 loop</option>
+            <option value="2">2 loop</option>
+          </select>
+        </label>
+        <span style="font-size:10px;color:#95a5d0" title="More shapes (1→2, 1→3, …) are planned; 2→2 only for now">shape: 2 → 2 (fixed)</span>
+        <button id="btn-gen-diagrams">⚛ Generate Diagrams</button>
+      </div>
     </div>
 
     <!-- ── Right: notation guide ── -->
@@ -740,7 +782,7 @@
           <tr><td>Sign:</td><td><code>-</code> before a term flips vertex sign</td></tr>
         </table>
       </div>
-      <div style="font-size:10px;color:#252545;margin-top:10px;line-height:1.8">
+      <div style="font-size:10px;color:#7888c0;margin-top:10px;line-height:1.8">
         Propagators come from 2-field terms.<br>
         Vertices come from 3+ field terms.<br>
         Identical-particle factorials are cancelled automatically<br>
@@ -754,7 +796,15 @@
     <div class="lag-sec-hdr" style="margin-top:26px">Derived Feynman Rules</div>
     <div id="lag-rules-display"></div>
   </div>
+
+  <!-- Generated diagram gallery -->
+  <div id="gen-output" style="display:none">
+    <div class="lag-sec-hdr">Generated Diagrams</div>
+    <div id="gen-status"></div>
+    <div id="gen-gallery"></div>
+  </div>
 </div>
+</div><!-- #editor-shell -->
 
 <script>
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -782,8 +832,10 @@ let stampFlip = 0;  // 0=0°, 1=90°, 2=180°, 3=270°
 // drag state
 let dragging = null;  // {type:'vert'|'ctrl', id, ox, oy, mx, my}
 
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+// `let` (not `const`): the diagram-generation gallery temporarily redirects
+// these at an offscreen canvas to render thumbnails, reusing draw() unchanged.
+let canvas = document.getElementById('canvas');
+let ctx = canvas.getContext('2d');
 let W, H;
 
 const COLORS = {
@@ -2228,7 +2280,7 @@ function updateProps() {
       const deg = edges.filter(e=>e.from===id||e.to===id).length;
       return `<div class="insp-conn-item">
         <span class="insp-conn-dot" style="background:${TYPE_COLORS.vertex}"></span>
-        ${lbl} &nbsp;<span style="color:#303058">${deg} line${deg!==1?'s':''}</span></div>`;
+        ${lbl} &nbsp;<span style="color:#7888c0">${deg} line${deg!==1?'s':''}</span></div>`;
     }).join('');
     document.getElementById('mp-list').innerHTML = items;
     return;
@@ -2249,18 +2301,18 @@ function updateProps() {
     const ruleEl = document.getElementById('vp-rule');
     if (rule) {
       ruleEl.innerHTML = `<span class="rule-text">${rule.text}</span><br>
-        <span style="color:#303050">matched by ${v.label&&rule.label===v.label?'label "'+rule.label+'"':'signature'}</span>`;
+        <span style="color:#7888c0">matched by ${v.label&&rule.label===v.label?'label "'+rule.label+'"':'signature'}</span>`;
     } else if (v.style==='none') {
-      ruleEl.innerHTML = `<span style="color:#303050">External leg — spinor assigned when connected to internal vertex</span>`;
+      ruleEl.innerHTML = `<span style="color:#7888c0">External leg — spinor assigned when connected to internal vertex</span>`;
     } else {
-      ruleEl.innerHTML = `<span style="color:#604040">No matching rule — add one in the Rules panel, or label this vertex</span>`;
+      ruleEl.innerHTML = `<span style="color:#ad7777">No matching rule — add one in the Rules panel, or label this vertex</span>`;
     }
 
     // Connected lines
     const conn = edges.filter(e=>e.from===v.id||e.to===v.id);
     const connEl = document.getElementById('vp-conns');
     if (!conn.length) {
-      connEl.innerHTML = '<span style="color:#303050">No lines connected</span>';
+      connEl.innerHTML = '<span style="color:#7888c0">No lines connected</span>';
     } else {
       connEl.innerHTML = conn.map(e => {
         const isExt = edgeIsExternal(e);
@@ -2272,8 +2324,8 @@ function updateProps() {
           : `<span class="insp-badge insp-badge-int">prop</span>`;
         return `<div class="insp-conn-item">
           <span class="insp-conn-dot" style="background:${col}"></span>
-          <span class="hl">${e.type}</span>${e.label?` <span style="color:#404060">${e.label}</span>`:''}
-          → <span style="color:#404060">${otherLbl}</span>${badge}</div>`;
+          <span class="hl">${e.type}</span>${e.label?` <span style="color:#95a5d0">${e.label}</span>`:''}
+          → <span style="color:#95a5d0">${otherLbl}</span>${badge}</div>`;
       }).join('');
     }
     return;
@@ -2313,14 +2365,14 @@ function updateProps() {
     if (extFlag) {
       const spinor = edgeSpinorLabel(ed);
       factEl.innerHTML = spinor
-        ? `<span class="rule-text">${spinor}</span><br><span style="color:#303050">external state factor</span>`
-        : '<span style="color:#303050">—</span>';
+        ? `<span class="rule-text">${spinor}</span><br><span style="color:#7888c0">external state factor</span>`
+        : '<span style="color:#7888c0">—</span>';
     } else {
       const pr = feynmanRules.propagators[ed.type];
       const mom = ed.label ? pr?.text?.replace(/{p}/g,ed.label).replace(/{p2}/g,`(${ed.label})²`) : pr?.text;
       factEl.innerHTML = mom
-        ? `<span class="rule-text">${mom}</span><br><span style="color:#303050">${ed.type} propagator</span>`
-        : '<span style="color:#303050">no propagator rule set</span>';
+        ? `<span class="rule-text">${mom}</span><br><span style="color:#7888c0">${ed.type} propagator</span>`
+        : '<span style="color:#7888c0">no propagator rule set</span>';
     }
 
     // Connects
@@ -2330,7 +2382,7 @@ function updateProps() {
     const arrow = ed.reversed ? '←' : '→';
     document.getElementById('ep-connects').innerHTML =
       `<span class="hl">${fLbl}</span> ${arrow} <span class="hl">${tLbl}</span>
-      <br><span style="color:#303050">vertex ids: ${ed.from} → ${ed.to}</span>`;
+      <br><span style="color:#7888c0">vertex ids: ${ed.from} → ${ed.to}</span>`;
 
     // Curvature
     const cx=Math.round(ed.cx||0), cy=Math.round(ed.cy||0);
@@ -2656,7 +2708,7 @@ function renderVertexRulesList() {
         <input type="text" class="fr-inp" style="flex:0 0 50px;text-align:center" placeholder="label" value="${escHtml(vr.label)}" ${locked ? 'readonly title="Built-in Standard Model rule — permanent"' : ''}>
         <input type="text" class="fr-inp" placeholder="display text" value="${escHtml(vr.text)}" ${locked ? 'readonly' : ''}>
         <input type="text" class="fr-inp-latex" placeholder="LaTeX" value="${escHtml(vr.latex)}" ${locked ? 'readonly' : ''}>
-        ${locked ? '<span class="tmpl-del" style="color:#3a3a55;cursor:default;font-size:10px;text-align:center" title="Built-in — cannot be removed">SM</span>'
+        ${locked ? '<span class="tmpl-del" style="color:#7888c0;cursor:default;font-size:10px;text-align:center" title="Built-in — cannot be removed">SM</span>'
                  : '<button class="tmpl-del" title="Remove">×</button>'}
       `;
       if (!locked) {
@@ -3243,6 +3295,27 @@ document.getElementById('btn-toggle-rules').addEventListener('click', () => {
   if (open) populateRulesPanel();
   resize();
 });
+// ─── Draw / Generate mode toggle ─────────────────────────────────────────────
+document.getElementById('btn-mode-toggle').addEventListener('click', () => {
+  const main  = document.getElementById('main');
+  const lag   = document.getElementById('lag-panel');
+  const rules = document.getElementById('rules-panel');
+  const rbtn  = document.getElementById('btn-toggle-rules');
+  const btn   = document.getElementById('btn-mode-toggle');
+  const enteringGenerate = lag.style.display === 'none';
+  lag.style.display  = enteringGenerate ? 'block' : 'none';
+  main.style.display = enteringGenerate ? 'none'  : 'flex';
+  if (enteringGenerate) {
+    // Rules panel is a Draw-mode concept (shows the manually-drawn diagram's
+    // amplitude) -- always force it closed when switching away from Draw.
+    rules.style.display = 'none';
+    rbtn.textContent = 'Feynman Rules ▾';
+    rbtn.classList.remove('active');
+  }
+  btn.textContent = enteringGenerate ? '✎ Draw' : '⚛ Generate';
+  btn.classList.toggle('active', enteringGenerate);
+  if (!enteringGenerate) { resize(); draw(); }
+});
 // ─── Help overlay ─────────────────────────────────────────────────────────────
 function toggleHelp(show) {
   const m = document.getElementById('help-modal');
@@ -3803,7 +3876,7 @@ function renderRules(result) {
   }
 
   if (!props.length && !vertices.length) {
-    h+=`<div style="color:#303050;font-size:12px;padding:8px 0">
+    h+=`<div style="color:#7888c0;font-size:12px;padding:8px 0">
       No rules derived. Check field declarations match names used in the Lagrangian.
     </div>`;
   }
@@ -3835,6 +3908,625 @@ function renderFieldChips() {
     row.appendChild(chip);
   });
 }
+
+// ── Diagram Generation Engine ──────────────────────────────────────────────
+// Enumerates EVERY distinct Feynman diagram for a 2-in -> 2-out process (any
+// field-content combination the theory allows) up to a chosen loop order,
+// from the SAME deriveLag() output the rules panel above already computes.
+//
+// Method: half-edge pairing (equivalent to Wick-contracting vertex insertions)
+// bounded to a small search space, since N=4/L<=2 keeps it tractable:
+//   1. convert deriveLag's {propMap, vertices} into line-types + vertex-types
+//   2. search small vertex-count combinations satisfying the loop equation
+//   3. enumerate all type/role-respecting perfect matchings of the resulting
+//      "slots" (4 external + each vertex instance's legs) into pairs
+//   4. keep only fully-connected matchings
+//   5. dedupe by a canonical signature (permute same-type vertex instances /
+//      interchangeable legs, keep the lexicographically smallest edge list)
+// Validated against known textbook counts before being wired up here: phi^3
+// 2->2 tree = 3 diagrams (s/t/u), phi^4 2->2 tree = 1 (contact), QED-like
+// 2->2 tree = 2 diagrams per process (Bhabha/Moller/Compton/pair-production
+// all matching this repo's own verified-results table).
+
+function buildGenTheory(result) {
+  const lineTypes = [];
+  const lineByFieldName = {};
+  for (const [key, pd] of Object.entries(result.propMap)) {
+    if (!pd.kinetic) continue;   // no kinetic term -> no propagator -> can't appear in a diagram
+    if (pd.psi) {
+      const lt = { key, kind:'fermion', renderType:'fermion', massless:!pd.hasMass,
+                   massSymbol:pd.massSymbol, psiName:pd.psi.name, psibName:pd.psib.name };
+      lineTypes.push(lt);
+      lineByFieldName[pd.psi.name]  = { lt, role:'psi'  };
+      lineByFieldName[pd.psib.name] = { lt, role:'psib' };
+    } else {
+      const renderType = {scalar:'scalar', vector:'photon', ghost:'ghost'}[pd.type] || 'scalar';
+      const lt = { key, kind:pd.type, renderType, massless:!pd.hasMass,
+                   massSymbol:pd.massSymbol, fieldName:pd.field.name };
+      lineTypes.push(lt);
+      lineByFieldName[pd.field.name] = { lt, role:'self' };
+    }
+  }
+  const vertexTypes = [];
+  for (const v of result.vertices) {
+    const legs = [];
+    let ok = true;
+    for (const f of v.fields) {
+      const ref = lineByFieldName[f.name];
+      if (!ref) { ok = false; break; }   // field has no propagator -- can't build a line for it
+      for (let i = 0; i < f.count; i++) legs.push({ lineKey: ref.lt.key, role: ref.role, group: f.name });
+    }
+    if (!ok || legs.length < 3) continue;   // need a real (>=3-point) interaction vertex
+    const fc = {};
+    v.fields.forEach(f => { fc[f.name] = { count: f.count }; });
+    vertexTypes.push({ legs, valence: legs.length, coupling: vertexStr(v.sign, v.coeff, v.gammas, fc) });
+  }
+  return { lineTypes, vertexTypes, lineByKey: Object.fromEntries(lineTypes.map(lt => [lt.key, lt])) };
+}
+
+function externalFlavors(lineTypes) {
+  const flavors = [];
+  lineTypes.forEach(lt => {
+    if (lt.kind === 'fermion') {
+      flavors.push({ lineKey: lt.key, isAnti: false, label: lt.psiName  });
+      flavors.push({ lineKey: lt.key, isAnti: true,  label: lt.psibName });
+    } else {
+      flavors.push({ lineKey: lt.key, isAnti: false, label: lt.fieldName || lt.key });
+    }
+  });
+  return flavors;
+}
+
+// Which vertex leg-role (psi/psib) must this external attach to, given its
+// particle/antiparticle flavor and in/out direction? (particle+in -> psi/u,
+// particle+out -> psib/ubar, antiparticle+out -> psi/v, antiparticle+in ->
+// psib/vbar -- verified against this app's own FR_DEFAULTS + edgeSpinorLabel
+// convention and the loadSample() pair-production example.)
+function requiredVertexRole(lineByKey, lineKey, isAnti, dir) {
+  const lt = lineByKey[lineKey];
+  if (lt.kind !== 'fermion') return 'self';
+  const out = dir === 'out';
+  return (isAnti === out) ? 'psi' : 'psib';
+}
+
+function findVertexCountCombos(vertexTypes, N, L, maxTotal) {
+  const k = vertexTypes.length;
+  const out = [];
+  const counts = [];
+  function rec(idx, total) {
+    if (total > maxTotal) return;
+    if (idx === k) {
+      const sumValence = counts.reduce((s, c, i) => s + c * vertexTypes[i].valence, 0);
+      const num = sumValence - N;
+      if (num < 0 || num % 2 !== 0) return;
+      const I = num / 2;
+      const loops = I - total + 1;
+      if (loops === L && total >= 1) out.push(counts.slice());
+      return;
+    }
+    for (let c = 0; c <= maxTotal - total; c++) {
+      counts.push(c);
+      rec(idx + 1, total + c);
+      counts.pop();
+    }
+  }
+  rec(0, 0);
+  return out;
+}
+
+function expandCombo(vertexTypes, counts) {
+  const instances = [];
+  counts.forEach((c, vtIndex) => {
+    for (let i = 0; i < c; i++) instances.push({ vtIndex, legs: vertexTypes[vtIndex].legs });
+  });
+  return instances;
+}
+
+function buildGenSlots(lineByKey, extAssign, vertexInstances) {
+  const slots = [];
+  extAssign.forEach((f, i) => {
+    const role = requiredVertexRole(lineByKey, f.lineKey, f.isAnti, f.dir);
+    slots.push({ isExt: true, extIdx: i, lineKey: f.lineKey, role, dir: f.dir, isAnti: f.isAnti });
+  });
+  vertexInstances.forEach((vi, vIdx) => {
+    vi.legs.forEach(leg => {
+      slots.push({ isExt: false, vIdx, lineKey: leg.lineKey, role: leg.role, group: leg.group });
+    });
+  });
+  return slots;
+}
+
+function genLegsCompatible(lineByKey, a, b) {
+  if (a.lineKey !== b.lineKey) return false;
+  const lt = lineByKey[a.lineKey];
+  if (lt.kind !== 'fermion') return true;
+  const bothInternal = !a.isExt && !b.isExt;
+  // internal-internal: complementary ends form one continuous propagator.
+  // external-vertex: SAME role -- the external attaches directly to that field's own leg.
+  return bothInternal ? (a.role !== b.role) : (a.role === b.role);
+}
+
+// Streams complete perfect matchings of `slots` to onMatch(pairs); onMatch
+// returns false to stop the whole search early (cap reached). Untouched
+// same-type/same-group vertex-instance legs are provably interchangeable at
+// a fresh decision point, so siblings are skipped -- this is what keeps the
+// search tractable (see gen_proto.py prototype: without it, phi^3 at 1 loop
+// blows past 200k matchings before finding the first valid diagram).
+function enumerateGenMatchings(slots, lineByKey, vertexInstances, budget, onMatch) {
+  const n = slots.length;
+  const used = new Array(n).fill(false);
+  const pairs = [];
+  const slotsByVInst = {};
+  slots.forEach((s, idx) => { if (!s.isExt) (slotsByVInst[s.vIdx] = slotsByVInst[s.vIdx] || []).push(idx); });
+  const instanceTouched = vIdx => (slotsByVInst[vIdx] || []).some(k => used[k]);
+  // localStop is scoped to THIS one call -- "this process has enough diagrams"
+  // must not leak into budget.stop, which is the GLOBAL iteration/time safety
+  // net shared across every process generateAllDiagrams() tries. Conflating
+  // them meant the first process to hit its own per-process cap silently
+  // killed every later process's search (caught via the QED L=2 case, where
+  // only the very first enumerated process group ever came back non-empty).
+  let localStop = false;
+  function rec() {
+    if (budget.stop || localStop) return;
+    budget.iters++;
+    if (budget.iters > budget.iterLimit || (Date.now() - budget.startTime) > budget.timeBudgetMs) {
+      budget.stop = true; budget.truncated = true; return;
+    }
+    let first = -1;
+    for (let i = 0; i < n; i++) if (!used[i]) { first = i; break; }
+    if (first === -1) { if (!onMatch(pairs)) localStop = true; return; }
+    used[first] = true;
+    const seenKeys = new Set();
+    for (let j = first + 1; j < n && !budget.stop && !localStop; j++) {
+      if (used[j]) continue;
+      if (slots[first].isExt && slots[j].isExt) continue;
+      if (!genLegsCompatible(lineByKey, slots[first], slots[j])) continue;
+      const sj = slots[j];
+      if (!sj.isExt && !instanceTouched(sj.vIdx)) {
+        const key = vertexInstances[sj.vIdx].vtIndex + '|' + sj.group + '|' + sj.role;
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+      }
+      used[j] = true;
+      pairs.push([first, j]);
+      rec();
+      pairs.pop();
+      used[j] = false;
+    }
+    used[first] = false;
+  }
+  rec();
+}
+
+function isConnectedDiagram(pairs, slots, nVertexInstances) {
+  const nodeOf = idx => slots[idx].isExt ? ('e' + slots[idx].extIdx) : ('v' + slots[idx].vIdx);
+  const adj = {};
+  const nodes = new Set();
+  for (let i = 0; i < 4; i++) nodes.add('e' + i);
+  for (let i = 0; i < nVertexInstances; i++) nodes.add('v' + i);
+  pairs.forEach(([a, b]) => {
+    const na = nodeOf(a), nb = nodeOf(b);
+    (adj[na] = adj[na] || new Set()).add(nb);
+    (adj[nb] = adj[nb] || new Set()).add(na);
+  });
+  if (!nodes.size) return true;
+  const start = nodes.values().next().value;
+  const seen = new Set([start]);
+  const stack = [start];
+  while (stack.length) {
+    const cur = stack.pop();
+    (adj[cur] || new Set()).forEach(nb => { if (!seen.has(nb)) { seen.add(nb); stack.push(nb); } });
+  }
+  return seen.size === nodes.size;
+}
+
+// Reject any diagram containing a "bubble": a connected subset S of internal
+// vertices that touches the rest of the graph (other vertices AND external
+// legs alike) via exactly 1 or 2 edges, where S has a nonzero loop count of
+// its own. boundary=1 is a tadpole (a 1-point blob hanging off an internal
+// line or an external leg); boundary=2 is a self-energy correction inserted
+// in series on ANY line -- an external leg, or a propagator sitting between
+// two otherwise-unrelated halves of the diagram, or even a plain in-between
+// propagator on a bigger multi-loop skeleton. Both are the standard exclusion
+// for a "skeleton" diagram expansion: self-energy insertions on propagators
+// are dressed into the (separately renormalised) propagator itself, and
+// tadpoles cancel against the tadpole renormalisation condition -- neither
+// contributes a genuinely new diagram, so none should be generated.
+// A genuine vertex/box correction is NEVER caught by this: with >=3 legs
+// going out from any candidate blob (that's what makes it an n>=3-point
+// correction rather than a propagator dressing), boundary is always >=3 for
+// every connected subset containing it, so the 1-or-2 condition never fires.
+function hasBubbleInsertion(pairs, slots, vertexInstances) {
+  const nodeOf = idx => slots[idx].isExt ? ('e' + slots[idx].extIdx) : ('v' + slots[idx].vIdx);
+  const n = vertexInstances.length;
+  const edgeList = [];
+  const selfLoops = {};
+  pairs.forEach(([a, b]) => {
+    const na = nodeOf(a), nb = nodeOf(b);
+    if (na === nb) selfLoops[na] = (selfLoops[na] || 0) + 1;
+    else edgeList.push([na, nb]);
+  });
+
+  const vNodes = Array.from({ length: n }, (_, i) => 'v' + i);
+  const adjInternal = {};
+  vNodes.forEach(v => { adjInternal[v] = new Set(); });
+  edgeList.forEach(([a, b]) => {
+    if (a[0] === 'v' && b[0] === 'v') { adjInternal[a].add(b); adjInternal[b].add(a); }
+  });
+
+  // Enumerate all connected subsets of internal vertices (n is small -- at
+  // most a handful of vertex instances even at 2 loops -- so 2^n is cheap).
+  for (let mask = 1; mask < (1 << n); mask++) {
+    const sArr = [];
+    for (let i = 0; i < n; i++) if (mask & (1 << i)) sArr.push('v' + i);
+    const sSet = new Set(sArr);
+
+    // internal connectivity check
+    const seen = new Set([sArr[0]]); const stack = [sArr[0]];
+    while (stack.length) {
+      const cur = stack.pop();
+      adjInternal[cur].forEach(nb => { if (sSet.has(nb) && !seen.has(nb)) { seen.add(nb); stack.push(nb); } });
+    }
+    if (seen.size !== sSet.size) continue;   // not internally connected -- skip
+
+    let boundary = 0, innerEdges = 0;
+    edgeList.forEach(([a, b]) => {
+      const aIn = sSet.has(a), bIn = sSet.has(b);
+      if (aIn && bIn) innerEdges++;
+      else if (aIn || bIn) boundary++;
+    });
+    if (boundary !== 1 && boundary !== 2) continue;
+
+    let innerSelf = 0;
+    sArr.forEach(v => { innerSelf += selfLoops[v] || 0; });
+    const V = sArr.length, E = innerEdges + innerSelf;
+    if (E - V + 1 > 0) return true;
+  }
+  return false;
+}
+
+function genPermutations(arr) {
+  if (arr.length <= 1) return [arr];
+  const out = [];
+  arr.forEach((v, i) => {
+    const rest = arr.slice(0, i).concat(arr.slice(i + 1));
+    genPermutations(rest).forEach(p => out.push([v, ...p]));
+  });
+  return out;
+}
+
+// Canonical signature for dedup: vertex instances of the same vertex-type are
+// interchangeable, so try every relabelling within each same-type group and
+// keep the lexicographically smallest serialized edge list.
+function canonicalSignature(pairs, slots, vertexInstances) {
+  const nodeOf = idx => slots[idx].isExt ? ['e', slots[idx].extIdx] : ['v', slots[idx].vIdx];
+  const rawEdges = pairs.map(([a, b]) => [nodeOf(a), nodeOf(b)]);
+  const byType = {};
+  vertexInstances.forEach((vi, idx) => { (byType[vi.vtIndex] = byType[vi.vtIndex] || []).push(idx); });
+  const typeKeys = Object.keys(byType).sort();
+  const groupPerms = typeKeys.map(t => genPermutations(byType[t]));
+
+  let best = null;
+  function cartesian(idx, chosen) {
+    if (idx === groupPerms.length) {
+      const relabel = {};
+      typeKeys.forEach((t, ti) => {
+        chosen[ti].forEach((origIdx, newLabel) => { relabel[origIdx] = t + '_' + newLabel; });
+      });
+      const edges = rawEdges.map(([a, b]) => {
+        const ra = a[0] === 'e' ? 'e_' + a[1] : relabel[a[1]];
+        const rb = b[0] === 'e' ? 'e_' + b[1] : relabel[b[1]];
+        return [ra, rb].sort().join('~');
+      }).sort();
+      const sig = edges.join('|');
+      if (best === null || sig < best) best = sig;
+      return;
+    }
+    for (const perm of groupPerms[idx]) { chosen.push(perm); cartesian(idx + 1, chosen); chosen.pop(); }
+  }
+  cartesian(0, []);
+  return best;
+}
+
+function generateForProcess(theory, extAssign, L, opts) {
+  const { maxVertices, perProcessCap, slotCap, budget } = opts;
+  const N = extAssign.length;
+  const combos = findVertexCountCombos(theory.vertexTypes, N, L, maxVertices);
+  const seen = new Set();
+  const out = [];
+  for (const counts of combos) {
+    if (budget.stop || out.length >= perProcessCap) break;
+    const vertexInstances = expandCombo(theory.vertexTypes, counts);
+    const slots = buildGenSlots(theory.lineByKey, extAssign, vertexInstances);
+    if (slots.length > slotCap) continue;
+    enumerateGenMatchings(slots, theory.lineByKey, vertexInstances, budget, pairs => {
+      if (!isConnectedDiagram(pairs, slots, vertexInstances.length)) return true;
+      if (hasBubbleInsertion(pairs, slots, vertexInstances)) return true;
+      const sig = canonicalSignature(pairs, slots, vertexInstances);
+      if (seen.has(sig)) return true;
+      seen.add(sig);
+      // pairs is enumerateGenMatchings' mutable backtracking accumulator --
+      // clone it, otherwise every stored diagram ends up pointing at the
+      // same array, which gets popped back to [] once the search backtracks.
+      out.push({ counts, pairs: pairs.slice(), slots, vertexInstances, extAssign, loops: L });
+      return out.length < perProcessCap;
+    });
+  }
+  return out;
+}
+
+const GEN_MAX_VERTICES = 8, GEN_PER_PROCESS_CAP = 20, GEN_GLOBAL_CAP = 60,
+      GEN_SLOT_CAP = 24, GEN_ITER_LIMIT = 150000, GEN_TIME_BUDGET_MS = 6000;
+
+function generateAllDiagrams(theory, L) {
+  const flavors = externalFlavors(theory.lineTypes);
+  const pairsWithRep = arr => {
+    const out = [];
+    for (let i = 0; i < arr.length; i++) for (let j = i; j < arr.length; j++) out.push([arr[i], arr[j]]);
+    return out;
+  };
+  const inPairs = pairsWithRep(flavors), outPairs = pairsWithRep(flavors);
+  const budget = { stop:false, iters:0, iterLimit:GEN_ITER_LIMIT, startTime:Date.now(),
+                    timeBudgetMs:GEN_TIME_BUDGET_MS, truncated:false };
+  const groups = [];
+  let globalCount = 0;
+  outer:
+  for (const inp of inPairs) {
+    for (const outp of outPairs) {
+      if (budget.stop || globalCount >= GEN_GLOBAL_CAP) break outer;
+      const extAssign = [
+        { lineKey: inp[0].lineKey,  isAnti: inp[0].isAnti,  dir: 'in'  },
+        { lineKey: inp[1].lineKey,  isAnti: inp[1].isAnti,  dir: 'in'  },
+        { lineKey: outp[0].lineKey, isAnti: outp[0].isAnti, dir: 'out' },
+        { lineKey: outp[1].lineKey, isAnti: outp[1].isAnti, dir: 'out' },
+      ];
+      const remaining = GEN_GLOBAL_CAP - globalCount;
+      const diagrams = generateForProcess(theory, extAssign, L, {
+        maxVertices: GEN_MAX_VERTICES, perProcessCap: Math.min(GEN_PER_PROCESS_CAP, remaining),
+        slotCap: GEN_SLOT_CAP, budget
+      });
+      if (diagrams.length) {
+        groups.push({
+          label: `${inp[0].label}${inp[1].label} → ${outp[0].label}${outp[1].label}`,
+          diagrams
+        });
+        globalCount += diagrams.length;
+      }
+    }
+  }
+  return { groups, truncated: budget.truncated || globalCount >= GEN_GLOBAL_CAP };
+}
+
+// ── Layout: abstract diagram -> {verts, edges} in the SAME shape the manual
+// editor already uses, so the rest of the app (draw(), buildAmplitude(), ...)
+// needs no changes at all to handle a generated diagram. ──────────────────────
+function layoutGenDiagram(diagram, theory) {
+  const { pairs, slots, vertexInstances } = diagram;
+  let nextLocalId = 1;
+  const extIds = [nextLocalId++, nextLocalId++, nextLocalId++, nextLocalId++]; // e0,e1 in; e2,e3 out
+  const vIds = vertexInstances.map(() => nextLocalId++);
+  const keyToId = { e0: extIds[0], e1: extIds[1], e2: extIds[2], e3: extIds[3] };
+  vIds.forEach((id, i) => { keyToId['v' + i] = id; });
+
+  // Vertex-level adjacency (excluding self-loop pairs) for a simple layered,
+  // left(in)->right(out) BFS layout consistent with the app's time convention.
+  // NOTE: a loop diagram's "extra" internal line (the one closing the cycle)
+  // still gets recorded here -- it just draws as a straight edge between two
+  // already-placed vertices (a real bulge/arc is only needed for the self-loop
+  // and parallel-edge cases handled below, via cx/cy).
+  const nodeOf = idx => slots[idx].isExt ? 'e' + slots[idx].extIdx : 'v' + slots[idx].vIdx;
+  const adj = {};
+  const addAdj = (a, b) => { (adj[a] = adj[a] || new Set()).add(b); (adj[b] = adj[b] || new Set()).add(a); };
+  pairs.forEach(([a, b]) => { const na = nodeOf(a), nb = nodeOf(b); if (na !== nb) addAdj(na, nb); });
+
+  const dIn = {};
+  const q = ['e0', 'e1']; dIn['e0'] = 0; dIn['e1'] = 0;
+  while (q.length) {
+    const cur = q.shift();
+    (adj[cur] || new Set()).forEach(nb => { if (!(nb in dIn)) { dIn[nb] = dIn[cur] + 1; q.push(nb); } });
+  }
+  const internalDepths = vIds.map((_, i) => dIn['v' + i]).filter(d => d !== undefined);
+  const maxDepth = Math.max(1, ...internalDepths);
+
+  const LEFT_X = -260, RIGHT_X = 260;
+  const verts = [];
+  const yOf = {};
+  const place = (id, x, y, label, style) => { verts.push({ id, x, y, label, style }); yOf[id] = y; };
+  place(extIds[0], LEFT_X,  -110, '', 'none');
+  place(extIds[1], LEFT_X,   110, '', 'none');
+  place(extIds[2], RIGHT_X, -110, '', 'none');
+  place(extIds[3], RIGHT_X,  110, '', 'none');
+
+  // Bucket internal vertices by BFS depth, then within each bucket order them
+  // by the average y of their already-placed (lower-depth) neighbours -- a
+  // barycenter pass, processed shallowest-first so each bucket can use the
+  // previous one's y positions. This is what keeps otherwise-arbitrary same-
+  // depth vertices from crossing each other more than the topology requires.
+  const byDepth = {};
+  vIds.forEach((id, i) => {
+    const d = dIn['v' + i] !== undefined ? dIn['v' + i] : Math.round(maxDepth / 2);
+    (byDepth[d] = byDepth[d] || []).push({ id, vIndex: i, vtIndex: vertexInstances[i].vtIndex });
+  });
+  const depthsAsc = Object.keys(byDepth).map(Number).sort((a, b) => a - b);
+  depthsAsc.forEach(d => {
+    const bucket = byDepth[d];
+    const x = LEFT_X + 160 + (RIGHT_X - LEFT_X - 320) * Math.min(1, d / maxDepth);
+    const spacing = 130;
+    const barycenter = v => {
+      const nbrs = Array.from(adj['v' + v.vIndex] || []);
+      const placedYs = nbrs.map(k => yOf[keyToId[k]]).filter(y => y !== undefined);
+      return placedYs.length ? placedYs.reduce((s, y) => s + y, 0) / placedYs.length : 0;
+    };
+    bucket.forEach(v => { v._bary = barycenter(v); });
+    bucket.sort((A, B) => A._bary - B._bary);
+    const y0 = -((bucket.length - 1) * spacing) / 2;
+    bucket.forEach((v, i) => place(v.id, x, y0 + i * spacing, 'genV' + v.vtIndex, 'dot'));
+  });
+
+  const edges = [];
+  let edgeId = nextLocalId;
+  pairs.forEach(([a, b]) => {
+    const sa = slots[a], sb = slots[b];
+    const extSlot = sa.isExt ? sa : (sb.isExt ? sb : null);
+    const lt = theory.lineByKey[sa.lineKey];
+    const type = lt.renderType;
+    if (extSlot) {
+      const vSlot = sa.isExt ? sb : sa;
+      const extId = extIds[extSlot.extIdx];
+      const vId = vIds[vSlot.vIdx];
+      const reversed = !!extSlot.isAnti;
+      if (extSlot.dir === 'in') edges.push({ id: edgeId++, from: extId, to: vId, type, label: '', reversed, cx: 0, cy: 0 });
+      else                      edges.push({ id: edgeId++, from: vId, to: extId, type, label: '', reversed, cx: 0, cy: 0 });
+    } else if (sa.vIdx === sb.vIdx) {
+      // self-loop: both legs belong to the same vertex instance
+      const vId = vIds[sa.vIdx];
+      edges.push({ id: edgeId++, from: vId, to: vId, type, label: '', reversed: false, cx: 0, cy: 0 });
+    } else {
+      // internal propagator between two distinct vertex instances
+      const va = vIds[sa.vIdx], vb = vIds[sb.vIdx];
+      let from = va, to = vb;
+      if (lt.kind === 'fermion') { from = sa.role === 'psib' ? va : vb; to = from === va ? vb : va; }
+      edges.push({ id: edgeId++, from, to, type, label: '', reversed: false, cx: 0, cy: 0 });
+    }
+  });
+
+  applyLoopAndParallelOffsets(edges, verts);
+  return { verts, edges };
+}
+
+// Self-loops and parallel edges (two-plus internal lines joining the SAME pair
+// of vertices -- the graph shape of a self-energy "bubble") both draw as
+// invisible/coincident lines at cx=cy=0 (drawSelfLoop bails out below radius
+// 5, and overlapping straight edges just paint on top of each other) unless
+// given a real bezier offset. This mirrors the offsets the manual editor
+// itself uses when a user draws a second edge between two already-connected
+// vertices (see parallelOffset()) or draws a self-loop (cx:0, cy:-50).
+function applyLoopAndParallelOffsets(edges, verts) {
+  const vertById2 = id => verts.find(v => v.id === id);
+
+  // Self-loops, grouped by vertex -- spread multiple loops on one vertex
+  // around it fan-wise instead of stacking them on top of each other.
+  const selfLoopsByVertex = {};
+  edges.forEach(e => { if (e.from === e.to) (selfLoopsByVertex[e.from] = selfLoopsByVertex[e.from] || []).push(e); });
+  Object.values(selfLoopsByVertex).forEach(loops => {
+    const R = 50;
+    loops.forEach((e, i) => {
+      const angle = -Math.PI / 2 + (i - (loops.length - 1) / 2) * (Math.PI / 3);
+      e.cx = R * Math.cos(angle);
+      e.cy = R * Math.sin(angle);
+    });
+  });
+
+  // Parallel edges between the same two distinct vertices (e.g. a 2-propagator
+  // bubble loop) -- bow them apart symmetrically along the perpendicular to
+  // the line joining the vertices, exactly like parallelOffset()'s SPREAD.
+  const groups = {};
+  edges.forEach(e => {
+    if (e.from === e.to) return;
+    const key = [e.from, e.to].sort((a, b) => a - b).join('-');
+    (groups[key] = groups[key] || []).push(e);
+  });
+  const SPREAD = 45;
+  Object.values(groups).forEach(group => {
+    if (group.length < 2) return;
+    const va = vertById2(group[0].from), vb = vertById2(group[0].to);
+    if (!va || !vb) return;
+    const dx = vb.x - va.x, dy = vb.y - va.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy / len, py = dx / len;
+    const n = group.length;
+    group.forEach((e, i) => {
+      const offset = (i - (n - 1) / 2) * SPREAD;
+      e.cx = px * offset; e.cy = py * offset;
+    });
+  });
+}
+
+// Injects this theory's vertexType[s] used by `diagram` into feynmanRules.vertices
+// (as BSM entries, label 'genV<i>') so the existing vertexRuleMatch()/buildAmplitude()
+// pipeline picks them up unmodified once the diagram is loaded onto the canvas.
+function registerGenVertexRules(theory, diagram) {
+  const usedTypes = new Set(diagram.vertexInstances.map(vi => vi.vtIndex));
+  usedTypes.forEach(vtIndex => {
+    const label = 'genV' + vtIndex;
+    if (feynmanRules.vertices.some(r => r.label === label)) return;
+    const vt = theory.vertexTypes[vtIndex];
+    const sig = {};
+    vt.legs.forEach(leg => { const rt = theory.lineByKey[leg.lineKey].renderType; sig[rt] = (sig[rt] || 0) + 1; });
+    feynmanRules.vertices.push({ label, cat: 'BSM', sig, text: vt.coupling, latex: vt.coupling });
+  });
+}
+
+function renderGenThumbnail(vertsEdges) {
+  const cv = document.createElement('canvas');
+  cv.width = 280; cv.height = 180;
+  const tctx = cv.getContext('2d');
+  // Temporarily redirect the module-level rendering globals at this offscreen
+  // canvas so the existing draw()/drawFermion/drawPhoton/... renderers can be
+  // reused completely unchanged, then restore real state.
+  const save = { canvas, ctx, W, H, zoom, panX, panY, verts, edges, selVert, selEdge, selVerts };
+  canvas = cv; ctx = tctx; W = cv.width; H = cv.height;
+  zoom = 0.62; panX = cv.width / 2; panY = cv.height / 2;
+  verts = vertsEdges.verts; edges = vertsEdges.edges;
+  selVert = null; selEdge = null; selVerts = new Set();
+  try { draw(); } finally {
+    canvas = save.canvas; ctx = save.ctx; W = save.W; H = save.H;
+    zoom = save.zoom; panX = save.panX; panY = save.panY;
+    verts = save.verts; edges = save.edges;
+    selVert = save.selVert; selEdge = save.selEdge; selVerts = save.selVerts;
+  }
+  return cv;
+}
+
+function loadGenDiagramIntoCanvas(theory, diagram) {
+  const vertsEdges = layoutGenDiagram(diagram, theory);
+  registerGenVertexRules(theory, diagram);
+  saveHistory();
+  verts = vertsEdges.verts;
+  edges = vertsEdges.edges;
+  selVert = null; selEdge = null; selVerts = new Set();
+  nextId = Math.max(0, ...verts.map(v => v.id), ...edges.map(e => e.id)) + 1;
+  document.getElementById('btn-mode-toggle').click();   // back to Draw mode (re-measures W/H via resize())
+  // layoutGenDiagram positions everything around world-origin (0,0) -- centre
+  // the view on it now that the canvas is visible again and W/H are current.
+  zoom = 1; panX = W / 2; panY = H / 2;
+  draw();
+}
+
+function renderGenGallery(result) {
+  const status  = document.getElementById('gen-status');
+  const gallery = document.getElementById('gen-gallery');
+  const out     = document.getElementById('gen-output');
+  out.style.display = 'block';
+  gallery.innerHTML = '';
+  const totalDiagrams = result.groups.reduce((s, g) => s + g.diagrams.length, 0);
+  status.textContent = result.groups.length
+    ? `${totalDiagrams} diagram(s) across ${result.groups.length} process(es)` + (result.truncated ? ' — search truncated, showing a partial set' : '')
+    : 'No diagrams found for this theory/loop order (check field declarations and that terms have 2+ fields for propagators, 3+ for vertices).';
+  result.groups.forEach(group => {
+    const gDiv = document.createElement('div');
+    gDiv.className = 'gen-group';
+    gDiv.innerHTML = `<div class="gen-group-hdr">${escH(group.label)} — ${group.diagrams.length} diagram(s)</div>`;
+    const grid = document.createElement('div');
+    grid.className = 'gen-grid';
+    group.diagrams.forEach(diagram => {
+      const item = document.createElement('div');
+      item.className = 'gen-item';
+      const cv = renderGenThumbnail(layoutGenDiagram(diagram, currentGenTheory));
+      item.appendChild(cv);
+      const badge = document.createElement('div');
+      badge.className = 'gen-badge';
+      badge.textContent = diagram.loops === 0 ? 'tree' : (diagram.loops + '-loop');
+      item.appendChild(badge);
+      item.addEventListener('click', () => loadGenDiagramIntoCanvas(currentGenTheory, diagram));
+      grid.appendChild(item);
+    });
+    gDiv.appendChild(grid);
+    gallery.appendChild(gDiv);
+  });
+}
+
+let currentGenTheory = null;
 
 function initLagPanel() {
   // Insert-symbol buttons
@@ -3892,6 +4584,37 @@ function initLagPanel() {
     const out=document.getElementById('lag-output');
     if (disp) disp.innerHTML='<div class="lag-rules-box">'+renderRules(result)+'</div>';
     if (out) out.style.display='block';
+  });
+
+  // Generate Diagrams button
+  document.getElementById('btn-gen-diagrams')?.addEventListener('click', () => {
+    const btn = document.getElementById('btn-gen-diagrams');
+    const status = document.getElementById('gen-status');
+    const out = document.getElementById('gen-output');
+    const lagTxt = document.getElementById('lag-input').value;
+    const result = deriveLag(lagTxt, lagFields);
+    if (result.error || !result.vertices || !result.vertices.length) {
+      out.style.display = 'block';
+      document.getElementById('gen-gallery').innerHTML = '';
+      status.textContent = result.error || 'No interaction vertices found (need a term with 3+ fields).';
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Generating…';
+    out.style.display = 'block';
+    document.getElementById('gen-gallery').innerHTML = '';
+    status.textContent = 'Searching…';
+    // Defer so the "Generating…" status actually paints before the
+    // (synchronous, budget-capped) search runs.
+    setTimeout(() => {
+      try {
+        const L = parseInt(document.getElementById('gen-loop-order').value, 10) || 0;
+        currentGenTheory = buildGenTheory(result);
+        const genResult = generateAllDiagrams(currentGenTheory, L);
+        renderGenGallery(genResult);
+      } finally {
+        btn.disabled = false; btn.textContent = '⚛ Generate Diagrams';
+      }
+    }, 10);
   });
 }
 
