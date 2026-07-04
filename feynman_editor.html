@@ -396,7 +396,7 @@
       <h3>Inspector &amp; Feynman rules (right panel)</h3>
       <ul>
         <li>Select a vertex/line to edit its <b>label, style, type, and arrow direction</b>; the matched Feynman rule is shown beneath.</li>
-        <li>A vertex <b>label</b> (e, q, Zf, lW, Hf, λ, 3g, …) picks the interaction. Gravity vertices: <b>hff</b> (graviton–fermion), <b>hφφ</b> (graviton–scalar), <b>hAA</b> (graviton–photon), <b>hhh</b> (triple graviton) — all from −(κ/2)h<sub>μν</sub>T<sup>μν</sup>. Leave external-leg stubs blank — they auto-label p₁…p₄.</li>
+        <li>A vertex <b>label</b> (e, q, Zf, lW, Hf, λ, 3g, …) picks the interaction. Gravity vertices: <b>hff</b> (graviton–fermion), <b>hφφ</b> (graviton–scalar), <b>hAA</b> (graviton–photon), <b>hhh</b> (triple graviton) — all from −(κ/2)h<sub>μν</sub>T<sup>μν</sup>. SMEFT baryon/lepton-number-violating vertices (BSM, dimension &gt;4, contact terms ∝1/Λ or 1/Λ²): <b>LLHH</b> (dim-5 Weinberg operator, ΔL=2), <b>duql</b>/<b>qque</b>/<b>qqql</b>/<b>duue</b> (dim-6, ΔB=ΔL=1 four-fermion operators). Leave external-leg stubs blank — they auto-label p₁…p₄.</li>
         <li><b>Feynman Rules ▾</b> — view/edit propagators, external legs, vertex rules, and the loop measure; <b>Save rules</b> or <b>Reset defaults</b>.</li>
       </ul>
       <div class="help-foot">Tip: arrows show fermion-number flow (not momentum). Momentum &amp; corner labels are positional: p₁=bottom-left, p₂=top-left (in), p₃=top-right, p₄=bottom-right (out).</div>
@@ -483,7 +483,8 @@
 
       <div class="insp-section">
         <div class="insp-section-lbl">Label</div>
-        <input type="text" id="vp-label" placeholder="e.g. e, q, Zf, lW">
+        <input type="text" id="vp-label" placeholder="e.g. e, q, Zf, lW" list="vp-label-list">
+        <datalist id="vp-label-list"></datalist>
       </div>
 
       <div class="insp-section">
@@ -724,8 +725,10 @@
           <option value="dirac">Free Dirac</option>
           <option value="yukawa">Yukawa (φψ̄ψ)</option>
           <option value="qed">QED</option>
+          <option value="sqed">Scalar QED (φ*Dφ)</option>
           <option value="higgs">Higgs potential</option>
           <option value="nlsm">σ-model (massless pion)</option>
+          <option value="smeft_bl">SMEFT B/L-violating (LLHH, duql, qque, qqql, duue)</option>
         </select>
       </div>
 
@@ -740,6 +743,7 @@
         <input type="text" id="lag-fname" placeholder="name (e.g. phi)">
         <select id="lag-ftype">
           <option value="scalar">scalar</option>
+          <option value="scalar_bar">antiscalar φ*</option>
           <option value="fermion">fermion  ψ</option>
           <option value="fermion_bar">antifermion  ψ̄</option>
           <option value="vector">vector  A_μ</option>
@@ -776,7 +780,10 @@
           <tr><td>φ⁴ vertex:</td><td><code>-(lam/4!)*phi^4</code>  → <b>−iλ</b></td></tr>
           <tr><td>φ³ vertex:</td><td><code>-(g/3!)*phi^3</code>  → <b>−ig</b></td></tr>
           <tr><td>QED vertex:</td><td><code>-e*psib*gam^mu*psi*A</code></td></tr>
+          <tr><td>Complex scalar:</td><td>declare <code>phi</code> (scalar) + <code>phis</code> (antiscalar φ*)</td></tr>
+          <tr><td>Scalar QED current:</td><td><code>i*e*A_mu*(phis*(d_mu phi) - phi*(d_mu phis))</code> → real momentum-space rule, not just a note</td></tr>
           <tr><td>Yukawa:</td><td><code>-g*phi*psib*psi</code>  → <b>−ig</b></td></tr>
+          <tr><td>4-fermion contact:</td><td><code>(C/Lam^2)*d*u*Q*L</code>  (SMEFT-style, see "SMEFT B/L-violating" example → feeds Generate Diagrams)</td></tr>
           <tr><td>Gamma matrix:</td><td><code>gam^mu</code>  →  γ^μ</td></tr>
           <tr><td>Fraction:</td><td><code>1/2</code>, <code>lam/4!</code>, <code>g/3!</code></td></tr>
           <tr><td>Sign:</td><td><code>-</code> before a term flips vertex sign</td></tr>
@@ -1110,6 +1117,91 @@ function builtinTemplates() {
         {fromIdx:0, toIdx:1, type:'graviton', label:'', reversed:false, cx:0, cy:0},
         {fromIdx:0, toIdx:2, type:'graviton', label:'', reversed:false, cx:0, cy:0},
         {fromIdx:3, toIdx:0, type:'graviton', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    // ── SMEFT baryon/lepton-number-violating contact vertices (BSM) ─────────
+    // All-incoming-momentum contact operators (see FR_DEFAULTS.vertices for
+    // the matching rules/lag reference) -- arrows drawn all pointing into the
+    // vertex since these don't conserve fermion-number flow through it the
+    // way an ordinary ψ̄Γψ current does.
+    {
+      name: 'Weinberg operator (LLHH)', cat: 'BSM',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'LLHH', style:'dot',  isCenter:true},
+        {idx:1, x:  0, y:-75, label:'',     style:'none', isCenter:false},
+        {idx:2, x: 75, y:  0, label:'',     style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',     style:'none', isCenter:false},
+        {idx:4, x:-75, y:  0, label:'',     style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:4, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:2, type:'scalar',  label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:0, toIdx:3, type:'scalar',  label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'B/L-violating (duql)', cat: 'BSM',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'duql', style:'dot',  isCenter:true},
+        {idx:1, x:  0, y:-75, label:'',     style:'none', isCenter:false},
+        {idx:2, x: 75, y:  0, label:'',     style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',     style:'none', isCenter:false},
+        {idx:4, x:-75, y:  0, label:'',     style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:2, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:4, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'B/L-violating (qque)', cat: 'BSM',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'qque', style:'dot',  isCenter:true},
+        {idx:1, x:  0, y:-75, label:'',     style:'none', isCenter:false},
+        {idx:2, x: 75, y:  0, label:'',     style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',     style:'none', isCenter:false},
+        {idx:4, x:-75, y:  0, label:'',     style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:2, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:4, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'B/L-violating (qqql)', cat: 'BSM',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'qqql', style:'dot',  isCenter:true},
+        {idx:1, x:  0, y:-75, label:'',     style:'none', isCenter:false},
+        {idx:2, x: 75, y:  0, label:'',     style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',     style:'none', isCenter:false},
+        {idx:4, x:-75, y:  0, label:'',     style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:2, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:4, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+      ]
+    },
+    {
+      name: 'B/L-violating (duue)', cat: 'BSM',
+      verts: [
+        {idx:0, x:  0, y:  0, label:'duue', style:'dot',  isCenter:true},
+        {idx:1, x:  0, y:-75, label:'',     style:'none', isCenter:false},
+        {idx:2, x: 75, y:  0, label:'',     style:'none', isCenter:false},
+        {idx:3, x:  0, y: 75, label:'',     style:'none', isCenter:false},
+        {idx:4, x:-75, y:  0, label:'',     style:'none', isCenter:false},
+      ],
+      edges: [
+        {fromIdx:1, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:2, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:3, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
+        {fromIdx:4, toIdx:0, type:'fermion', label:'', reversed:false, cx:0, cy:0},
       ]
     }
   ];
@@ -2291,6 +2383,7 @@ function updateProps() {
     const v = vertById(selVert);
     if (!v) return;
     show('vert-props');
+    populateVertexLabelList();
     document.getElementById('vp-label').value = v.label||'';
     document.getElementById('vp-style').value = v.style||'dot';
     document.getElementById('vp-type-lbl').textContent =
@@ -2564,6 +2657,45 @@ const FR_DEFAULTS = {
       text: '(iκ/2)·Sym[ momentum-dependent, ~100 terms ] (de Donder)',
       latex: '\\tfrac{i\\kappa}{2}\\,\\mathrm{Sym}\\big[\\,p\\,p\\,\\eta\\eta\\eta\\,\\big]\\ (\\text{de Donder; }\\sim\\!100\\text{ terms})',
       lag: '(2/κ²)√(−g)R at O(h³) → κ h(∂h)² + …', lagLatex: '\\tfrac{2}{\\kappa^2}\\sqrt{-g}\\,R\\big|_{O(h^3)} \\to \\kappa\\,h(\\partial h)^2+\\dots' },
+    // ── SMEFT: baryon/lepton-number-violating operators (BSM, non-renormalizable) ──
+    // These are effective (dimension >4) operators, not derived from a
+    // renormalizable Lagrangian the way the SM vertices above are — the
+    // vertex is the operator itself, suppressed by inverse powers of a UV
+    // cutoff Λ. `text` shows the leading (derivative-free) contact-term
+    // coefficient a diagram would actually use; `lag` gives the full
+    // operator with its color (ε_αβγ)/SU(2) (ε_jk) index contractions for
+    // reference, following Weinberg (1979) and the SMEFT Warsaw-basis
+    // classification (Grzadkowski, Iskrzyński, Misiak, Rosiek, arXiv:1008.4884,
+    // "baryon and lepton number violating operators"). This app doesn't track
+    // flavor/color/SU(2) indices on canvas fermion lines, so on the diagram
+    // these draw as plain contact (no-propagator) vertices between the
+    // stated external legs — treat the `lag` field as the physics reference,
+    // not something the canvas enforces.
+    { label: 'LLHH', cat: 'BSM', sig: {fermion:2, scalar:2},
+      text: '−iC/Λ',
+      latex: '-i\\frac{C}{\\Lambda}',
+      lag: '−(C/2Λ)(L^Tε C L)(H^Tε H) + h.c.   [dim-5 Weinberg operator; ΔL=2]',
+      lagLatex: '-\\tfrac{C}{2\\Lambda}(L^T\\varepsilon C L)(H^T\\varepsilon H) + \\text{h.c.} \\ \\ [\\dim{=}5\\text{ Weinberg operator};\\ \\Delta L{=}2]' },
+    { label: 'duql', cat: 'BSM', sig: {fermion:4},
+      text: '−iC/Λ²',
+      latex: '-i\\frac{C}{\\Lambda^2}',
+      lag: 'C·ε^{αβγ}(d_α^T C u_β)(Q_γ^{jT} C L^k)ε_{jk} / Λ²   [dim-6; ΔB=ΔL=1]',
+      lagLatex: '\\tfrac{C}{\\Lambda^2}\\varepsilon^{\\alpha\\beta\\gamma}(d_{\\alpha}^{T}Cu_{\\beta})(Q_{\\gamma}^{jT}CL^{k})\\varepsilon_{jk}\\ \\ [\\dim{=}6;\\ \\Delta B{=}\\Delta L{=}1]' },
+    { label: 'qque', cat: 'BSM', sig: {fermion:4},
+      text: '−iC/Λ²',
+      latex: '-i\\frac{C}{\\Lambda^2}',
+      lag: 'C·ε^{αβγ}(Q_α^{jT} C Q_β^k)ε_{jk}(u_γ^T C e) / Λ²   [dim-6; ΔB=ΔL=1]',
+      lagLatex: '\\tfrac{C}{\\Lambda^2}\\varepsilon^{\\alpha\\beta\\gamma}(Q_{\\alpha}^{jT}CQ_{\\beta}^{k})\\varepsilon_{jk}(u_{\\gamma}^{T}Ce)\\ \\ [\\dim{=}6;\\ \\Delta B{=}\\Delta L{=}1]' },
+    { label: 'qqql', cat: 'BSM', sig: {fermion:4},
+      text: '−iC/Λ²',
+      latex: '-i\\frac{C}{\\Lambda^2}',
+      lag: 'C·ε^{αβγ}ε_{jk}ε_{mn}(Q_α^{jT} C Q_β^k)(Q_γ^{mT} C L^n) / Λ²   [dim-6; ΔB=ΔL=1]',
+      lagLatex: '\\tfrac{C}{\\Lambda^2}\\varepsilon^{\\alpha\\beta\\gamma}\\varepsilon_{jk}\\varepsilon_{mn}(Q_{\\alpha}^{jT}CQ_{\\beta}^{k})(Q_{\\gamma}^{mT}CL^{n})\\ \\ [\\dim{=}6;\\ \\Delta B{=}\\Delta L{=}1]' },
+    { label: 'duue', cat: 'BSM', sig: {fermion:4},
+      text: '−iC/Λ²',
+      latex: '-i\\frac{C}{\\Lambda^2}',
+      lag: 'C·ε^{αβγ}(d_α^T C u_β)(u_γ^T C e) / Λ²   [dim-6; ΔB=ΔL=1]',
+      lagLatex: '\\tfrac{C}{\\Lambda^2}\\varepsilon^{\\alpha\\beta\\gamma}(d_{\\alpha}^{T}Cu_{\\beta})(u_{\\gamma}^{T}Ce)\\ \\ [\\dim{=}6;\\ \\Delta B{=}\\Delta L{=}1]' },
   ],
   measure: { text: '∫d{D}{l}/(2π){D}', latex: '\\int\\!\\frac{d^{{D}}{l}}{(2\\pi)^{{D}}}' },
   // Free (kinetic) Lagrangian per line type — the term that yields each propagator
@@ -2728,6 +2860,22 @@ function renderVertexRulesList() {
   };
   renderGroup('SM', 'Standard Model — built-in, permanent', true);
   renderGroup('BSM', 'Beyond Standard Model — yours to add/edit/delete', false);
+  populateVertexLabelList();
+}
+
+// Populate the <datalist> behind the vertex-inspector label field so every
+// known vertex label (built-in SM + BSM, including anything the user has
+// added/edited in the rules panel) is discoverable via the native browser
+// dropdown — the label field itself stays a free-text input since users can
+// still type a brand-new label to define a not-yet-existing rule.
+function populateVertexLabelList() {
+  const dl = document.getElementById('vp-label-list');
+  if (!dl) return;
+  dl.innerHTML = feynmanRules.vertices
+    .map(vr => vr.label)
+    .filter(Boolean)
+    .map(l => `<option value="${escHtml(l)}">`)
+    .join('');
 }
 
 function buildAmplitude() {
@@ -3509,13 +3657,24 @@ const EXAMPLES = {
               fields:[{name:'psi',type:'fermion'},{name:'psib',type:'fermion_bar'},{name:'phi',type:'scalar'}] },
   qed:    { lag:'psib*(i*dslash - m)*psi - (1/4)*F^2 - e*psib*gam^mu*psi*A',
               fields:[{name:'psi',type:'fermion'},{name:'psib',type:'fermion_bar'},{name:'A',type:'vector'}] },
+  sqed:   { lag:'(d phis)*(d phi) - m^2*phis*phi - (1/4)*F^2 + i*e*A_mu*(phis*(d_mu phi) - phi*(d_mu phis)) + e^2*A_mu*A_mu*phis*phi',
+              fields:[{name:'phi',type:'scalar'},{name:'phis',type:'scalar_bar'},{name:'A',type:'vector'}] },
   higgs:  { lag:'(d H)^2 - mu^2*H^2 - lam*H^4',
               fields:[{name:'H',type:'scalar'}] },
   nlsm:   { lag:'(f^2/2)*(d pi)^2 - (f^2*mpi^2/2)*pi^2',
               fields:[{name:'pi',type:'scalar'}] },
+  smeft_bl: { lag:'dqb*(i*dslash-md)*dq + ub*(i*dslash-mu)*u + Qb*(i*dslash-mQ)*Q + Lb*(i*dslash-mL)*L + eb*(i*dslash-me)*e '
+              + '+ (1/2)*(d H)^2 - (mH^2/2)*H^2 '
+              + '+ (Cw/Lam)*L*L*H*H + (C1/Lam^2)*dq*u*Q*L + (C2/Lam^2)*Q*Q*u*e + (C3/Lam^2)*Q*Q*Q*L + (C4/Lam^2)*dq*u*u*e',
+              fields:[{name:'dq',type:'fermion'},{name:'dqb',type:'fermion_bar'},
+                      {name:'u',type:'fermion'},{name:'ub',type:'fermion_bar'},
+                      {name:'Q',type:'fermion'},{name:'Qb',type:'fermion_bar'},
+                      {name:'L',type:'fermion'},{name:'Lb',type:'fermion_bar'},
+                      {name:'e',type:'fermion'},{name:'eb',type:'fermion_bar'},
+                      {name:'H',type:'scalar'}] },
 };
 
-const TYPE_LABELS = { scalar:'scalar',fermion:'ψ',fermion_bar:'ψ̄',vector:'A_μ',ghost:'c' };
+const TYPE_LABELS = { scalar:'scalar',scalar_bar:'φ*',fermion:'ψ',fermion_bar:'ψ̄',vector:'A_μ',ghost:'c' };
 
 let lagFields = [];
 
@@ -3580,8 +3739,12 @@ function countFields(body, fields) {
       work = work.slice(0,m.index)+'_'.repeat(m[0].length)+work.slice(m.index+m[0].length);
     }
 
-    // 3. Plain field with optional power: field^n (not part of longer identifier)
-    const pp = new RegExp(`(?<![a-zA-Z_])${esc}(?:\\s*\\^\\s*(\\d+))?(?![a-zA-Z_])`,'g');
+    // 3. Plain field with optional power: field^n (not part of longer identifier).
+    // Lookahead excludes a following letter/digit (which would make this a
+    // longer identifier, e.g. "phi" inside "phis") but NOT an underscore,
+    // since "A_mu" is a bare field immediately followed by a Lorentz-index
+    // subscript, not a longer name.
+    const pp = new RegExp(`(?<![a-zA-Z_])${esc}(?:\\s*\\^\\s*(\\d+))?(?![a-zA-Z0-9])`,'g');
     while ((m=pp.exec(work))!==null) {
       if (work[m.index]!=='_') res[f.name].count += m[1]?parseInt(m[1]):1;
     }
@@ -3609,7 +3772,7 @@ function extractCoeffStr(body, fieldCounts) {
     rem = rem
       .replace(new RegExp(`\\((?:d|∂)[_^\\s]*\\w*\\s*${esc}\\)(?:\\^\\d+)?`,'gi'),'')
       .replace(new RegExp(`dslash\\s*\\(?\\s*${esc}\\s*\\)?`,'gi'),'')
-      .replace(new RegExp(`(?<![a-zA-Z_])${esc}(?:\\^\\d+)?(?![a-zA-Z_])`,'g'),'');
+      .replace(new RegExp(`(?<![a-zA-Z_])${esc}(?:\\^\\d+)?(?![a-zA-Z0-9])`,'g'),'');
   }
   // Remove field-strength placeholders
   rem = rem.replace(/\bF(?:[_^]\w+|\^2|mn|2)?\b/gi,'');
@@ -3662,7 +3825,7 @@ function extractMass(body, fieldName) {
   const esc = fieldName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   let rem = body
     .replace(new RegExp(`\\((?:d|∂)[_^\\s]*\\w*\\s*${esc}\\)(?:\\^\\d+)?`,'gi'),'')
-    .replace(new RegExp(`(?<![a-zA-Z_])${esc}(?:\\^\\d+)?(?![a-zA-Z_])`,'g'),'')
+    .replace(new RegExp(`(?<![a-zA-Z_])${esc}(?:\\^\\d+)?(?![a-zA-Z0-9])`,'g'),'')
     .replace(/[*()\s]/g,'').trim();
   // Extract leading identifier (e.g. "m" from "m^2/2", "M" from "M", "mu" from "mu^2/2")
   const id = rem.match(/^([a-zA-Z_]\w*)/);
@@ -3733,6 +3896,185 @@ function vertexStr(sign, coeffParsed, gammas, fieldCounts) {
   return parts.join('·').replace('i·','i');
 }
 
+// ── Momentum-space derivative-vertex engine ────────────────────────────────────
+// For bosonic (non-fermion) interaction terms that contain a derivative
+// coupling — e.g. scalar QED's ieA^μ(φ*∂_μφ − φ∂_μφ*) — the generic vertexStr
+// path above can only flag "a momentum factor per leg"; it can't say WHICH
+// momentum or with what sign, because a "current"-type term like that one is
+// really a SUM of two monomials (the ∂ lands on a different field in each),
+// hidden inside one splitTerms() entry by the parentheses. This engine:
+//   1. expands that hidden sum-of-products into monomials,
+//   2. replaces each derivative occurrence with an all-incoming momentum
+//      factor (∂_μ → −i p_μ, standard Feynman-rule substitution),
+//   3. tracks every power of i (from ∂_μ→−ip_μ, from any literal "i" the
+//      user wrote, and from the overall rule = i×L_int prescription) as one
+//      combined phase, since multiplying them out by hand is where sign
+//      errors creep in,
+//   4. reassembles the resulting momentum polynomial.
+// All-incoming convention throughout (matches how FeynRules/FeynCalc-style
+// tools present raw vertex rules): a leg that's actually outgoing in a given
+// diagram gets its momentum sign flipped when the rule is used, same as any
+// textbook "all momenta flowing into the vertex" convention.
+//
+// Scope: only engaged when a vertex term has no fermion fields and no gamma
+// matrices (deriveLag only calls this then) — fermionic derivative couplings
+// need spinor/gamma ordering this engine doesn't attempt. Bails out (returns
+// null, caller falls back to the generic momNote) on anything that doesn't
+// reduce to one consistent set of legs with one consistent overall phase.
+
+function subDigits(n) { return String(n).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]||c).join(''); }
+
+const GREEK_IDX = {mu:'μ',nu:'ν',rho:'ρ',sigma:'σ',alpha:'α',beta:'β',lambda:'λ',kappa:'κ',tau:'τ'};
+
+// Does `s` consist of one balanced (...) group wrapping its entire span?
+function isFullyWrapped(s) {
+  if (s[0]!=='('||s[s.length-1]!==')') return false;
+  let depth=0;
+  for (let i=0;i<s.length;i++) {
+    if (s[i]==='(') depth++;
+    else if (s[i]===')') { depth--; if (depth===0 && i<s.length-1) return false; }
+  }
+  return true;
+}
+
+// Split a factor string on top-level '*' (respecting bracket depth)
+function splitFactorsTop(s) {
+  const out = []; let depth=0, cur='';
+  for (let i=0;i<s.length;i++) {
+    const c = s[i];
+    if ('([{'.includes(c)) depth++;
+    else if (')]}'.includes(c)) depth--;
+    if (depth===0 && c==='*') { out.push(cur); cur=''; }
+    else cur += c;
+  }
+  if (cur.trim()) out.push(cur);
+  return out.map(x=>x.trim()).filter(Boolean);
+}
+
+// Expand a term body into monomials: [{sign, factors:[atomText,...]}].
+// A parenthesized factor with an internal top-level +/- is a sum; expanding
+// it distributes the surrounding product across each summand (this is what
+// unpacks "A^mu*(phis*(d_mu phi) - phi*(d_mu phis))" into its two pieces).
+function expandMonomials(body) {
+  const factors = splitFactorsTop(body);
+  let monomials = [{sign:1, factors:[]}];
+  for (const raw of factors) {
+    const f = raw.trim();
+    if (isFullyWrapped(f)) {
+      const inner = f.slice(1,-1);
+      const subterms = splitTerms(inner);
+      if (subterms.length > 1) {
+        const next = [];
+        for (const m of monomials) {
+          for (const st of subterms) {
+            for (const sf of expandMonomials(st.body)) {
+              next.push({sign: m.sign*st.sign*sf.sign, factors:[...m.factors, ...sf.factors]});
+            }
+          }
+        }
+        monomials = next;
+        continue;
+      }
+    }
+    monomials = monomials.map(m=>({sign:m.sign, factors:[...m.factors, f]}));
+  }
+  return monomials;
+}
+
+// Classify one atomic factor against the declared fields: a derivative-
+// wrapped occurrence "(d_mu phi)"/"(∂ phi)", a bare occurrence "phi"/"A^mu",
+// or (if neither) a leftover coefficient/index token.
+function classifyAtom(atom, fields) {
+  const t = atom.trim();
+  for (const f of fields) {
+    const esc = f.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const dm = t.match(new RegExp(`^\\(\\s*(?:d|∂)([_^]?\\s*[a-zA-Z_0-9]*)?\\s*${esc}\\s*\\)$`,'i'));
+    if (dm) return {kind:'field', name:f.name, deriv:true, index:(dm[1]||'').replace(/^[_^]\s*/,'').trim()};
+    const pm = t.match(new RegExp(`^${esc}(?:[_^](\\w+))?$`,'i'));
+    if (pm) return {kind:'field', name:f.name, deriv:false, index:(pm[1]||'').trim()};
+  }
+  return {kind:'other', text:t};
+}
+
+// Attempt a real momentum-space derivation for one bosonic derivative-vertex
+// term. Returns null if the term isn't a clean case this engine handles.
+function deriveMomentumVertex(body, fields, termSign) {
+  const monomials = expandMonomials(body);
+  let legCounts = null;
+  const parsed = [];
+  for (const m of monomials) {
+    const legOccurrence = {};
+    let iPow = 0, signMul = 1;
+    const legFactors = [];
+    const coeffParts = [];
+    for (const atom of m.factors) {
+      const c = classifyAtom(atom, fields);
+      if (c.kind==='field') {
+        legOccurrence[c.name] = (legOccurrence[c.name]||0) + 1;
+        if (c.deriv) {
+          iPow += 1;           // the "i" in ∂_μ → −i p_μ
+          signMul *= -1;       // the "−" in ∂_μ → −i p_μ
+          legFactors.push({name:c.name, occurrence:legOccurrence[c.name], index:c.index});
+        }
+      } else if (/^i$/i.test(c.text)) {
+        iPow += 1;             // a literal "i" the user wrote is bookkeeping, not a symbol
+      } else if (c.text) {
+        coeffParts.push(c.text);
+      }
+    }
+    const counts = {...legOccurrence};
+    if (legCounts===null) legCounts = counts;
+    else {
+      const same = Object.keys(counts).length===Object.keys(legCounts).length
+        && Object.entries(counts).every(([k,v])=>legCounts[k]===v);
+      if (!same) return null; // monomials touch different legs -- not a clean current-type term
+    }
+    parsed.push({sign:m.sign*signMul, iPow, legFactors, coeff:coeffParts.join('*')||'1'});
+  }
+  if (!parsed.length || !legCounts || !Object.keys(legCounts).length) return null;
+  if (!parsed.every(p=>p.iPow===parsed[0].iPow)) return null;      // mixed derivative orders -- bail
+  if (!parsed.every(p=>p.coeff===parsed[0].coeff)) return null;    // inconsistent coupling per monomial -- bail
+  if (termSign<0) parsed.forEach(p=>p.sign*=-1);
+  return {legCounts, monomials:parsed, iPow:parsed[0].iPow, coeff:parsed[0].coeff};
+}
+
+// Render a deriveMomentumVertex() result into {rule, legend} display strings.
+function renderMomentumRule(mv) {
+  const phase = (mv.iPow + 1) % 4;               // +1 for the overall rule = i×L_int
+  const iSym = (phase % 2 === 1) ? 'i' : '';
+  const flip = (phase === 2 || phase === 3);      // fold the phase's real sign into each
+                                                   // monomial's own sign (avoids a leading
+                                                   // "−" doubling up with a monomial's "−")
+
+  const labelOf = {};
+  const legend = [];
+  let n = 0;
+  for (const name in mv.legCounts) {
+    for (let k=1;k<=mv.legCounts[name];k++) {
+      n++;
+      const lab = 'p'+subDigits(n);
+      labelOf[name+'#'+k] = lab;
+      legend.push(`${lab}=${name}`);
+    }
+  }
+
+  const parts = mv.monomials.map((m,idx)=>{
+    const labStr = m.legFactors.map(lf=>{
+      const lab = labelOf[lf.name+'#'+lf.occurrence];
+      const gk = GREEK_IDX[(lf.index||'').toLowerCase()] || lf.index || '';
+      return lab + (gk?('^'+gk):'');
+    }).join('·');
+    const effSign = flip ? -m.sign : m.sign;
+    const s = effSign<0 ? '−' : (idx===0?'':'+');
+    return s+labStr;
+  });
+
+  const coup = String(mv.coeff||'').replace(/lam(?:bda)?/gi,'λ').replace(/kap(?:pa)?/gi,'κ');
+  const coupStr = (coup && coup!=='1') ? coup : '';
+  const rule = `${iSym}${coupStr}(${parts.join('')})`;
+  return {rule, legend: legend.join(', ') + ' — all momenta incoming'};
+}
+
 // ── Main derivation ───────────────────────────────────────────────────────────
 
 function deriveLag(lagText, fields) {
@@ -3744,7 +4086,7 @@ function deriveLag(lagText, fields) {
   // Per-field propagator data
   const propMap = {};
   for (const f of fields) {
-    if (f.type!=='fermion'&&f.type!=='fermion_bar')
+    if (f.type!=='fermion'&&f.type!=='fermion_bar'&&f.type!=='scalar_bar')
       propMap[f.name] = {type:f.type, field:f, kinetic:false, hasMass:false, massSymbol:'m'};
   }
   // Pair fermions: match ψ̄ to ψ by name proximity
@@ -3759,6 +4101,20 @@ function deriveLag(lagText, fields) {
       const key = fb.name+'/'+fp.name;
       fermPairs.push({psi:fp, psib:fb, key});
       propMap[key] = {type:'fermion', psi:fp, psib:fb, kinetic:false, hasMass:false, massSymbol:'m'};
+    }
+  }
+  // Pair complex scalars: match φ* to φ by name proximity (mirrors fermion pairing)
+  const cscalars = fields.filter(f=>f.type==='scalar');
+  const cconj    = fields.filter(f=>f.type==='scalar_bar');
+  const scalarPairs = [];
+  for (const fb of cconj) {
+    const fp = cscalars.find(f=>
+      fb.name===f.name+'s'||fb.name===f.name+'*'||fb.name===f.name+'star'||fb.name.replace(/s$|\*$|star$/i,'')===f.name
+    ) || cscalars[0];
+    if (fp && !scalarPairs.some(p=>p.phi===fp&&p.phis===fb)) {
+      const key = fb.name+'/'+fp.name;
+      scalarPairs.push({phi:fp, phis:fb, key});
+      propMap[key] = {type:'scalar', phi:fp, phis:fb, kinetic:false, hasMass:false, massSymbol:'m'};
     }
   }
 
@@ -3800,6 +4156,7 @@ function deriveLag(lagText, fields) {
         const names = active.map(([n])=>n);
         const fTypes = names.map(n=>fields.find(f=>f.name===n)?.type);
         const isFermPair = fTypes.includes('fermion')&&fTypes.includes('fermion_bar');
+        const isScalarPair = fTypes.includes('scalar')&&fTypes.includes('scalar_bar');
         if (isFermPair) {
           const pair = fermPairs.find(p=>names.includes(p.psi.name)&&names.includes(p.psib.name));
           if (pair) {
@@ -3816,10 +4173,38 @@ function deriveLag(lagText, fields) {
               let rem = body;
               for (const [n] of active) {
                 const esc=n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-                rem=rem.replace(new RegExp(`(?<![a-zA-Z_])${esc}(?![a-zA-Z_])`,'g'),'');
+                rem=rem.replace(new RegExp(`(?<![a-zA-Z_])${esc}(?![a-zA-Z0-9])`,'g'),'');
               }
               rem=rem.replace(/[*()\si]/g,'').replace(/[-−]/g,'').trim();
               pd.massSymbol = rem||'m';
+            }
+          }
+        } else if (isScalarPair) {
+          const pair = scalarPairs.find(p=>names.includes(p.phi.name)&&names.includes(p.phis.name));
+          if (pair) {
+            const pd = propMap[pair.key];
+            const isKin = active.some(([,v])=>v.kinetic);
+            if (isKin) {
+              pd.kinetic = true;
+            } else {
+              pd.hasMass=true;
+              // Complex-scalar mass terms are conventionally written already
+              // squared (m^2*phis*phi, matching the real-scalar (m^2/2)*phi^2
+              // convention) -- strip the fields, then take the leading bare
+              // identifier the same way extractMass() does for real scalars,
+              // so propText's own "²" isn't applied on top of an already-
+              // squared symbol.
+              let rem = body;
+              for (const [n] of active) {
+                const esc=n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+                rem=rem.replace(new RegExp(`(?<![a-zA-Z_])${esc}(?![a-zA-Z0-9])`,'g'),'');
+              }
+              rem=rem.replace(/[*()\s]/g,'').trim();
+              const id = rem.match(/^([a-zA-Z_]\w*)/);
+              const sym = id ? id[1] : 'm';
+              const norm = {mu:'μ',nu:'ν',rho:'ρ',sigma:'σ',tau:'τ',alpha:'α',beta:'β',
+                            pi:'π',eta:'η',xi:'ξ',omega:'ω',phi:'φ',chi:'χ',kap:'κ',lam:'λ'};
+              pd.massSymbol = norm[sym.toLowerCase()] || sym;
             }
           }
         } else {
@@ -3839,7 +4224,37 @@ function deriveLag(lagText, fields) {
       .map(([n,v])=>({name:n,count:v.count,kinetic:v.kinetic,ftype:fields.find(f=>f.name===n)?.type}));
     const cStr = extractCoeffStr(body, fc);
     const gammas = extractGammas(body);
-    vertices.push({sign, fields:activeFields, total, coeff:parseCoeff(cStr), gammas, raw:body});
+
+    // Bosonic derivative vertex (no fermions/gammas, at least one ∂ on a
+    // field): try the real momentum-space derivation instead of just noting
+    // that a momentum factor exists. Falls back to the generic path below
+    // (momentumRule stays null) if the term isn't a clean single-phase case.
+    //
+    // countFields()'s aggregate counts (fc/activeFields/total) count a field
+    // once per monomial it appears in -- correct for a plain product term,
+    // but a "current"-type term like φ*∂φ − φ∂φ* hides TWO monomials behind
+    // one splitTerms() entry, so the aggregate overcounts each field (once
+    // bare, once differentiated). deriveMomentumVertex's legCounts is the
+    // real per-leg count from expanding that hidden sum, so once it succeeds
+    // it replaces the displayed field list/point-count, not just the rule.
+    let momentumRule = null;
+    let displayFields = activeFields;
+    let displayTotal = total;
+    const noFermions = !activeFields.some(f=>f.ftype==='fermion'||f.ftype==='fermion_bar');
+    const hasDeriv = activeFields.some(f=>f.kinetic);
+    if (noFermions && hasDeriv && !gammas.length) {
+      momentumRule = deriveMomentumVertex(body, fields, sign);
+      if (momentumRule) {
+        displayFields = Object.entries(momentumRule.legCounts).map(([n,c])=>({
+          name:n, count:c,
+          kinetic: activeFields.find(f=>f.name===n)?.kinetic || false,
+          ftype: fields.find(f=>f.name===n)?.type,
+        }));
+        displayTotal = displayFields.reduce((s,f)=>s+f.count,0);
+      }
+    }
+
+    vertices.push({sign, fields:displayFields, total:displayTotal, coeff:parseCoeff(cStr), gammas, raw:body, momentumRule});
   }
 
   return {propMap, vertices, warnings, fields};
@@ -3857,7 +4272,7 @@ function renderRules(result) {
   if (props.length) {
     h+=`<div class="lag-sec-hdr">Propagators</div>`;
     for (const [key,pd] of props) {
-      const label = pd.psi ? `${pd.psib.name} / ${pd.psi.name}` : (pd.field?.name||key);
+      const label = pd.psi ? `${pd.psib.name} / ${pd.psi.name}` : pd.phi ? `${pd.phis.name} / ${pd.phi.name}` : (pd.field?.name||key);
       const massless = !pd.hasMass;
       const rule = propText(pd.type, pd.massSymbol, massless);
       const typeL = {scalar:'scalar',fermion:'fermion',vector:'vector (gauge)',ghost:'ghost'}[pd.type]||pd.type;
@@ -3875,11 +4290,18 @@ function renderRules(result) {
     h+=`<div class="lag-sec-hdr">Vertices</div>`;
     for (const v of vertices) {
       const fieldStr = v.fields.map(f=>`${escH(f.name)}${f.count>1?sup(f.count):''}`).join('·');
-      const fc = Object.fromEntries(v.fields.map(f=>[f.name,{count:f.count}]));
-      const rule = vertexStr(v.sign, v.coeff, v.gammas, fc);
       const nPt = v.total+'-point';
-      const hasKin = v.fields.some(f=>f.kinetic);
-      const momNote = hasKin ? '<div class="lag-rule-note">each ∂ → −ip^μ (one momentum factor per derivative leg)</div>' : '';
+      let rule, momNote;
+      if (v.momentumRule) {
+        const {rule:r, legend} = renderMomentumRule(v.momentumRule);
+        rule = r;
+        momNote = `<div class="lag-rule-note">${escH(legend)}</div>`;
+      } else {
+        const fc = Object.fromEntries(v.fields.map(f=>[f.name,{count:f.count}]));
+        rule = vertexStr(v.sign, v.coeff, v.gammas, fc);
+        const hasKin = v.fields.some(f=>f.kinetic);
+        momNote = hasKin ? '<div class="lag-rule-note">each ∂ → −ip^μ (one momentum factor per derivative leg)</div>' : '';
+      }
       h+=`<div class="lag-rule-row">
         <div class="lag-rule-lhs"><span class="fname">${fieldStr}</span><br>${nPt}</div>
         <div class="lag-rule-arrow">→</div>
@@ -4634,6 +5056,11 @@ function initLagPanel() {
 // Run after DOM is ready
 if (document.readyState==='loading') document.addEventListener('DOMContentLoaded',initLagPanel);
 else initLagPanel();
+
+// Test-only hook exposing the pure derivation functions for the headless
+// jsdom test harness (test/editor_harness.js) -- never referenced by the UI,
+// which only calls these through the closures above.
+window.__lagEngine = { deriveLag, renderRules, deriveMomentumVertex, renderMomentumRule, expandMonomials, classifyAtom, buildGenTheory, generateAllDiagrams, EXAMPLES };
 
 })(); // end Lagrangian engine IIFE
 </script>
