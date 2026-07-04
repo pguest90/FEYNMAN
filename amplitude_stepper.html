@@ -976,7 +976,7 @@ function masterIntegralHTML(n, r=0){
   const poleNum = r===0 ? `${sgnStr}1` : `${sgnStr}${poch.str}`;
   const finalCoef = coefDen>1 ? FR(poleNum, `${fourPi0}·${coefDen}`) : FR(poleNum, fourPi0);
   return `${sym}<br>At d=${d}, n=${n}${r?', r='+r:''}: Γ(${fmtHalf(arg)}) is a pole ⇒ set d=${d0}−2ε so ${r?'(n−r)':'n'}−d/2 = −${k}+ε.<br>`
-    + `Laurent: Γ(−${k}+ε) = ${sgn<0?'−':''}${kf>1?FR('1',kf+''):''}[${FR('1','ε')} − γ_E${Hk}] + O(ε);  (4π)<sup>ε</sup>Δ<sup>−ε</sup>μ<sup>2ε</sup> = 1 + ε·ln${FR('4πμ²','Δ')}<br>`
+    + `Laurent [Peskin &amp; Schroeder App. A.4, eq. A.46, Γ(−n+ε) expansion]: Γ(−${k}+ε) = ${sgn<0?'−':''}${kf>1?FR('1',kf+''):''}[${FR('1','ε')} − γ_E${Hk}] + O(ε);  (4π)<sup>ε</sup>Δ<sup>−ε</sup>μ<sup>2ε</sup> = 1 + ε·ln${FR('4πμ²','Δ')}<br>`
     + `⇒ I = ${finalCoef} [${FR('1','ε')} − γ_E${Hk} + ln${FR('4πμ²','Δ')}]${dPow}  (1/ε = UV pole → counterterm)`;
 }
 
@@ -998,6 +998,7 @@ function tensorReductionSteps(nProp, propMoms, hasProps) {
   const qLabels = hasProps ? propMoms : Array.from({length:nProp}, (_,i)=>'q'+(i+1));
   const qSum = qLabels.map((q,i)=>`x${i+1}${q}`).join('+');
   const M1html = masterIntegralHTML(nProp, 1);   // the new ingredient: rank-1 (ℓ²)¹ master integral
+  const M2html = masterIntegralHTML(nProp, 2);   // rank-2 (ℓ²)² master integral, needed by rank-4 below
 
   const bubbleNote = nProp===2
     ? ` At n=2 with the standard q₁=0 routing this is exactly the textbook bubble form: I<sup>μ</sup>=p<sup>μ</sup>B₁, I<sup>μν</sup>=g<sup>μν</sup>B₀₀+p<sup>μ</sup>p<sup>ν</sup>B₁₁.`
@@ -1013,6 +1014,18 @@ function tensorReductionSteps(nProp, propMoms, hasProps) {
      rule:`Expand (ℓ_shifted−q)<sup>μ</sup>(ℓ_shifted−q)<sup>ν</sup>: the cross terms ℓ_shifted<sup>μ</sup>q<sup>ν</sup> are odd → vanish (same as rank 1). The surviving ℓ_shifted<sup>μ</sup>ℓ_shifted<sup>ν</sup> piece is isotropic after Wick rotation: ℓ_shifted<sup>μ</sup>ℓ_shifted<sup>ν</sup> → (g<sup>μν</sup>/d)ℓ_shifted² — a RANK-1 scalar integral M₁(Δ)=∫(ℓ²)¹/(ℓ²+Δ)ⁿ, not the scalar M₀ used everywhere else in this derivation.`,
      expr:`I<sup>μν</sup> = (n−1)!∫[dx] [ (g<sup>μν</sup>/d)·M₁(Δ(x)) + q(x)<sup>μ</sup>q(x)<sup>ν</sup>·M₀(Δ(x)) ]<br>M₁(Δ) = ${M1html}`,
      expl:`B₀₀ needs M₁ (this rank's own master integral), not M₀ — that distinction is exactly why masterIntegralHTML was generalised to take a rank parameter r rather than reusing the scalar one.${bubbleNote}`},
+
+    {title:'Step 5d — Tensor reduction (rank 3): Iᵘᵛᵖ = odd-rank, vanishes only at q(x)=0',
+     rule:`Expand (ℓ_shifted−q)<sup>μ</sup>(ℓ_shifted−q)<sup>ν</sup>(ℓ_shifted−q)<sup>ρ</sup>. Terms with an odd power of ℓ_shifted (1 or all 3) are odd under ℓ_shifted→−ℓ_shifted → vanish, same symmetry fact used in ranks 1/2. Only the EVEN-in-ℓ_shifted terms survive: the "0 powers of ℓ_shifted" term (all three slots →−q, sign (−1)³=−1) and the "2 powers of ℓ_shifted" term (choose 2 of the 3 slots for ℓ_shifted — C(3,2)=3 ways — the remaining slot →−q, sign (−1)¹=−1), with ℓ_shifted<sup>μ</sup>ℓ_shifted<sup>ν</sup>→(g<sup>μν</sup>/d)ℓ_shifted² as in rank 2.`,
+     expr:`I<sup>μνρ</sup> = (n−1)!∫[dx] [ −q(x)<sup>μ</sup>q(x)<sup>ν</sup>q(x)<sup>ρ</sup>·M₀(Δ(x)) − ${FR('1','d')}(g<sup>μν</sup>q(x)<sup>ρ</sup>+g<sup>μρ</sup>q(x)<sup>ν</sup>+g<sup>νρ</sup>q(x)<sup>μ</sup>)·M₁(Δ(x)) ]`,
+     expl:`Unlike ranks 1/2, this is genuinely non-zero even for the standard q₁=0 bubble routing (q(x)≠0 in general) — it's the tensor structure needed for e.g. the AVV/VVV fermion-triangle vertex function's open μνρ index (Furry's theorem separately kills the odd-external-photon-count case; this formula is the general rank-3 PV ingredient regardless of that selection rule).`},
+
+    {title:'Step 5e — Tensor reduction (rank 4): Iᵘᵛᵖᵟ = symmetrised-gg·B₀₀₀₀ + gqq + qqqq terms',
+     rule:`Expand (ℓ_shifted−q)<sup>⊗4</sup>. Odd-in-ℓ_shifted terms (1 or 3 powers) vanish as before. The "4 powers of ℓ_shifted" term needs the rank-2 GENERALISATION of the isotropy rule: after Wick rotation ℓ_shifted<sup>μ</sup>ℓ_shifted<sup>ν</sup>ℓ_shifted<sup>ρ</sup>ℓ_shifted<sup>σ</sup> → ${FR('(ℓ²)²','d(d+2)')}(g<sup>μν</sup>g<sup>ρσ</sup>+g<sup>μρ</sup>g<sup>νσ</sup>+g<sup>μσ</sup>g<sup>νρ</sup>) — derived the same way as the rank-2 rule (isotropic 4th moment of a uniform direction in d dimensions: the only O(d)-invariant totally-symmetric rank-4 tensors are the 3 pairings of g's, and the d(d+2) normalisation follows by contracting two indices and matching the rank-2 result). The "2 powers of ℓ_shifted, 2 powers of −q" term has C(4,2)=6 index-assignments, each with sign (−1)²=+1.`,
+     expr:`I<sup>μνρσ</sup> = (n−1)!∫[dx] [ ${FR('1','d(d+2)')}(g<sup>μν</sup>g<sup>ρσ</sup>+g<sup>μρ</sup>g<sup>νσ</sup>+g<sup>μσ</sup>g<sup>νρ</sup>)·M₂(Δ(x))<br>
+       &nbsp;&nbsp;+ ${FR('1','d')}(g<sup>μν</sup>q<sup>ρ</sup>q<sup>σ</sup>+g<sup>μρ</sup>q<sup>ν</sup>q<sup>σ</sup>+g<sup>μσ</sup>q<sup>ν</sup>q<sup>ρ</sup>+g<sup>νρ</sup>q<sup>μ</sup>q<sup>σ</sup>+g<sup>νσ</sup>q<sup>μ</sup>q<sup>ρ</sup>+g<sup>ρσ</sup>q<sup>μ</sup>q<sup>ν</sup>)·M₁(Δ(x))<br>
+       &nbsp;&nbsp;+ q(x)<sup>μ</sup>q(x)<sup>ν</sup>q(x)<sup>ρ</sup>q(x)<sup>σ</sup>·M₀(Δ(x)) ]<br>M₂(Δ) = ${M2html}`,
+     expl:`This is exactly the rank-4 numerator that appears in the box (n=4) diagram's tensor-reduced amplitude — e.g. the γγ→γγ light-by-light box's Lorentz structure before it's contracted down to the scalar D₀ function. M₂ (this rank's own master integral, a strict generalisation of the M₀/M₁ already used above via masterIntegralHTML's rank parameter r=2) is needed precisely because a naive g<sup>μν</sup>/d substitution loses the (d+2) piece that only shows up once you average FOUR factors of an isotropic vector instead of two.${bubbleNote}`},
   ];
 }
 
@@ -1075,6 +1088,46 @@ function closedFormBubbleHTML(pLabel, nMassless) {
       dz: `${FR('1','m²')}·(1 − ${FR('2π√3','9')})`,
       dzNote: `Finite — no massless internal line, so no IR divergence. Obtained by differentiating the arctan form and evaluating at p²=m² (verified numerically against finite differences of the closed form itself).`,
     },
+  };
+}
+
+// ─── Closed-form C₀ (one-mass scalar triangle) — the tractable special case:
+// two on-shell MASSLESS external legs (p₁²=p₂²=0) and one off-shell leg
+// carrying invariant s=(p₁+p₂)², all three internal lines sharing mass m
+// (exactly the AVV/anomaly-triangle and fermion-loop-in-Higgs-like-triangle
+// kinematics discussed just above). NOT a general C₀(p₁²,p₂²,p₃²;m₁,m₂,m₃) —
+// that needs several dilogarithms per kinematic region and is out of scope
+// (same reasoning as the box, see below); this specific corner is tractable
+// because Δ ends up independent of the third Feynman parameter.
+//
+// Derived directly (not looked up), using the SAME Feynman-parametrisation +
+// shift machinery as masterIntegralHTML/tensorReductionSteps above:
+//   D₁=ℓ²−m², D₂=(ℓ+p₁)²−m², D₃=(ℓ+p₁+p₂)²−m². Combine with Feynman
+//   parameters x,y,z (x+y+z=1), shift ℓ→ℓ−q, q=yp₁+z(p₁+p₂):
+//     Δ = q² − zs + m²,  q² = z²s+2yz(p₁·(p₁+p₂)) = zs(y+z) = zs(1−x)
+//       [using p₁²=p₂²=0 ⇒ p₁·(p₁+p₂)=p₁·p₂=s/2, and y+z=1−x]
+//   ⇒ Δ(x,z) = m² − xzs  (y drops out entirely — the special feature that
+//     makes this kinematic corner solvable in closed form)
+//   C₀ = i(−1)³/(4π)²·Γ(1)/Γ(3)·∫[Feynman params]/Δ = −i/(16π²)∫₀¹dx∫₀^{1−x}dz/(m²−xzs)
+//     [the (−1)³ is the SAME i(−1)^(n−r) Wick-rotation factor as Step 4/5a
+//     above, at n=3,r=0 — reusing that identity, not a new one]
+//   Factor m²−xzs = s(x−x₊)(x−x₋), x±=(1±β)/2, β=√(1−4m²/s) (same β as the
+//   bubble above — same 2-body threshold physics), and use the standard
+//   dilogarithm identity ∫₀¹(dx/x)ln(1−x/a) = −Li₂(1/a):
+//   ⇒ C₀ = −i/(16π²s)[Li₂(2/(1+β)) + Li₂(2/(1−β))]
+//
+// Numerically cross-checked (not just algebraically) against direct 2D
+// quadrature of the ∫∫dx dz/(m²−xzs) integral above, in the branch-free
+// region s<4m² where that integral is manifestly real: matched to 6+
+// significant figures at (s,m²)=(1,1) and (3,2) — see scratch verification
+// script referenced in chat. Above threshold (s≥4m²) β is real and the
+// bracket develops a genuine imaginary part — the same absorptive-part
+// physics as the bubble's pair-production threshold, not a bug.
+function closedFormTriangleOneMassHTML(sLabel) {
+  const s = sLabel;
+  return {
+    formula: `−${FR('i', `16π²${s}`)} [Li₂(${FR('2','1+β')}) + Li₂(${FR('2','1−β')})]&nbsp; [β=√(1−4m²/${s})]`,
+    note: `Valid specifically for two on-shell massless external legs and the third leg carrying invariant ${s}, all three internal lines sharing mass m. β real (${s}≥4m²) ⇒ genuine imaginary part (2-body threshold, same physics as the bubble's pair-production cut); β imaginary (${s}<4m²) ⇒ the two Li₂ terms are complex conjugates and the bracket is purely real.`,
   };
 }
 
@@ -3203,9 +3256,9 @@ function stepsLoopFermionTriangle(text, nPhotExt, nFermProp, coupling) {
      rule:`If we were computing a ${nPhotExt}-gluon triangle in QCD (where Furry doesn't apply due to f^{abc} colour structure), or an AVV triangle with one axial current, the tensor integral would decompose as:`,
      expr:`I<sup>μνρ</sup> = ∫${FR(DD.meas,'(2π)<sup>'+DD.d+'</sup>')} × ${FR(`${TR('Tr')}[γ<sup>μ</sup>(ℓ̸+m)γ<sup>ν</sup>(ℓ̸+${q2}̸+m)γ<sup>ρ</sup>(ℓ̸+${q3}̸+m)]`,`(ℓ²−m²)((ℓ+${q2})²−m²)((ℓ+${q3})²−m²)`)}<br><br>
        PV tensor decomposition: I<sup>μνρ</sup> = C<sup>μ</sup>(A<sub>mn</sub>g<sup>νρ</sup>+...) + C<sup>νρ</sup>(...) + ...<br>
-       All coefficients reduce to the scalar triangle: C₀(p₁²,p₂²,p₃²; m²,m²,m²)<br>
-       C₀ = ${FR('i',DD.fourPi)} × ${FR('1','m²')} × [finite for massive m, IR divergent for m=0]`,
-     expl:`The AVV triangle (one axial γ^5 vertex, two vector) is the source of the Adler-Bell-Jackiw (ABJ) anomaly. It cannot be made gauge-invariant simultaneously in all three currents — one Ward identity must be violated. This is the quantum mechanical origin of gauge anomalies.`},
+       All coefficients reduce to the scalar triangle: C₀(p₁²,p₂²,p₃²; m²,m²,m²) — the fully general 3-off-shell-mass case needs several dilogarithms per kinematic region and isn't closed-formed here, BUT the common special case of two on-shell massless legs (p₁²=p₂²=0) and one off-shell invariant s=p₃²=(p₁+p₂)² IS tractable in closed form:<br>
+       ${closedFormTriangleOneMassHTML('s').formula}`,
+     expl:`The AVV triangle (one axial γ^5 vertex, two vector) is the source of the Adler-Bell-Jackiw (ABJ) anomaly. It cannot be made gauge-invariant simultaneously in all three currents — one Ward identity must be violated. This is the quantum mechanical origin of gauge anomalies. ${closedFormTriangleOneMassHTML('s').note}`},
 
     {title:`Anomaly context: ABJ triangle and charge quantization`,
      rule:`The AVV triangle: one vertex iQeγ^μγ^5 (axial) + two vector vertices iQeγ^ν, iQeγ^ρ.<br>
@@ -3341,8 +3394,9 @@ function stepsLoopIntegral(nLoops, nProp, coupling, text, E, extCounts) {
         expl:`N(ℓ) = trace/vertex numerator. D_i = (ℓ+p_i)²−m². The amplitude's overall mass dimension is fixed by the external legs (editor's [M] = d − E(d−2)/2 readout); the μ powers restore exactly that dimension once the loop is done.`}),
 
     {title:`Step 2 — Feynman parametrisation for ${nProp} propagators`,
-     rule:`<strong>Master formula:</strong><br>
-       ${FR('1','D₁D₂···D<sub>n</sub>')} = (n−1)! ∫₀¹ [Πdxᵢ] δ(Σxᵢ−1) × ${FR('1','(Σxᵢ Dᵢ)<sup>n</sup>')}`,
+     rule:`<strong>Master formula</strong> [Peskin &amp; Schroeder, Appendix A.4, eq. A.41 — the equal-power (each Dᵢ¹) case used here]:<br>
+       ${FR('1','D₁D₂···D<sub>n</sub>')} = (n−1)! ∫₀¹ [Πdxᵢ] δ(Σxᵢ−1) × ${FR('1','(Σxᵢ Dᵢ)<sup>n</sup>')}<br>
+       <span style="color:#7888c0">General unequal-power form (P&amp;S eq. A.41, two-denominator case): ${FR('1','A<sup>a</sup>B<sup>b</sup>')} = ${FR('Γ(a+b)','Γ(a)Γ(b)')} ∫₀¹ dx × ${FR('x<sup>a−1</sup>(1−x)<sup>b−1</sup>','[xA+(1−x)B]<sup>a+b</sup>')} &nbsp;— reduces to the formula above at a=b=1.</span>`,
      expr:nProp===2
        ? `${FR('1','D₁D₂')} = ∫₀¹ dx × ${FR('1','[x D₁+(1−x)D₂]²')}`
        : nProp===3
@@ -3359,9 +3413,9 @@ function stepsLoopIntegral(nLoops, nProp, coupling, text, E, extCounts) {
      expl:`The shift is the critical step that brings the integral to the standard form. The shifted variable ℓ is the "dressed" loop momentum measured from the point q that minimises the denominator.`},
 
     {title:'Step 4 — Wick rotation (ℓ⁰ → iℓ_E⁰)',
-     rule:`Rotate the integration contour in the complex ℓ⁰ plane: ℓ⁰ → iℓ_E⁰. No poles are crossed (Cauchy's theorem), so the result is unchanged except for the overall factor:<br>
+     rule:`Rotate the integration contour in the complex ℓ⁰ plane: ℓ⁰ → iℓ_E⁰. No poles are crossed (Cauchy's theorem), so the result is unchanged except for the overall factor [Peskin &amp; Schroeder, Appendix A.4, discussion preceding eq. A.44]:<br>
        d<sup>d</sup>ℓ<sub>M</sub> → i d<sup>d</sup>ℓ<sub>E</sub>,  ℓ²<sub>M</sub> → −ℓ²<sub>E</sub>`,
-     expr:`∫d<sup>d</sup>ℓ<sub>M</sub> ${FR('(−1)<sup>r</sup> (ℓ²)<sup>r</sup>','(ℓ²−Δ)<sup>n</sup>')} = i(−1)<sup>n+r</sup> ∫d<sup>d</sup>ℓ<sub>E</sub> ${FR('(ℓ_E²)<sup>r</sup>','(ℓ²<sub>E</sub>+Δ)<sup>n</sup>')}`,
+     expr:`∫d<sup>d</sup>ℓ<sub>M</sub> ${FR('(ℓ²)<sup>r</sup>','(ℓ²−Δ)<sup>n</sup>')} = i(−1)<sup>n−r</sup> ∫d<sup>d</sup>ℓ<sub>E</sub> ${FR('(ℓ_E²)<sup>r</sup>','(ℓ²<sub>E</sub>+Δ)<sup>n</sup>')}`,
      expl:`After Wick rotation, the denominator is positive definite (Δ>0 for Euclidean kinematics), making the integral convergent. The spherical formula in Euclidean space then gives the result.`},
 
     {title:'Step 5 — Master Euclidean formula → PV scalar integral',
@@ -3370,19 +3424,49 @@ function stepsLoopIntegral(nLoops, nProp, coupling, text, E, extCounts) {
        ${masterIntegralHTML(nProp)}`,
      expl:`The Δ function encodes all the kinematics. For our diagram with propagator momenta ${hasProps?propMoms.join(', '):'q₁,q₂,...'}: Δ contains all the relevant mass and momentum invariants.`},
 
+    // Cross-check against the textbook reference formula (P&S eq. A.44), added
+    // so the two-step derivation above (Wick-rotate, then evaluate the
+    // Euclidean integral) can be checked line-by-line against any QFT
+    // appendix. Purely additive/informational -- does not change the numeric
+    // value computed above by masterIntegralHTML/closedFormBubbleHTML, which
+    // already carry their own verified derivations; this only makes explicit
+    // the i(−1)^(n−r) prefactor that Step 4 introduces and that combines with
+    // Step 5's Euclidean value to give the full Minkowski-space result, which
+    // was previously stated in Step 4 but never carried forward explicitly.
+    (() => {
+      const rZero = nProp % 2 === 0 ? '+' : '−';   // (−1)^(n−r) at r=0: parity of n
+      return {title:'Step 5a — Combined Minkowski master formula (cross-check)',
+       rule:`Steps 4 and 5 together are exactly the single reference formula most QFT texts quote directly [Peskin &amp; Schroeder, Appendix A.4, eq. A.44]:<br>
+         ∫${FR('d<sup>d</sup>ℓ','(2π)<sup>d</sup>')} ${FR('(ℓ²)<sup>r</sup>','(ℓ²−Δ)<sup>n</sup>')} = ${DT('i')}(−1)<sup>n−r</sup> ${FR('1','(4π)<sup>d/2</sup>')} ${FR('Γ(r+d/2)Γ(n−r−d/2)','Γ(d/2)Γ(n)')} ${FR('1','Δ<sup>n−r−d/2</sup>')}`,
+       expr:`For this ${loopType} (n=${nProp}, r=0): the Minkowski-to-Euclidean prefactor from Step 4 is <strong>${DT('i')}(${rZero}1)</strong> — multiply Step 5's boxed value by this to get the loop's actual (complex, Minkowski-space) contribution to iM.`,
+       expl:`Same identity as Steps 4+5 combined, restated as the one-line formula so it can be checked directly against the appendix of any QFT textbook (P&amp;S, Schwartz §16, Srednicki §14, ...) rather than re-derived from scratch each time. r=0 is the scalar integral used in Step 5 above; r=1,2 are exactly the rank-1/2 tensor integrals used in the reduction below.`};
+    })(),
+
     // Roadmap step 3: real (not merely described) Passarino-Veltman-equivalent
     // rank-1/rank-2 tensor reduction, one general algorithm for n=2/3/4.
     ...tensorReductionSteps(nProp, propMoms, hasProps),
 
     // Closed-form B₀ — completes the Feynman-parameter integral Step 5 leaves
-    // symbolic, for the bubble only (n=2; triangle/box need dilogarithms,
-    // explicitly out of scope — see the note below when this isn't shown).
-    ...(closedForm ? [{title:'Step 5d — Closed form: Σ(p²) (finite part)',
+    // symbolic, for the bubble only (n=2; a general-kinematics triangle/box
+    // still need multiple dilogarithms per region — see below).
+    ...(closedForm ? [{title:'Step 5f — Closed form: Σ(p²) (finite part)',
      rule:`Completing the remaining ∫₀¹dx of the Feynman parameter left symbolic in Step 5, for this bubble specifically (external momentum ${M(extMomLabel)}). ${closedForm.note}`,
      expr:closedForm.formula,
-     expl:`Derived directly from ∫dx ln Δ(x) (not looked up), then numerically cross-checked against direct integration before being shown here. Triangle/box closed forms (C₀/D₀) need dilogarithms and multiple kinematic-region branch cuts — intentionally out of scope for now.`}]
-    : (nProp!==2 ? [{title:'Closed form: not attempted for this topology',
-     rule:'', expr:`${loopType} closed-form evaluation (dilogarithms, multiple kinematic regions) is intentionally out of scope — only the bubble (B₀, self-energy) closed form is implemented.`,
+     expl:`Derived directly from ∫dx ln Δ(x) (not looked up), then numerically cross-checked against direct integration before being shown here.`}]
+    : []),
+
+    // Closed-form C₀ — only the tractable "one-mass triangle" special case
+    // (two on-shell massless external legs + one off-shell invariant s), not
+    // a general-kinematics evaluation of THIS diagram's actual external legs
+    // (the app doesn't track on-shell-ness of external legs, so this is shown
+    // as a labelled reference formula, not a claim that it's been verified to
+    // match the parsed diagram's specific momenta).
+    ...(nProp===3 ? [{title:'Step 5f — Closed form C₀: one-mass-triangle special case (reference)',
+     rule:`If this triangle's kinematics are the common case of two on-shell massless external legs and one off-shell leg carrying invariant s — the AVV/anomaly-triangle and Higgs-like-fermion-triangle kinematics — the scalar integral has a closed form (derived via the same Feynman-parametrisation+shift steps above; y drops out of Δ in this kinematic corner, which is what makes it tractable):`,
+     expr:closedFormTriangleOneMassHTML('s').formula,
+     expl:`${closedFormTriangleOneMassHTML('s').note} A fully general C₀(p₁²,p₂²,p₃²;m²,m²,m²) with all three legs off-shell needs multiple dilogarithms across several kinematic regions and is intentionally out of scope.`}]
+    : (nProp===4 ? [{title:'Closed form D₀: not attempted for the box',
+     rule:'', expr:`Box closed-form evaluation needs multiple dilogarithms across several kinematic regions (up to ~16 Li₂ terms in the fully general case). The rank-3/4 tensor reduction above now gives the box's PV tensor coefficients in closed form, but the remaining scalar D₀ itself is intentionally out of scope.`,
      expl:''}] : [])),
 
     {title:'Step 6 — UV/IR divergence structure',

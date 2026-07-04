@@ -1,0 +1,11 @@
+{
+  "name": "feynman-toolkit-tests",
+  "private": true,
+  "description": "Test-only tooling for amplitude_stepper.html / feynman_editor.html. The shipped app stays a single HTML file with no build step; this package.json exists purely to run headless regression tests via Node's built-in test runner + jsdom.",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  }
+}

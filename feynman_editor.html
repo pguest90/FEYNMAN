@@ -2894,11 +2894,23 @@ function buildAmplitude() {
     //   internal → routing orientation from/to
     const flowInto = (f, vid) => isExtEdge(f) ? extInto(f) : (f.to === vid ? 1 : -1);
 
-    const propVisited = new Set(), propQ = [];
-    const seed = vid => { if (!propVisited.has(vid)) { propVisited.add(vid); propQ.push(vid); } };
+    // Fixed-point worklist: a vertex can have MULTIPLE unresolved tree edges
+    // that only become solvable at different times, as different neighbours
+    // are resolved. `inQueue` only dedupes entries currently pending -- it is
+    // cleared on dequeue, so a vertex CAN be re-seeded and revisited later.
+    // (Previously this used a "seen once" set that permanently blocked
+    // re-queueing, so any vertex with >=2 unresolved tree edges that couldn't
+    // both resolve on its first visit was never revisited -- the unresolved
+    // edge(s) fell through to the "?" fallback in vecToMom forever. This is
+    // exactly what starved momentum routing on multi-vertex loop diagrams:
+    // tree(valence-3 vertices, needing more of them per diagram) topologies
+    // hit it far more than valence-4 ones, matching the observed failure rates.)
+    const inQueue = new Set(), propQ = [];
+    const seed = vid => { if (!inQueue.has(vid)) { inQueue.add(vid); propQ.push(vid); } };
     cVerts.forEach(v => seed(v.id));
     while (propQ.length) {
       const vid = propQ.shift();
+      inQueue.delete(vid);
       const inc = cEdges.filter(e => !isLoop(e) && (e.from === vid || e.to === vid));
       inc.forEach(e => {
         if (edgeCoeff[e.id] !== undefined || !inSpanTree.has(e.id)) return;
@@ -2912,6 +2924,7 @@ function buildAmplitude() {
         const signE = e.to === vid ? 1 : -1;
         edgeCoeff[e.id] = scaleV(sum, -1 / signE);
         seed(e.from === vid ? e.to : e.from);
+        seed(vid);   // vid itself may have other tree edges now resolvable too
       });
     }
 
