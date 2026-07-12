@@ -40,6 +40,19 @@ function loadEditor() {
     beforeParse(window) {
       const fakeCtx = makeFakeCtx();
       window.HTMLCanvasElement.prototype.getContext = () => fakeCtx;
+      // jsdom doesn't implement the Blob-download APIs (used by the PNG and
+      // LaTeX export buttons); harmless no-op stubs so those click handlers
+      // don't throw under test. Real browsers implement both natively.
+      window.URL.createObjectURL = () => 'blob:stub';
+      window.URL.revokeObjectURL = () => {};
+      // jsdom also doesn't implement navigator.clipboard (used by the "Copy
+      // to clipboard" buttons). Stub it so those click handlers don't throw,
+      // and record the last-written text so tests can assert on it.
+      window.__lastClipboardWrite = null;
+      Object.defineProperty(window.navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: text => { window.__lastClipboardWrite = text; return Promise.resolve(); } },
+      });
     },
   });
   return dom;

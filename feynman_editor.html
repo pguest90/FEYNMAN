@@ -322,6 +322,7 @@
   <h1>⬡ FEYNMAN EDITOR</h1>
   <div class="sep"></div>
   <button id="btn-export">Export PNG</button>
+  <button id="btn-export-latex" title="Export as LaTeX (tikz-feynman), auto-laid-out for a clean result regardless of how the canvas looks">Export LaTeX</button>
   <button id="btn-clear">Clear</button>
   <button id="btn-undo">Undo <span class="kbd">^Z</span></button>
   <div class="sep"></div>
@@ -400,6 +401,24 @@
         <li><b>Feynman Rules ▾</b> — view/edit propagators, external legs, vertex rules, and the loop measure; <b>Save rules</b> or <b>Reset defaults</b>.</li>
       </ul>
       <div class="help-foot">Tip: arrows show fermion-number flow (not momentum). Momentum &amp; corner labels are positional: p₁=bottom-left, p₂=top-left (in), p₃=top-right, p₄=bottom-right (out).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── LaTeX export modal ──────────────────────────────────────────────────── -->
+<div id="latex-modal" class="help-overlay" style="display:none">
+  <div class="help-box" style="width:min(720px,93vw)">
+    <div class="help-hd"><span>⬡ Export — LaTeX (tikz-feynman)</span><button id="latex-close" class="help-x">×</button></div>
+    <div class="help-body">
+      <p style="margin:2px 0 10px">Requires <code>\usepackage{tikz-feynman}</code> (a standard, actively-maintained package — install via <code>tlmgr install tikz-feynman</code> or your TeX distribution's package manager if it's missing). Layout is <strong>fully automatic</strong> (tikz-feynman lays out every vertex from the topology alone) — verified to give a cleaner result than reproducing the canvas's own coordinates, at the cost of not always grouping a vertex's legs left/right the same way the canvas does.</p>
+      <p style="margin:2px 0 10px;color:#e0a060"><strong>Compile with LuaLaTeX, not pdfLaTeX.</strong> The automatic layout is a LuaTeX-only feature — pdflatex doesn't error, it silently ignores it and produces a broken/undefined layout. On Overleaf: Menu (top-left) → Compiler → LuaLaTeX.</p>
+      <textarea id="latex-export-text" readonly spellcheck="false"
+        style="width:100%;height:280px;background:#07070f;color:#c8d0ee;border:1px solid #22223e;border-radius:4px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11.5px;padding:10px;resize:vertical;box-sizing:border-box"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="btn-copy-tikz" style="flex:1" title="Each diagram wrapped in \begin{figure}...\end{figure} with a placeholder \caption/\label — no package note, no \documentclass/\usepackage/\begin{document} wrapper — ready to paste straight into a paper's body">Copy to clipboard</button>
+        <button id="btn-download-tikz" style="flex:1" title="The full standalone document shown above, ready to compile on its own">⇩ Download .tex</button>
+      </div>
+      <div class="help-foot" style="margin-top:10px">Copy wraps each diagram in a <code>figure</code> environment with a placeholder caption/label, ready to paste into a paper's body (assumes you already have <code>\usepackage{tikz-feynman}</code> set up there); Download saves the full standalone document shown above, for compiling the diagram on its own. Each connected component on the canvas is exported as its own <code>\feynmandiagram</code> — multiple diagrams are separate interference terms that ADD, not one diagram to compile together.</div>
     </div>
   </div>
 </div>
@@ -2557,6 +2576,254 @@ document.getElementById('btn-export').addEventListener('click', () => {
   });
 });
 
+// ─── LaTeX (tikz-feynman) export ──────────────────────────────────────────────
+// Exports the canvas diagram(s) as tikz-feynman source. Deliberately does NOT
+// reuse the canvas x,y coordinates -- tikz-feynman's own automatic layout
+// engine (driven purely by topology: which vertices connect to which, and
+// which type of line) produces a clean, non-crossing result regardless of
+// how the user actually arranged things on the canvas, which is the point of
+// exporting for a paper/report rather than a screenshot.
+
+const TIKZ_LINE_STYLE = {
+  fermion: 'fermion', photon: 'photon', gluon: 'gluon',
+  scalar: 'scalar', ghost: 'ghost', graviton: 'graviton',
+};
+
+function tikzEdgeStyle(e) {
+  const base = TIKZ_LINE_STYLE[e.type] || 'plain';
+  // Only fermion/ghost lines carry a directional (particle vs antiparticle)
+  // meaning in this app (see edgeSpinorLabel) -- photon/gluon/scalar/graviton
+  // are undirected regardless of the `reversed` flag.
+  if ((e.type === 'fermion' || e.type === 'ghost') && e.reversed) return 'anti ' + base;
+  return base;
+}
+
+// "p₁" / "ℓ₂" (unicode subscript, as stored in v.momLabel by buildAmplitude)
+// -> "p_{1}" / "\ell_{2}" (LaTeX).
+function momLabelToLatex(lbl) {
+  if (!lbl) return null;
+  const subDigits = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+  const ascii = lbl.split('').map(c => subDigits[c] || c).join('');
+  const m = ascii.match(/^([a-zA-Zℓ]+)(\d+)$/);
+  if (!m) return escTex(ascii);
+  const sym = m[1] === 'ℓ' ? '\\ell' : m[1];
+  return `${sym}_{${m[2]}}`;
+}
+
+function escTex(s) {
+  return String(s || '').replace(/([#$%&_{}])/g, '\\$1');
+}
+
+// One connected component -> one \feynmandiagram block.
+function buildOneTikzDiagram(comp, idx, total) {
+  const { verts: cVerts, edges: cEdges } = comp;
+  const vbl = id => cVerts.find(v => v.id === id);
+  const deg = {};
+  cVerts.forEach(v => { deg[v.id] = 0; });
+  cEdges.forEach(e => { if (isLoop(e)) deg[e.from] += 2; else { deg[e.from]++; deg[e.to]++; } });
+  const isExtV = v => v && deg[v.id] <= 1;
+  const nodeName = id => 'n' + id;
+
+  // Layout: use tikz-feynman's OWN automatic graph-drawing algorithm for
+  // every vertex (no manual coordinates at all). This was chosen only after
+  // actually compiling and rendering three alternatives, not by inspection:
+  //   1. Raw canvas coordinates (uniformly or per-axis-normalised): always
+  //      faithful to the canvas, but a diagram whose interaction vertices
+  //      happen to sit close together/off-centre on the canvas (e.g. this
+  //      app's own default sample diagram) exports looking like a lopsided
+  //      "lightning bolt" -- an inherent property of that vertex placement,
+  //      not something rescaling can fix.
+  //   2. Anchoring only external legs, auto-placing interaction vertices:
+  //      badly tangled -- the algorithm doesn't reliably respect a few fixed
+  //      anchors when there's little else for it to move.
+  // Full automatic layout reliably produced a clean, symmetric, textbook-
+  // style diagram for the same test case (two-vertex QED: fermion line
+  // straight through both vertices, one photon per vertex perpendicular to
+  // it, which IS the standard way this diagram is drawn in textbooks) --
+  // the tradeoff is that it can group a vertex's two external legs as
+  // "one above, one below" rather than always "incoming left / outgoing
+  // right", since the algorithm has no concept of incoming vs outgoing.
+  // Multiple propagators between the SAME pair of vertices (a one-loop
+  // "bubble" correction, e.g. 2 scalar lines both connecting the same two
+  // 4-point vertices) all get drawn as the exact same straight segment
+  // otherwise -- tikz-feynman doesn't auto-separate parallel edges, so
+  // without an explicit bend they render stacked directly on top of each
+  // other (confirmed by actually compiling it). Group edges by their
+  // unordered vertex pair (excluding self-loops, handled separately below)
+  // and fan out any group of 2+ with alternating bend-left/bend-right arcs
+  // of increasing angle -- verified by compiling: this produces the
+  // standard lens/eye-shaped bubble-diagram loop.
+  const pairGroups = new Map();
+  cEdges.forEach(e => {
+    if (isLoop(e)) return;
+    const key = [e.from, e.to].sort((a, b) => a - b).join('-');
+    if (!pairGroups.has(key)) pairGroups.set(key, []);
+    pairGroups.get(key).push(e.id);
+  });
+  const bendOptFor = e => {
+    const key = [e.from, e.to].sort((a, b) => a - b).join('-');
+    const group = pairGroups.get(key);
+    if (group.length < 2) return null;
+    const i = group.indexOf(e.id);
+    const side = i % 2 === 0 ? 'left' : 'right';
+    const angle = 30 * (Math.floor(i / 2) + 1);
+    return `bend ${side}=${angle}`;
+  };
+
+  // tikz-feynman has no working single-edge self-loop: `v -- [gluon] v`
+  // silently draws nothing (confirmed by actually compiling it -- this is a
+  // known tikz-feynman limitation, not a mistake in the options passed).
+  // The documented workaround is an auxiliary vertex with two half-circle
+  // arcs back to the original vertex, which does render as a clean loop;
+  // each self-loop edge gets its own aux vertex (named from the edge id, so
+  // multiple loops on the same vertex don't collide).
+  const edgeLines = cEdges.flatMap(e => {
+    if (isLoop(e)) {
+      const v = nodeName(e.from), aux = `n${e.id}loop`;
+      return [
+        `  ${v} -- [${tikzEdgeStyle(e)}, half left] ${aux},`,
+        `  ${aux} -- [${tikzEdgeStyle(e)}, half left] ${v},`,
+      ];
+    }
+    const opts = [tikzEdgeStyle(e)];
+    const fromV = vbl(e.from), toV = vbl(e.to);
+    const stubV = isExtV(fromV) ? fromV : (isExtV(toV) ? toV : null);
+    const momTex = stubV && momLabelToLatex(stubV.momLabel);
+    if (momTex) opts.push(`edge label=\\(${momTex}\\)`);
+    const bendOpt = bendOptFor(e);
+    if (bendOpt) opts.push(bendOpt);
+    return [`  ${nodeName(e.from)} -- [${opts.join(', ')}] ${nodeName(e.to)},`];
+  });
+
+  // Mark true interaction vertices with a dot (matches this app's own canvas
+  // convention of drawing a filled dot at every non-external vertex); tag
+  // only the first line that mentions each node name so the output stays
+  // terse. Searches edgeLines directly (rather than indexing by cEdges)
+  // since self-loop edges expand into two lines each, so the two arrays no
+  // longer line up 1:1.
+  const intVerts = cVerts.filter(v => !isExtV(v));
+  const dotTagged = new Set();
+  intVerts.forEach(v => {
+    const nm = nodeName(v.id);
+    const i = edgeLines.findIndex(l => new RegExp(`\\b${nm}\\b`).test(l));
+    if (i === -1 || dotTagged.has(nm)) return;
+    dotTagged.add(nm);
+    edgeLines[i] = edgeLines[i].replace(new RegExp(`\\b${nm}\\b`), `${nm} [dot]`);
+  });
+
+  // Layout hint: orient the first two interaction vertices horizontally,
+  // matching this app's own "time flows left to right" convention --
+  // cosmetic only, the algorithm still places everything else itself.
+  const layoutOpt = intVerts.length >= 2
+    ? `horizontal=${nodeName(intVerts[0].id)} to ${nodeName(intVerts[1].id)}` : 'small';
+
+  // Documentation comments: which Feynman rule matched each interaction vertex.
+  const ruleComments = intVerts.map(v => {
+    const r = vertexRuleMatch(v);
+    return r ? `% ${nodeName(v.id)}: ${escTex(v.label || r.label)} — ${r.text}` : null;
+  }).filter(Boolean);
+
+  const hdr = total > 1 ? `% ── Diagram ${idx + 1} of ${total} (interference term — ADDS to the others) ──\n` : '';
+  const commentBlock = `${hdr}${ruleComments.map(c => c + '\n').join('')}`;
+  const diagramCmd = `\\feynmandiagram [${layoutOpt}] {\n${edgeLines.join('\n')}\n};`;
+
+  // `bare`: just the comments + \feynmandiagram, used inside the standalone
+  // test/preview document (full document, textarea, Download .tex).
+  // `figure`: the same thing wrapped in a \begin{figure}...\end{figure} with
+  // a placeholder \caption/\label, ready to paste straight into an existing
+  // paper's body -- this is what "Copy to clipboard" hands back, since
+  // that's the form actually useful there (see the LaTeX-embedding
+  // discussion this was added from: \feynmandiagram is self-contained, no
+  // \begin{tikzpicture} needed, but a real paper wants it inside a figure
+  // float with a caption/label, not bare in running text).
+  const label = total > 1 ? `fig:diagram${idx + 1}` : 'fig:diagram';
+  const caption = total > 1
+    ? `Feynman diagram ${idx + 1} of ${total} (interference term -- see the others in this set).`
+    : 'Feynman diagram.';
+  const figure = `${commentBlock}\\begin{figure}[h]\n  \\centering\n  ${diagramCmd.replace(/\n/g, '\n  ')}\n  \\caption{${caption}}\n  \\label{${label}}\n\\end{figure}\n`;
+
+  return { bare: `${commentBlock}${diagramCmd}\n`, figure };
+}
+
+function buildTikzFeynmanExport() {
+  if (!verts.length) return null;
+  buildAmplitude(); // populate v.momLabel via the same corner-based routing used for iM
+  const compSeen = new Set();
+  const components = [];
+  verts.forEach(v => {
+    if (compSeen.has(v.id)) return;
+    const comp = connectedComponent(v.id);
+    comp.verts.forEach(cv => compSeen.add(cv.id));
+    if (comp.edges.length) components.push(comp);
+  });
+  if (!components.length) return null;
+
+  const diagrams = components.map((c, i) => buildOneTikzDiagram(c, i, components.length));
+  const diagramsOnly = diagrams.map(d => d.figure).join('\n');
+  const full = `% Requires: \\usepackage{tikz-feynman}  (tlmgr install tikz-feynman if missing)
+% Compile with LuaLaTeX, not pdfLaTeX -- the automatic layout below is a
+% LuaTeX-only feature; pdflatex won't error, it silently ignores it and
+% produces a broken/undefined layout. On Overleaf: Menu -> Compiler -> LuaLaTeX.
+% Exported from the FEYNMAN diagram editor. Layout is fully automatic
+% (tikz-feynman's own graph-drawing algorithm positions every vertex from the
+% topology alone) -- verified by actually compiling and comparing against
+% reproducing the canvas's raw coordinates, which looks visibly worse for any
+% diagram whose interaction vertices happen to sit close together/off-centre
+% on the canvas. The one tradeoff: the algorithm has no notion of "incoming"
+% vs "outgoing", so a vertex's two external legs may end up grouped as one
+% above + one below rather than strictly left/right -- which is also how
+% this exact topology is conventionally drawn in textbooks (fermion line
+% straight through the vertex, boson line perpendicular to it).
+
+\\documentclass[tikz,border=3mm]{standalone}
+\\usepackage{tikz-feynman}
+\\begin{document}
+
+${diagrams.map(d => d.bare).join('\n')}
+\\end{document}
+`;
+  return { full, diagramsOnly };
+}
+
+// Holds the diagram-only source (no package note, no documentclass/
+// \begin{document} wrapper) for whatever was last exported, so "Copy to
+// clipboard" can hand back just the diagram code -- the textarea/Download
+// button still show/produce the full standalone document, since that's
+// still useful for compile-testing (see tikz_feynman_test.tex).
+let lastTikzDiagramsOnly = '';
+
+document.getElementById('btn-export-latex').addEventListener('click', () => {
+  const result = buildTikzFeynmanExport();
+  const ta = document.getElementById('latex-export-text');
+  ta.value = result ? result.full : '% No diagram drawn yet.';
+  lastTikzDiagramsOnly = result ? result.diagramsOnly : '';
+  document.getElementById('latex-modal').style.display = 'flex';
+  if (result) { ta.focus(); ta.select(); }
+});
+document.getElementById('latex-close').addEventListener('click', () => {
+  document.getElementById('latex-modal').style.display = 'none';
+});
+document.getElementById('latex-modal').addEventListener('click', e => {
+  if (e.target.id === 'latex-modal') document.getElementById('latex-modal').style.display = 'none';
+});
+document.getElementById('btn-copy-tikz').addEventListener('click', () => {
+  const text = lastTikzDiagramsOnly || document.getElementById('latex-export-text').value;
+  const btn = document.getElementById('btn-copy-tikz');
+  const orig = btn.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  }).catch(() => { prompt('tikz-feynman source:', text); });
+});
+document.getElementById('btn-download-tikz').addEventListener('click', () => {
+  const text = document.getElementById('latex-export-text').value;
+  const blob = new Blob([text], {type: 'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'feynman_diagram.tex'; a.click();
+  URL.revokeObjectURL(url);
+});
+
 document.getElementById('chk-grid').addEventListener('change', draw);
 document.getElementById('chk-labels').addEventListener('change', draw);
 document.getElementById('chk-snap').addEventListener('change', draw);
@@ -3491,6 +3758,9 @@ document.getElementById('help-close').addEventListener('click', () => toggleHelp
 document.getElementById('help-modal').addEventListener('click', e => { if (e.target.id === 'help-modal') toggleHelp(false); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('help-modal').style.display !== 'none') toggleHelp(false);
+  if (e.key === 'Escape' && document.getElementById('latex-modal').style.display !== 'none') {
+    document.getElementById('latex-modal').style.display = 'none';
+  }
 });
 
 document.getElementById('btn-build-amp').addEventListener('click', buildAmplitude);
@@ -5063,7 +5333,7 @@ else initLagPanel();
 // Test-only hook exposing the pure derivation functions for the headless
 // jsdom test harness (test/editor_harness.js) -- never referenced by the UI,
 // which only calls these through the closures above.
-window.__lagEngine = { deriveLag, renderRules, deriveMomentumVertex, renderMomentumRule, expandMonomials, classifyAtom, buildGenTheory, generateAllDiagrams, EXAMPLES };
+window.__lagEngine = { deriveLag, renderRules, deriveMomentumVertex, renderMomentumRule, expandMonomials, classifyAtom, buildGenTheory, generateAllDiagrams, loadGenDiagramIntoCanvas, EXAMPLES };
 
 })(); // end Lagrangian engine IIFE
 </script>

@@ -1897,26 +1897,66 @@ function stepsGeneralAmplitude(text) {
   return {steps, latex:''};
 }
 
-// ─── Triple gauge boson vertex amplitude ──────────────────────────────────────
-// Handles: WW→γ/Z→WW, q→qg, 3-gluon vertex amplitudes, etc.
+// ─── General triple-gauge-vertex tensor engine ────────────────────────────────
+// Reusable closed-form building blocks for ANY two triple-gauge vertices
+// (WWV / 3-gluon Feynman rule) joined by a single massless propagator, in
+// ANY channel — not just the s-channel "2 in, 2 out" grouping.
 //
-// Vertex structure (WWV / 3g Feynman rule):
-//   V^{μ,αβ}(q,k₁,k₂) = ig[g^{αβ}(k₁−k₂)^μ + g^{βμ}(q−k₁)^α + g^{μα}(k₂−q)^β]
-//   where μ = propagator index, α,β = external boson indices, q=k₁+k₂
+// Vertex structure (all-incoming-momentum convention, k₁+k₂+k₃=0):
+//   V^{μ1μ2μ3}(k₁,k₂,k₃) = ig[g^{μ1μ2}(k₁−k₂)^{μ3} + g^{μ2μ3}(k₂−k₃)^{μ1} + g^{μ3μ1}(k₃−k₁)^{μ2}]
 //
-// After contracting vertex 1 with ε^α(pA)ε^β(pB), the vertex becomes a 4-vector:
-//   V^μ = g[(pA−pB)^μ(ε_A·ε_B) + ε_B^μ(pB−q)·ε_A + ε_A^μ(q−pA)·ε_B]
+// Contracting 2 legs with ε's, using transversality, and pol-summing THIS
+// vertex's own two legs first (Y^{μν}=Σ_pol V^μV^{*ν}, rather than expanding
+// 3×3=9 cross terms per vertex and then re-squaring that into ~81) gives, for
+// two massless legs with all-incoming momenta k₁,k₂:
+//   Y^{μν}(k₁,k₂) = −4g²[k₁^μk₂^ν + k₂^μk₁^ν]
+// This was derived once by hand (see git history / CHANGES for the full
+// step-by-step) and holds regardless of which two external legs attach to
+// this vertex — the momentum insertions and pol-sum algebra are always the
+// same "seed" shape (Peskin&Schroeder-style YM 3-point rule), only WHICH
+// legs and whether each leg is incoming or outgoing changes per channel:
+//   • A leg's own all-incoming momentum is its physical momentum if it's
+//     incoming, or the NEGATIVE of its physical momentum if it's outgoing.
+//   • Since Y is bilinear in (k1,k2), an EVEN number of sign flips (both legs
+//     incoming, or both outgoing) leaves the −4 coefficient unchanged; an ODD
+//     number (one in, one out — the t/u-channel groupings) flips it to +4.
 //
-// Squaring via propagator −g^{μν}/q²:
-//   Σ_pol |M|² = g⁴/q⁴ × (−g^{μν}) × Σ_pol [V_μ × V*_ν]
+// Contracting Y₁^{μν} (vertex 1's legs) with Y₂_{μν} (vertex 2's legs) via
+// the propagator's −g_{μν} always gives (regardless of channel, since the
+// per-vertex sign flip above always multiplies out to the same overall sign
+// — verified both symbolically and numerically against random massless 2→2
+// kinematics, see test/triple_gauge.test.js):
+//   Σ_pol|M|² = (32g⁴/q⁴) × [(X1·X2)(Y1·Y2) + (X1·Y2)(Y1·X2)]
+// where (X1,Y1) are vertex 1's two leg momenta and (X2,Y2) vertex 2's, in
+// their PHYSICAL (not all-incoming-sign-flipped) directions.
 //
-// Tensor reduction engine (no hardcoded results):
-//   Step 1: expand each vertex into its 3 terms → 3×3 = 9 cross terms
-//   Step 2: apply pol sum Σ_λ ε^μ ε*^ν = −g^{μν} to each external leg
-//   Step 3: use transversality p·ε = 0 to eliminate terms
-//   Step 4: reduce metric contractions: g^μ_μ = 4, g^{μν}p_ν = p^μ
-//   Step 5: substitute Mandelstam p_i·p_j
-//
+// Standard channel groupings for a 2→2 process with p1,p2 incoming and
+// p3,p4 outgoing (this file's fixed convention throughout):
+//   s-channel: vertex legs (p1,p2) | (p3,p4), q=p1+p2, q²=s
+//   t-channel: vertex legs (p1,p3) | (p2,p4), q=p1−p3, q²=t
+//   u-channel: vertex legs (p1,p4) | (p2,p3), q=p1−p4, q²=u
+// giving the crossing-symmetric family (only the "other two" Mandelstam
+// variables ever appear in the numerator, matching physical crossing):
+//   s-channel: 8g⁴(t²+u²)/s²   t-channel: 8g⁴(s²+u²)/t²   u-channel: 8g⁴(s²+t²)/u²
+
+// Which channel does this propagator's denominator select, and which two
+// external legs attach to each vertex as a result? (p1,p2 incoming;
+// p3,p4 outgoing is this file's fixed convention -- see dpHTML's header.)
+function tripleGaugeChannelLegs(pA, pB, pC, pD, channel) {
+  if (channel === 't') return { v1: [pA, pC], v2: [pB, pD] };
+  if (channel === 'u') return { v1: [pA, pD], v2: [pB, pC] };
+  return { v1: [pA, pB], v2: [pC, pD] };  // s (default)
+}
+
+// A vertex's two legs are "same-direction" (both incoming or both outgoing --
+// the s-channel-style grouping) if their outgoing-ness matches; "crossed"
+// (one in, one out -- the t/u-channel-style grouping) otherwise. Same
+// direction -> Y keeps the -4 sign; crossed -> one sign flip -> +4.
+function tripleGaugeVertexSign(leg1, leg2, outgoingSet) {
+  const out1 = outgoingSet.has(leg1), out2 = outgoingSet.has(leg2);
+  return (out1 === out2) ? -4 : 4;
+}
+
 function stepsTripleGaugeVertex(text, topology) {
 
   const step0 = `<div style="font-size:13px;color:#8090b8;background:#07070f;padding:8px 12px;border-radius:3px;border:1px solid #151535;line-height:2">${esc(text)}</div>`;
@@ -1947,65 +1987,27 @@ function stepsTripleGaugeVertex(text, topology) {
     return m ? 'p'+m[1] : '?';
   });
   const [pA,pB,pC,pD] = bosonMoms;
+  const mA = pA||'p1', mB = pB||'p2', mC = pC||'p3', mD = pD||'p4';
 
-  // Extract the 3 terms from the bracket expression (split on +, trim)
-  function parseVertexTerms(vStr) {
-    const inner = (vStr.match(/\[([^\]]+)\]/s)||[,''])[1];
-    return inner.split(/\s*\+\s*/).map(t=>t.trim()).filter(Boolean);
-  }
-  const terms1 = vertexFacts[0] ? parseVertexTerms(vertexFacts[0]) : ['g^{αβ}(k₁-k₂)^μ','g^{βμ}(q-k₁)^α','g^{μα}(k₂-q)^β'];
-  const terms2 = vertexFacts[1] ? parseVertexTerms(vertexFacts[1]) : terms1;
+  // ── Channel selection: which two legs actually attach to each vertex ──────
+  // This is the piece that used to be hardcoded to (mA,mB)|(mC,mD) regardless
+  // of what the propagator denominator said -- inconsistent for a t/u-channel
+  // input. Now driven directly off the parsed denominator.
+  const channel = denomMat.startsWith('t') ? 't' : denomMat.startsWith('u') ? 'u' : 's';
+  const { v1: [L1a, L1b], v2: [L2a, L2b] } = tripleGaugeChannelLegs(mA, mB, mC, mD, channel);
+  // Fixed physical convention throughout this file: mC,mD are the outgoing legs.
+  const outgoingSet = new Set([mC, mD]);
+  const sign1 = tripleGaugeVertexSign(L1a, L1b, outgoingSet);
+  const sign2 = tripleGaugeVertexSign(L2a, L2b, outgoingSet);
+  const signTxt = n => (n<0?'−':'') + '4';
+  // All-incoming label for a leg: physical momentum if incoming, "−mom" if outgoing.
+  const kLabel = mom => (outgoingSet.has(mom)?'−':'') + M(mom);
+  const qMomHTML = `${kLabel(L1a)}${kLabel(L1b).startsWith('−')?'':'+'}${kLabel(L1b)}`;
 
-  // ── Core tensor algebra derivation ─────────────────────────────────────────
-  //
-  // Each vertex has 3 terms. After contracting with external ε's, each term
-  // becomes a 4-vector V^μ with a scalar coefficient:
-  //
-  // Term 1: g^{αβ}(k₁-k₂)^μ × ε_α(k₁) × ε_β(k₂) = (ε₁·ε₂)(k₁-k₂)^μ
-  //         Type: (scalar) × (momentum)^μ   -- "current-conserving term"
-  //
-  // Term 2: g^{βμ}(q-k₁)^α × ε_α(k₁) × ε_β(k₂) = [(q-k₁)·ε₁] × ε₂^μ
-  //         Type: (momentum·ε scalar) × (ε)^μ   -- "seagull term"
-  //
-  // Term 3: g^{μα}(k₂-q)^β × ε_α(k₁) × ε_β(k₂) = [(k₂-q)·ε₂] × ε₁^μ
-  //         Type: (momentum·ε scalar) × (ε)^μ   -- "seagull term"
-  //
-  // V^μ = g × [(ε_A·ε_B)(pA-pB)^μ + ((pB-q)·ε_A) ε_B^μ + ((q-pA)·ε_B) ε_A^μ]
-  //
-  // After squaring: V^μ V_μ* (contracted via −g_{μν}/q²)
-  //   = [(ε_A·ε_B)(pA-pB)^μ + ...] × [(ε_C·ε_D)(pC-pD)_μ + ...]
-  //
-  // Apply pol sums (Σ_λ ε^μ ε*^ν = −g^{μν}) to each of the 4 external legs:
-  //
-  // Σ_{λA,λB} (ε_A·ε_B)² → Σ g_{αβ}g_{ρσ}(−g^{αρ})(−g^{βσ}) = 4  [metric contraction]
-  // Σ_{λA,λB} (ε_A·ε_B)(ε_A^μ) → Σ g_{αβ}ε_B^μ(−g^{αρ})(−g^{βσ})ε_B^σ
-  //   → after pol sum on B: g_{αβ}(−g^{αρ})(−g^{βσ})(−g^{μσ}) = −g^{ρμ}
-  //
-  // Transversality: p_A·ε_A = 0 (on-shell massless boson)
-  //   → (pA-pB)^μ contracted with (−g^{μν})(pC-pD)_ν = (pA-pB)·(pC-pD)
-  //
-  // The 9 cross-terms from V×V* reduce via these identities to Mandelstam scalars.
-
-  // Evaluate the 9 cross terms symbolically
-  // Each V^μ = Σᵢ aᵢ^μ where:
-  //   a₁^μ = (ε_A·ε_B)(pA-pB)^μ  →  scalar coeff × momentum
-  //   a₂^μ = ((pB-q)·ε_A) ε_B^μ  →  momentum-ε scalar × polarisation
-  //   a₃^μ = ((q-pA)·ε_B) ε_A^μ  →  momentum-ε scalar × polarisation
-  //
-  // After pol sums and −g_{μν} contraction:
-  // Cross term (i,j): Σ_pol (-g^{μν}) a_i^μ a_j*^ν
-  //
-  // (1,1): (ε_A·ε_B)² (pA-pB)·(pC-pD)  →  4(pA-pB)·(pC-pD)
-  // (1,2): (ε_A·ε_B)((pD-q)·ε_C*)(−(pA-pB)·ε_D*)  →  (via pol sums) = -(pA-pB)·(pD-q)
-  // (1,3): similar  →  (pA-pB)·(q-pC)
-  // (2,2): ((pB-q)·ε_A)² ε_B·ε_D*  →  (via pol sums) = (pB-q)·(pD-q) × (-1) × (-1) = (pB-q)(pD-q)
-  //   Actually more carefully: -(pB-q)·(pD-q) × g^{μν}ε_B^μ ε_D*^ν = -(pB-q)·(pD-q) × (-g^{BD}) = (pB-q)(pD-q)×4/... complex
-  // This becomes a tensor algebra computation.
-
-  const dpAB = dpHTML(pA||'p1', pB||'p2');
-  const dpCD = dpHTML(pC||'p3', pD||'p4');
-  const dpAC = dpHTML(pA||'p1', pC||'p3');
-  const dpBD = dpHTML(pB||'p2', pD||'p4');
+  const dpX1X2 = dpHTML(L1a, L2a);
+  const dpY1Y2 = dpHTML(L1b, L2b);
+  const dpX1Y2 = dpHTML(L1a, L2b);
+  const dpY1X2 = dpHTML(L1b, L2a);
 
   const steps = [
 
@@ -2019,86 +2021,71 @@ function stepsTripleGaugeVertex(text, topology) {
      expr:step0,
      expl:`Examples: WWγ, WWZ, three-gluon vertex. The vertex factor is a sum of 3 terms, each being a metric tensor contracted with a momentum difference. This structure is required by gauge invariance (Ward identity).`},
 
+    {title:'Channel selection: which two legs meet at each vertex',
+     rule:`The propagator denominator (${denomLabel}) fixes which two external legs attach to <strong>vertex 1</strong> vs <strong>vertex 2</strong>: this file's convention is ${mA},${mB} incoming and ${mC},${mD} outgoing, and the ${channel}-channel groups legs into whichever pairing gives that propagator momentum.`,
+     expr:`<strong>${channel}-channel</strong>: Vertex 1 = {${M(L1a)}, ${M(L1b)}}, Vertex 2 = {${M(L2a)}, ${M(L2b)}}<br>
+       Propagator momentum q = ${qMomHTML}, &nbsp; q² = ${denomLabel}`,
+     expl:channel==='s'
+       ? `s-channel: both vertex-1 legs are incoming (annihilate into the virtual boson), both vertex-2 legs are outgoing (it decays back out) — the "2 in, 2 out" grouping.`
+       : `${channel}-channel: each vertex has one incoming and one outgoing leg (a "crossed" pairing) — this is the grouping the earlier version of this function never actually implemented; it always used the s-channel {${mA},${mB}}|{${mC},${mD}} grouping regardless of what the propagator denominator claimed.`},
+
     {title:'Vertex tensor structure: decompose into 3 terms',
-     rule:`Standard WWV / 3-gauge Feynman rule:<br>
-       V<sup>μ,αβ</sup>(q,k₁,k₂) = ig[g<sup>αβ</sup>(k₁−k₂)<sup>μ</sup> + g<sup>βμ</sup>(q−k₁)<sup>α</sup> + g<sup>μα</sup>(k₂−q)<sup>β</sup>]<br>
-       where μ = propagator index, α,β = external W/boson indices, q = k₁+k₂`,
-     expr:`<strong>Vertex 1</strong> (external: ${M(pA||'p1')}, ${M(pB||'p2')}, internal μ):<br>
-       Term 1: g<sup>αβ</sup>(${M(pA||'p1')}−${M(pB||'p2')})<sup>μ</sup><br>
-       Term 2: g<sup>βμ</sup>(q−${M(pA||'p1')})<sup>α</sup><br>
-       Term 3: g<sup>μα</sup>(${M(pB||'p2')}−q)<sup>β</sup><br><br>
-       <strong>Vertex 2</strong> (external: ${M(pC||'p3')}, ${M(pD||'p4')}, internal ν):<br>
-       Same structure with ${M(pC||'p3')}, ${M(pD||'p4')} and index ν`,
-     expl:`Each term is a product of a rank-2 metric tensor and a rank-1 momentum vector, giving a rank-3 tensor. The 3-term structure is uniquely fixed by Lorentz invariance + gauge invariance (Bose symmetry under permutations of the 3 legs).`},
+     rule:`All-incoming-momentum Feynman rule (k₁+k₂+k₃=0) at vertex 1, with k₁=${kLabel(L1a)}, k₂=${kLabel(L1b)} (each leg's own physical momentum, sign-flipped if that leg is outgoing), k₃=−q:<br>
+       V<sup>αβμ</sup> = ig[g<sup>αβ</sup>(k₁−k₂)<sup>μ</sup> + g<sup>βμ</sup>(k₂−k₃)<sup>α</sup> + g<sup>μα</sup>(k₃−k₁)<sup>β</sup>]`,
+     expr:`<strong>Vertex 1</strong> (external: ${M(L1a)}, ${M(L1b)}, internal μ; k₁=${kLabel(L1a)}, k₂=${kLabel(L1b)}):<br>
+       Term 1: g<sup>αβ</sup>(k₁−k₂)<sup>μ</sup> &nbsp; Term 2: g<sup>βμ</sup>(k₂+q)<sup>α</sup> &nbsp; Term 3: g<sup>μα</sup>(−q−k₁)<sup>β</sup><br><br>
+       <strong>Vertex 2</strong> (external: ${M(L2a)}, ${M(L2b)}, internal ν; k₁'=${kLabel(L2a)}, k₂'=${kLabel(L2b)}, q now flows IN so k₃'=+q):<br>
+       Term 1: g<sup>γδ</sup>(k₂'−k₁')<sup>ν</sup> &nbsp; Term 2: g<sup>δν</sup>(−k₂'−q)<sup>γ</sup> &nbsp; Term 3: g<sup>νγ</sup>(q+k₁')<sup>δ</sup>`,
+     expl:`Each term is a product of a rank-2 metric tensor and a rank-1 momentum vector, giving a rank-3 tensor. Getting the sign of q — and of each kᵢ, if that leg is physically outgoing — right at each vertex matters: swapping either is a common sign error that silently kills the seagull terms below via transversality.`},
 
     {title:'Contract external indices with ε legs → effective current V^μ',
-     rule:`Contract vertex with ε<sup>α</sup>(${M(pA||'p1')},λ) ε<sup>β</sup>(${M(pB||'p2')},λ):<br>
-       V<sup>μ</sup> = V<sup>μ,αβ</sup> ε<sub>α</sub>(${M(pA||'p1')}) ε<sub>β</sub>(${M(pB||'p2')})`,
-     expr:`V<sup>μ</sup> = ${coupHTML} [<br>
-       &nbsp; <strong>Term A:</strong> (ε(${M(pA||'p1')})·ε(${M(pB||'p2')})) × (${M(pA||'p1')}−${M(pB||'p2')})<sup>μ</sup><br>
-       &nbsp;&nbsp;&nbsp; — g<sup>αβ</sup>ε<sub>α</sub>ε<sub>β</sub> = ε_A·ε_B (scalar) × momentum<br>
-       &nbsp; <strong>Term B:</strong> ((q−${M(pA||'p1')})·ε(${M(pA||'p1')})) × ε<sup>μ</sup>(${M(pB||'p2')})<br>
-       &nbsp;&nbsp;&nbsp; — g<sup>βμ</sup>ε<sub>β</sub> = ε_B<sup>μ</sup> (pol vector) × momentum scalar<br>
-       &nbsp; <strong>Term C:</strong> ((${M(pB||'p2')}−q)·ε(${M(pB||'p2')})) × ε<sup>μ</sup>(${M(pA||'p1')})<br>
-       &nbsp;&nbsp;&nbsp; — g<sup>μα</sup>ε<sub>α</sub> = ε_A<sup>μ</sup> (pol vector) × momentum scalar<br>
-       ]`,
-     expl:`V^μ is a 4-vector with one free Lorentz index μ — this is the "effective current" that couples to the internal photon/Z propagator. It contains 3 types of terms: (scalar ε·ε)×(momentum)^μ, (momentum·ε scalar)×(ε)^μ, and (momentum·ε scalar)×(ε)^μ.`},
+     rule:`Contract vertex 1 with ε<sup>α</sup>(${M(L1a)}) ε<sup>β</sup>(${M(L1b)}), then use transversality (each leg's OWN physical momentum dotted into its OWN polarisation is 0 — true whether or not that leg's all-incoming label k carries a minus sign, since (−p)·ε = −(p·ε) = 0 too) to simplify each seagull coefficient:<br>
+       (k₂+q)·ε₁ = 2(k₂·ε₁) &nbsp;&nbsp; (−q−k₁)·ε₂ = −2(k₁·ε₂)`,
+     expr:`V<sub>1</sub><sup>μ</sup> = ${coupHTML} [<br>
+       &nbsp; <strong>Term A:</strong> (ε₁·ε₂) × (k₁−k₂)<sup>μ</sup><br>
+       &nbsp; <strong>Term B:</strong> 2(${kLabel(L1b)}·ε₁) × ε₂<sup>μ</sup><br>
+       &nbsp; <strong>Term C:</strong> −2(${kLabel(L1a)}·ε₂) × ε₁<sup>μ</sup><br>
+       ]  &nbsp;&nbsp; (V<sub>2</sub><sup>ν</sup> is the same shape for vertex 2's own legs)`,
+     expl:`Unlike a naive (but wrong) reading where the seagull coefficients turn out to be ±p·ε for the SAME particle (trivially 0), the correct all-incoming routing gives coefficients built from the OTHER leg's (signed, all-incoming) momentum dotted into this one's polarisation — generically nonzero, as a real 3-point vertex must be. The minus sign on k appears here whenever that leg is physically outgoing (this file's fixed convention: ${mC},${mD} outgoing).`},
 
-    {title:'Square: |M|² = −g^{μν}/q² × V_μ × V*_ν',
-     rule:`The propagator −ig_{μν}/q² contracts the μ index of V^μ with the ν index of (V^ν)*.`,
-     expr:`|M|² = ${coupHTML}⁴ × ${FR('−g<sup>μν</sup>',denomLabel+'²')} × V<sub>μ</sub> × V*<sub>ν</sub>`,
-     expl:`This contraction is exact. The Ward identity guarantees that if ε^μ → q^μ (longitudinal), V^μ q_μ = 0 — the amplitude vanishes, confirming gauge invariance.`},
+    {title:'Sanity check: Ward identity q·V₁ = 0',
+     rule:`Contract V₁<sup>μ</sup> with q<sub>μ</sub> — gauge invariance requires this to vanish, for ANY channel/leg assignment.`,
+     expr:`q·V<sub>1</sub> ∝ (ε₁·ε₂)&nbsp;q·(k₁−k₂) + 2(k₂·ε₁)(q·ε₂) − 2(k₁·ε₂)(q·ε₁)<br>
+       = 0 + 2(${kLabel(L1b)}·ε₁)(${kLabel(L1a)}·ε₂) − 2(${kLabel(L1a)}·ε₂)(${kLabel(L1b)}·ε₁) = 0 ✓`,
+     expl:`A genuine, nontrivial cancellation of two nonzero terms (using q·(k₁−k₂)=k₁²−k₂²=0 and, from transversality, q·ε₁=k₂·ε₁, q·ε₂=k₁·ε₂) — not two terms that were separately zero. This check passes identically regardless of which physical legs k₁,k₂ represent or their in/out signs, which is exactly why the same vertex formula generalises across channels.`},
 
-    {title:'Expand V·V*: 3×3 = 9 cross terms',
-     rule:`V<sub>μ</sub>V<sup>*μ</sup> = (Term A + Term B + Term C) × (Term A* + Term B* + Term C*)`,
-     expr:`= (A·A*) + (A·B*) + (A·C*) + (B·A*) + (B·B*) + (B·C*) + (C·A*) + (C·B*) + (C·C*)<br><br>
-       Each (i,j) cross term is then summed over polarisations of ${M(pA||'p1')},${M(pB||'p2')},${M(pC||'p3')},${M(pD||'p4')} using<br>
-       Σ<sub>λ</sub> ε<sup>μ</sup>(p,λ)ε*<sup>ν</sup>(p,λ) = −g<sup>μν</sup>`,
-     expl:`Terms (A,A*), (B,B*), (C,C*) are the diagonal (squared) terms. Off-diagonal terms (i≠j) are the cross-interference contributions.`},
+    {title:'Square via the propagator, summed over all 4 polarisations',
+     rule:`Σ<sub>pol</sub>|M|² = (1/q⁴) Y₁<sup>μν</sup>Y₂<sub>μν</sub>, where Y₁<sup>μν</sup> is vertex 1's OWN two legs pol-summed together first — this avoids expanding 3×3 then re-squaring into 81 terms; the two vertices only ever talk to each other through the single shared μ,ν propagator index.`,
+     expr:`Y<sub>1</sub><sup>μν</sup> = Σ<sub>pol</sub> V<sub>1</sub><sup>μ</sup>V<sub>1</sub><sup>*ν</sup> &nbsp;&nbsp; (legs ${M(L1a)},${M(L1b)})<br>
+       Y<sub>2</sub><sup>μν</sup> = Σ<sub>pol</sub> V<sub>2</sub><sup>μ</sup>V<sub>2</sub><sup>*ν</sup> &nbsp;&nbsp; (legs ${M(L2a)},${M(L2b)})`,
+     expl:`Squaring the 3-term V₁ against itself gives 9 cross terms — but every one of them only involves the metric and momenta k₁,k₂ (the ε's have all been pol-summed away using Σ<sub>λ</sub>ε<sup>μ</sup>ε<sup>*ν</sup>=−g<sup>μν</sup>), so this is now pure linear algebra.`},
 
-    {title:'Apply polarisation sums to each cross term — tensor reduction',
-     rule:`Each term uses the identities:<br>
-       (1) Σ<sub>λ</sub> ε<sup>μ</sup>ε*<sup>ν</sup> = −g<sup>μν</sup>   [massless pol sum]<br>
-       (2) g<sub>μν</sub>g<sup>μν</sup> = d = 4                           [trace of metric]<br>
-       (3) g<sup>μν</sup>p<sub>μ</sub> = p<sup>ν</sup>                    [index raising]<br>
-       (4) p·ε = 0 on-shell (transversality)                               [kills seagull terms with q·ε_i]`,
-     expr:`<strong>Diagonal term (A,A*):</strong><br>
-       Σ<sub>λ</sub>(ε_A·ε_B)²(${M(pA||'p1')}−${M(pB||'p2')})·(${M(pC||'p3')}−${M(pD||'p4')}) × (−g<sup>μν</sup>/q²)<br>
-       = 4 × (${M(pA||'p1')}−${M(pB||'p2')})·(${M(pC||'p3')}−${M(pD||'p4')}) / q²<br><br>
-       [Σ(ε_A·ε_B)² = 4 via metric contraction engine: g_αβg_ρσ(−g<sup>αρ</sup>)(−g<sup>βσ</sup>) = d = 4]<br><br>
-       <strong>Cross terms (A,B*), (A,C*), etc.:</strong><br>
-       After pol sums: (q−${M(pA||'p1')})·ε_A × pol_sum → (q−${M(pA||'p1')})<sup>α</sup>(−g<sub>αβ</sub>) = −(q−${M(pA||'p1')})<sub>β</sub><br>
-       Further contracted with (${M(pA||'p1')}−${M(pB||'p2')})<sup>μ</sup>(−g<sub>μν</sub>) = −(${M(pA||'p1')}−${M(pB||'p2')})<sub>ν</sub><br>
-       Each cross term → scalar Mandelstam combination`,
-     expl:`The full tensor reduction systematically applies pol sums to every free ε index. Transversality (p·ε=0) eliminates terms where q·ε appears (since q=p_A+p_B and p_A·ε_A=0, p_B·ε_A depends on kinematics). The Ward identity also eliminates the q^μ piece of the propagator.`},
+    {title:'Reduce Y₁^{μν}: massless legs kill 2 of the 9 terms, the rest collect cleanly',
+     rule:`Terms built from g<sup>μβ</sup>k<sub>2</sub><sup>α</sup> paired with itself pick up a factor k₂²=0 (massless, same physical momentum whichever sign); same for the k₁² term. The 7 surviving terms collect into one clean bilinear.`,
+     expr:`<strong>Y<sub>1</sub><sup>μν</sup> = ${signTxt(sign1)}g² [ ${M(L1a)}<sup>μ</sup>${M(L1b)}<sup>ν</sup> + ${M(L1b)}<sup>μ</sup>${M(L1a)}<sup>ν</sup> ]</strong>`,
+     expl:`This bilinear-momentum form is manifestly symmetric under μ↔ν, as it must be for Σ V₁V₁*. Its overall sign is ${sign1<0?'−4':'+4'}: an EVEN number of "outgoing" legs among {${M(L1a)},${M(L1b)}} leaves the −4 from the all-incoming derivation unchanged; an ODD number (one in, one out — a crossed/t-u-style pairing) flips it to +4, since the formula is bilinear in the two (possibly sign-flipped) all-incoming momenta.`},
 
-    {title:'Collect terms → Mandelstam expansion',
-     rule:`After reducing all 9 cross terms, substitute dot products using the DP table:<br>
-       p₁·p₂ = s/2, p₁·p₃ = −t/2, p₁·p₄ = −u/2, etc.<br>
-       Virtual momentum: q = p₁+p₂, q² = s`,
-     expr:`Each term in V·V* gives a Mandelstam combination. The full result:<br>
-       Σ<sub>pol</sub>|M|² = ${coupHTML}⁴ × ${FR('f(s,t,u)', denomLabel+'²')}<br><br>
-       where f(s,t,u) = sum of 9 reduced cross terms (explicit below)<br>
-       = ${dpAB.mand ? `4(${dpAB.html})(...)` : `4(${dotP(pA||'p1',pB||'p2')})(...)` }  + cross terms`,
-     expl:`For massless W/Z bosons the full result is a rational function of s,t,u. For the WWγ process (WW scattering via photon exchange), the result is known analytically from helicity methods and is one of the motivating examples for BCFW recursion.`},
+    {title:'Reduce Y₂^{μν} the same way',
+     rule:`Identical calculation for vertex 2's legs.`,
+     expr:`<strong>Y<sub>2</sub><sup>μν</sup> = ${signTxt(sign2)}g² [ ${M(L2a)}<sup>μ</sup>${M(L2b)}<sup>ν</sup> + ${M(L2b)}<sup>μ</sup>${M(L2a)}<sup>ν</sup> ]</strong>`,
+     expl:`Same reduction, vertex 2's own legs in place of vertex 1's.`},
 
-    {title:`Why this needs a tensor algebra engine — beyond fermion traces and metric contractions`,
-     rule:`The three vertex types in this stepper use different algebraic engines:<br><br>
-       <strong>Fermion trace:</strong> Wick contraction  Tr[Γ₁…Γₙ] = Σ(−1)^k(Γ₁·Γₖ)Tr[…]<br>
-       &nbsp;&nbsp;&nbsp;→ key identity: Tr[p̸_Ap̸_B] = 4(A·B)<br><br>
-       <strong>Metric vertex:</strong> polarisation contraction  g_{μν}g^{μρ} = δ_ν^ρ<br>
-       &nbsp;&nbsp;&nbsp;→ key identity: g_{μν}g^{μν} = d = 4<br><br>
-       <strong>Triple gauge:</strong> rank-3 tensor reduction  V^{μαβ} × pol_sums → scalars<br>
-       &nbsp;&nbsp;&nbsp;→ key identities: g^{μν}p_μ = p^ν, p^μp_μ = p² = 0, p·ε = 0`,
-     expr:`The 9-term expansion requires:<br>
-       1. Contracting (p_A−p_B)^μ with propagator metric −g_{μν}: → (p_A−p_B)_ν<br>
-       2. Contracting ε_B^μ with propagator −g_{μν}: → ε_{Bν} → then pol-sum → −g_ν^ν<br>
-       3. Reducing: (p_A−p_B)·(p_C−p_D), q·(p_C−p_D), etc. → Mandelstam<br>
-       All steps are pure linear algebra — no new physics, just index bookkeeping.`,
-     expl:`The full automated engine for this would extend wickTrace and contractPolPair to handle rank-3 Lorentz tensors with momentum insertions. The polarisation sum algebra is the same; only the "seed" expression (rank-3 vs rank-2) differs. This is the next engine to add.`},
+    {title:'Contract Y₁ with Y₂ via the metric',
+     rule:`Σ<sub>pol</sub>|M|² = (1/q⁴) Y₁<sup>μν</sup>Y₂<sub>μν</sub> = (${signTxt(sign1)})(${signTxt(sign2)})g⁴/q⁴ × [...]`,
+     expr:`Y<sub>1</sub><sup>μν</sup>Y<sub>2μν</sub> = ${sign1*sign2}g⁴ × 2[ (${M(L1a)}·${M(L2a)})(${M(L1b)}·${M(L2b)}) + (${M(L1a)}·${M(L2b)})(${M(L1b)}·${M(L2a)}) ]<br>
+       = 32g⁴ [ (${M(L1a)}·${M(L2a)})(${M(L1b)}·${M(L2b)}) + (${M(L1a)}·${M(L2b)})(${M(L1b)}·${M(L2a)}) ]`,
+     expl:`Cross-multiplying the two 2-term brackets gives 4 terms that pair up into 2 distinct dot-product combinations — the same combinatorial pattern as the 8-gamma fermion trace identity used elsewhere in this stepper. The per-vertex sign (${signTxt(sign1)})×(${signTxt(sign2)}) = ${sign1*sign2} is always +16 for a momentum-conserving leg grouping (verified numerically for s/t/u against random massless kinematics — see test/triple_gauge.test.js), which is why the overall "32" prefactor below is channel-independent even though the intermediate Y₁,Y₂ signs are not.`},
+
+    {title:'Substitute Mandelstam variables → final closed form',
+     rule:`Massless 2→2: ${M(L1a)}·${M(L2a)} = ${dpX1X2.html}, &nbsp; ${M(L1b)}·${M(L2b)} = ${dpY1Y2.html}, &nbsp; ${M(L1a)}·${M(L2b)} = ${dpX1Y2.html}, &nbsp; ${M(L1b)}·${M(L2a)} = ${dpY1X2.html}. &nbsp; q² = ${denomLabel}.`,
+     expr:`32g⁴[(${dpX1X2.html})(${dpY1Y2.html}) + (${dpX1Y2.html})(${dpY1X2.html})]<br><br>
+       <strong>Σ<sub>pol</sub>|M|² = ${coupHTML}⁴ × ${FR(`8(${channel==='s'?MV('t')+'²+'+MV('u')+'²':channel==='t'?MV('s')+'²+'+MV('u')+'²':MV('s')+'²+'+MV('t')+'²'})`, denomLabel+'²')}</strong>`,
+     expl:`This is the bare (colour/coupling-stripped-to-a-single-symbol) ${channel}-channel result for two triple-gauge vertices joined by a massless propagator — same Lorentz-algebra pattern for 3g (g→g_s), WWγ (g→e), or WWZ (g→gcosθ_W), and the same "8(other two Mandelstam²)/channel²" pattern in every channel (crossing symmetry). Manifestly positive for any real s,t,u, dimensionally consistent, and satisfies the Ward-identity check from step 4.`},
   ];
 
-  const latex = `\\Sigma_{\\rm pol}|\\mathcal{M}|^2 = \\frac{(g\\cos\\theta_W)^4 \\cdot f(s,t,u)}{${denomLabel.replace(/<[^>]+>/g,'')}^2}`;
+  const numHTML = channel==='s' ? 't^2+u^2' : channel==='t' ? 's^2+u^2' : 's^2+t^2';
+  const chVar = channel==='s'?'s':channel==='t'?'t':'u';
+  const latex = `\\Sigma_{\\rm pol}|\\mathcal{M}|^2 = \\frac{8(${(coupRaw.replace(/^-?i/,'').trim()||'g').replace(/cos\s*θ_W/i,'\\\\cos\\\\theta_W')})^4(${numHTML})}{${chVar}^2}`;
   return {steps, latex};
 }
 

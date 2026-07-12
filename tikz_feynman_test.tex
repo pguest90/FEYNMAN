@@ -1,0 +1,43 @@
+% Minimal tikz-feynman test file — compile this first to confirm your LaTeX
+% setup can render Feynman diagrams before trying a real export from the
+% editor's "Export LaTeX" button.
+%
+% REQUIRES LuaLaTeX, not pdfLaTeX. The exported diagrams rely on
+% tikz-feynman's automatic layout (spring layout / "horizontal=" hint /
+% node-distance keys), which are LuaTeX-only features -- pdflatex doesn't
+% error, it just silently ignores those keys (warnings like "requires
+% LuaTeX, it will be ignored") and produces a broken/undefined layout.
+% Verified locally: compiling this file with pdflatex "succeeds" but emits
+% exactly those warnings and the diagram isn't actually laid out.
+%
+%   lualatex tikz_feynman_test.tex
+%
+% On Overleaf: Menu (top-left) -> Compiler -> change "pdfLaTeX" to
+% "LuaLaTeX", then recompile. This is a per-project setting.
+%
+% Packages needed (verified against a fresh BasicTeX install — a minimal
+% TeX Live distribution does NOT include all of these by default):
+%   tlmgr install tikz-feynman standalone luatex85 pgfplots \
+%                  pdftexcmds infwarerr ltxcmds kvoptions etoolbox
+%
+% If you don't have admin/sudo rights, install per-user instead:
+%   tlmgr init-usertree
+%   tlmgr --usermode install tikz-feynman standalone luatex85 pgfplots \
+%                             pdftexcmds infwarerr ltxcmds kvoptions etoolbox
+%
+% To test a real exported diagram: replace the \feynmandiagram block below
+% with the one from the editor's "Export LaTeX" button.
+
+\documentclass[tikz,border=3mm]{standalone}
+\usepackage{tikz-feynman}
+\begin{document}
+
+% s-channel e+e- -> mu+mu- via a virtual photon. If this renders as a clean,
+% symmetric X-shape diagram, the toolchain is working correctly.
+\feynmandiagram [horizontal=a to b] {
+  i1 -- [fermion] a -- [fermion] i2,
+  a -- [photon, edge label=\(p_1+p_2\)] b,
+  f1 -- [fermion] b -- [fermion] f2,
+};
+
+\end{document}
